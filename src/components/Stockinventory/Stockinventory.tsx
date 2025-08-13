@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+// import * as XLSX from "xlsx";
+// import { saveAs } from "file-saver";
 
 import Label from "../form/Label";
 import { ReusableTable } from "../tables/BasicTableOne";
@@ -159,15 +159,15 @@ const StockInventory = () => {
     }
   };
 
-  const handleDownloadExcel = () => {
-    const exportData = data.map(({...rest }) => rest);
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Stock");
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(file, "stock_inventory.xlsx");
-  };
+  // const handleDownloadExcel = () => {
+  //   const exportData = data.map(({...rest }) => rest);
+  //   const worksheet = XLSX.utils.json_to_sheet(exportData);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Stock");
+  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  //   const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+  //   saveAs(file, "stock_inventory.xlsx");
+  // };
 
   const columns: Column<StockEntry>[] = [
     {
@@ -238,12 +238,12 @@ const StockInventory = () => {
   return (
     <div className="">
       <div className="flex justify-end">
-        <button
+        {/* <button
           onClick={handleDownloadExcel}
           className="bg-green-600 text-white py-2 px-4 rounded mb-4 hover:bg-green-700 transition-colors"
         >
           Download Excel
-        </button>
+        </button> */}
       </div>
 
       <ReusableTable

@@ -5,7 +5,7 @@ import { EcommerceMetrics } from "@/components/ecommerce/EcommerceMetrics";
 // import Showschemstable from "@/components/ecommerce/Showschemstable";
 import { Suspense } from "react";
 import Loader from "@/common/Loader";
-import Dashboardtabfilter from "@/components/schemeserve/Dashboardtabfilter";
+// import Dashboardtabfilter from "@/components/schemeserve/Dashboardtabfilter";
 
 // import DoTalukadata from "@/components/Do/Talukawisedata/DoTalukadata";
 
@@ -88,7 +88,7 @@ export default async function Ecommerce() {
          
 
             <EcommerceMetrics metrics={metrics} />
-            <Dashboardtabfilter metrics={metrics} />
+            {/* <Dashboardtabfilter metrics={metrics} /> */}
 
 
           </Suspense>

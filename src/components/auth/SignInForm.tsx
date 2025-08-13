@@ -8,6 +8,8 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from 'react-toastify';
 
+import Spinner from "@/common/Spinner";
+
 export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -168,12 +170,12 @@ export default function SignInForm() {
                     size="sm"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'Signing in...' : 'Sign in'}
+                    {isLoading ? <Spinner /> : 'Sign in'}
                   </Button>
                 </div>
                 <div className="text-center">
                   <Link
-                    href="/privacy_policy"
+                    href="/signin"
                     target="_blank"
                     className="text-sm underline text-brand-500 hover:text-brand-600 dark:text-brand-400 cursor-pointer "
                   >

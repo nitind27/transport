@@ -15,6 +15,7 @@ interface Metrics {
 }
 
 export const EcommerceMetrics = ({ metrics }: { metrics: Metrics }) => {
+  console.log(metrics)
   const [filters, setFilters] = useState({
     talukaId: null as string | null,
     villageId: null as string | null,
@@ -31,33 +32,35 @@ export const EcommerceMetrics = ({ metrics }: { metrics: Metrics }) => {
 
 
 
-  const counts = {
+  // const counts = {
 
 
-    schemes: metrics?.schemes.length ?? 0,
-    users: metrics?.users.length ?? 0,
-   
-  };
+  //   schemes: metrics?.schemes.length ?? 0,
+  //   users: metrics?.users.length ?? 0,
+
+  // };
 
 
   const metricsConfig = [
- 
+
     {
       icon: <BoxIconLine className="w-7 h-7 text-gray-600 dark:text-gray-200" />,
-      label: "Schemes",
-      value: counts.schemes,
-      href: "/schemespage",
+      label: "Total Inward",
+      // value: counts.schemes,
+      value: "0",
+      href: "/",
       show: true
     },
     {
       icon: <UserIcon className="w-7 h-7 text-gray-600 dark:text-gray-200" />,
-      label: "System Users",
-      value: counts.users,
-      href: "/users",
+      label: "Total Outward",
+      // value: counts.users
+      value: "0",
+      href: "/",
       show: filters.categoryName === "1"
     },
   ];
-  
+
   return (
     <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${filters.categoryName === "1" || filters.categoryName === "8" || filters.categoryName === "32" || filters.categoryName === "4" ? "sm:grid-cols-2" : "sm:grid-cols-2"
       }`}>

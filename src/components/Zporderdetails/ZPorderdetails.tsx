@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
+// import * as XLSX from 'xlsx';
+// import { saveAs } from 'file-saver';
 
 import Label from "../form/Label";
 import { ReusableTable } from "../tables/BasicTableOne";
@@ -96,7 +96,7 @@ const ZPorderdetails = ({ users }: Props) => {
       toast.success(editId ? 'Order updated successfully!' : 'Order created successfully!');
       reset();
       setEditId(null);
-    } catch{
+    } catch {
       toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
     } finally {
       setLoading(false);
@@ -112,15 +112,15 @@ const ZPorderdetails = ({ users }: Props) => {
     setEditId(itemRow.user_id);
   };
 
-  const handleDownloadExcel = () => {
-    const exportData = data.map(({ ...rest }) => rest);
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(file, "users.xlsx");
-  };
+  // const handleDownloadExcel = () => {
+  //   const exportData = data.map(({ ...rest }) => rest);
+  //   const worksheet = XLSX.utils.json_to_sheet(exportData);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  //   const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+  //   saveAs(file, "users.xlsx");
+  // };
 
   const columns: Column<UserData>[] = [
     { key: 'name', label: 'Name', accessor: 'name', render: (row) => <span>{row.name}</span> },
@@ -141,7 +141,7 @@ const ZPorderdetails = ({ users }: Props) => {
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
           <span>
-            <DefaultModal id={row.user_id} fetchData={() => {}} endpoint={"users/insert"} bodyname='user_id' newstatus={row.status} />
+            <DefaultModal id={row.user_id} fetchData={() => { }} endpoint={"users/insert"} bodyname='user_id' newstatus={row.status} />
           </span>
         </div>
       )
@@ -151,42 +151,47 @@ const ZPorderdetails = ({ users }: Props) => {
   return (
     <div className="">
       <div className="flex justify-end">
-        <button
+        {/* <button
           onClick={handleDownloadExcel}
           className="bg-green-600 text-white py-2 px-4 rounded mb-4 hover:bg-green-700 transition-colors"
         >
           Download Excel
-        </button>
+        </button> */}
       </div>
 
       <ReusableTable
         data={data}
-        classname={"h-[550px] overflow-y-auto scrollbar-hide"}
+        classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
-            <div>
-              <Label>Order No</Label>
-              <input
-                type="text"
-                placeholder="Enter Order No"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
-                value={orderNo}
-                onChange={(e) => setOrderNo(e.target.value)}
-              />
-              {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
-            </div>
+            <div className='grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2'>
 
-            <div>
-              <Label>No of Days</Label>
-              <input
-                type="number"
-                placeholder="Enter No of Days"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.days ? "border-red-500" : ""}`}
-                value={days}
-                onChange={(e) => setDays(e.target.value === "" ? "" : Number(e.target.value))}
-              />
-              {error.days && <div className="text-red-500 text-sm mt-1 pl-1">{error.days}</div>}
+
+              <div>
+                <Label>Order No</Label>
+                <input
+                  type="text"
+                  placeholder="Enter Order No"
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
+                  value={orderNo}
+                  onChange={(e) => setOrderNo(e.target.value)}
+                />
+                {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
+              </div>
+
+              <div>
+                <Label>No of Days</Label>
+                <input
+                  type="number"
+                  placeholder="Enter No of Days"
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.days ? "border-red-500" : ""}`}
+                  value={days}
+                  onChange={(e) => setDays(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+                {error.days && <div className="text-red-500 text-sm mt-1 pl-1">{error.days}</div>}
+              </div>
             </div>
+             <div className='grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2'>
 
             <div>
               <Label>Items</Label>
@@ -215,6 +220,7 @@ const ZPorderdetails = ({ users }: Props) => {
               />
               {error.quantity && <div className="text-red-500 text-sm mt-1 pl-1">{error.quantity}</div>}
             </div>
+            </div>
 
             <div>
               <Label>Period</Label>
@@ -230,7 +236,7 @@ const ZPorderdetails = ({ users }: Props) => {
           </div>
         }
         columns={columns}
-        title="Users"
+        title="Order Details"
         filterOptions={[]}
         submitbutton={
           <button

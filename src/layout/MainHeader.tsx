@@ -17,14 +17,14 @@ const MainHeader: React.FC = () => {
 
                         <span className="text-white text-[12px] whitespace-nowrap">
 
-                            Scheme - Serve
+                            Mid Day Meal
                         </span>
 
                     </Link>
 
 
                     <div className="hidden lg:block">
-                        <h1 className="text-2xl font-semibold text-white whitespace-nowrap">Scheme - Serve </h1>
+                        <h1 className="text-2xl font-semibold text-white whitespace-nowrap">Mid Day Meal </h1>
                     </div>
                 </div>
 
