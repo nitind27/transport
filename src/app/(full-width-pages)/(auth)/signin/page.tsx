@@ -2,9 +2,9 @@ import SignInForm from "@/components/auth/SignInForm";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Scheme Serve",
+  title: "MDM",
   description:
-    "Scheme Serve",
+    "MDM",
 };
 
 export default function SignIn() {

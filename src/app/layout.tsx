@@ -15,9 +15,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Scheme Serve",
+  title: "MDM",
   description:
-    "Scheme Serve",
+    "MDM",
 
 };
 
