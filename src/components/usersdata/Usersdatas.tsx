@@ -50,8 +50,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
   const [Username, setUsername] = useState('');
   const [Password, setPassword] = useState('');
   const [address, setaddress] = useState('');
-  const [Taluka, setTaluka] = useState(0);
-  const [Village, setVillage] = useState(0);
+  // const [Taluka, setTaluka] = useState(0);
+  // const [Village, setVillage] = useState(0);
   const [gp, setgp] = useState(0);
   const [editId, setEditId] = useState<number | null>(null);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
@@ -87,8 +87,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     setUsername("")
     setPassword("")
     setaddress("")
-    setTaluka(Number(""))
-    setVillage(Number(""))
+    // setTaluka(Number(""))
+    // setVillage(Number(""))
     setgp(Number(""))
     setEditId(0);
   }
@@ -123,15 +123,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     if (!address || address.length === 0) {
       newErrors.address = "Address is required";
     }
-    if (!Taluka) {
-      newErrors.Taluka = "Taluka is required";
-    }
-    if (!Village) {
-      newErrors.Village = "Village is required";
-    }
-    if (!gp) {
-      newErrors.gp = "Grampanchyat is required";
-    }
+  
+ 
 
 
     setErrors(newErrors);
@@ -166,8 +159,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       }
 
       toast.success(editId
-        ? 'Users updated successfully!'
-        : 'Users created successfully!');
+        ? 'updated successfully!'
+        : 'Inserted successfully!');
 
 
       reset()
@@ -198,8 +191,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     setUsername(item.username)
     setPassword(item.password)
     setaddress(item.address)
-    setTaluka(item.taluka_id)
-    setVillage(item.village_id)
+    // setTaluka(item.taluka_id)
+    // setVillage(item.village_id)
     setgp(Number(item.gp_id))
   };
 
@@ -260,18 +253,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       accessor: 'address',
       render: (data) => <span>{data.address}</span>
     },
-    {
-      key: 'taluka_id',
-      label: 'Taluka',
-      accessor: 'taluka_id',
-      render: (data) => <span>{data.taluka_name}</span>
-    },
-    {
-      key: 'village_id',
-      label: 'Village',
-      accessor: 'village_id',
-      render: (data) => <span>{data.village_name}</span>
-    },
+    
     {
       key: 'status',
       label: 'Status',

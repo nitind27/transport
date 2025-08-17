@@ -5,7 +5,7 @@ import React from 'react'
 
 
 const getTalukas = async (): Promise<Taluka[]> => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/district`, { cache: 'no-store' });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' });
     return res.json();
 };
 
@@ -21,12 +21,12 @@ const page = async () => {
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
-    { label: 'District', href: '/distdata' },
+    { label: 'Taluka', href: '/distdata' },
   ];
 
     return (
         <div>
-             <Breadcrumbs title="District" breadcrumbs={breadcrumbItems} />
+             <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
             <Distdata district={taluka} />
         </div>
     )

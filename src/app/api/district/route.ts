@@ -9,14 +9,14 @@ export async function GET() {
     try {
         connection = await pool.getConnection();
         const [rows] = await connection.query<RowDataPacket[]>(
-            'SELECT * FROM taluka WHERE status = "Active"'
+            'SELECT * FROM district WHERE status = "Active"'
         );
 
         return NextResponse.json(rows);
     } catch (error) {
         console.error('Database query failed (GET):', error);
         return NextResponse.json(
-            { message: 'Failed to fetch taluka' },
+            { message: 'Failed to fetch district' },
             { status: 500 }
         );
     } finally {
@@ -31,24 +31,17 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, name_en, status } = body;
 
-        // Basic Validation
-        if (!name) {
-            return NextResponse.json(
-                { message: 'Taluka name and district ID are required' },
-                { status: 400 }
-            );
-        }
 
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO taluka (name, name_en, status) VALUES (?, ?, ?)',
+            'INSERT INTO district (name, name_en, status) VALUES (?, ?, ?)',
             [name, name_en, status || 'Active']
         );
 
         return NextResponse.json({
             message: 'Taluka added successfully',
-            taluka_id: result.insertId,
+            district_id: result.insertId,
         });
     } catch (error) {
         console.error('Database insert failed (POST):', error);
@@ -72,7 +65,7 @@ export async function PATCH(request: Request) {
 
     try {
         await pool.query(
-            'UPDATE taluka SET status = ? WHERE taluka_id = ?',
+            'UPDATE district SET status = ? WHERE district_id = ?',
             [status, user_id]
         );
         return NextResponse.json({ message: `Scheme ${status === 'active' ? 'activated' : 'deactivated'}` });
@@ -85,9 +78,9 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { taluka_id, name, name_en } = body;
+        const { district_id, name, name_en } = body;
 
-        if (!taluka_id) {
+        if (!district_id) {
             return NextResponse.json({ message: 'Taluka ID is required' }, { status: 400 });
         }
 
@@ -109,11 +102,11 @@ export async function PUT(req: Request) {
             return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
         }
 
-        // Add taluka_id for WHERE clause
-        values.push(taluka_id);
+        // Add district_id for WHERE clause
+        values.push(district_id);
 
         connection = await pool.getConnection();
-        const query = `UPDATE taluka SET ${fieldsToUpdate.join(', ')} WHERE taluka_id = ?`;
+        const query = `UPDATE district SET ${fieldsToUpdate.join(', ')} WHERE district_id = ?`;
    
         await connection.query(query, values);
 

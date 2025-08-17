@@ -52,7 +52,7 @@ const Distdata = ({ district }: Props) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/users');
+            const response = await fetch('/api/district');
             const result = await response.json();
             setData(result);
         } catch (error) {
@@ -102,7 +102,7 @@ const Distdata = ({ district }: Props) => {
     const handleSave = async () => {
         if (!validateInputs()) return;
         setLoading(true);
-        const apiUrl = isEditMode ? `/api/taluka` : '/api/taluka';
+        const apiUrl = isEditMode ? `/api/district` : '/api/district';
         const method = isEditMode ? 'PUT' : 'POST';
 
         try {
@@ -110,9 +110,9 @@ const Distdata = ({ district }: Props) => {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: editId,
-                    Taluka: Taluka,
-                    entaluka: entaluka,
+                    district_id: editId,
+                    name: Taluka,
+                    name_en: entaluka,
                     status: "Active"
 
                 })
@@ -123,8 +123,8 @@ const Distdata = ({ district }: Props) => {
             }
 
             toast.success(editId
-                ? 'Users updated successfully!'
-                : 'Users created successfully!');
+                ? 'Updated successfully!'
+                : 'Inserted successfully!');
 
 
             reset()
@@ -148,7 +148,7 @@ const Distdata = ({ district }: Props) => {
         setIsActive(!isActive)
         setIsmodelopen(true);
         setIsEditmode(true);
-
+        setEditId(item.taluka_id)
         setTaluka(item.name)
         setEntaluka(item.name_en)
 
@@ -177,13 +177,13 @@ const Distdata = ({ district }: Props) => {
 
         {
             key: 'name',
-            label: 'Name',
+            label: 'Dist (Mr)',
             accessor: 'name',
             render: (data) => <span>{data.name}</span>
         },
         {
             key: 'name',
-            label: 'Name',
+            label: 'Dist (En)',
             accessor: 'name',
             render: (data) => <span>{data.name_en}</span>
         },
@@ -202,7 +202,7 @@ const Distdata = ({ district }: Props) => {
 
 
                     <span>
-                        <DefaultModal id={data.taluka_id} fetchData={fetchData} endpoint={"users/insert"} bodyname='user_id' newstatus={data.status} />
+                        <DefaultModal id={data.taluka_id} fetchData={fetchData} endpoint={"taluka"} bodyname='user_id' newstatus={data.status} />
                     </span>
                 </div>
             )
@@ -210,7 +210,7 @@ const Distdata = ({ district }: Props) => {
     ];
 
     return (
-        <div className="">
+        <div className="mt-5">
             <div className="flex justify-end">
                 {/* <button
                     onClick={handleDownloadExcel}

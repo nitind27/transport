@@ -46,8 +46,8 @@ const allNavItems: NavItem[] = [
      subItems: [
       { name: "User's", path: "/users" },
       { name: "District", path: "/distdata" },
-      { name: "Taluka", path: "/yearmaster" },
-      { name: "Village", path: "/users" },
+      { name: "Taluka", path: "/taluka" },
+      { name: "Village", path: "/village" },
       { name: "Centre", path: "/users" },
       { name: "Schools", path: "/users" },
       { name: "Items / Grains", path: "/users" },

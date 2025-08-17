@@ -100,7 +100,7 @@ export async function GET() {
           address,
           gp_id,
           status
-        FROM users
+        FROM users WHERE status = "Active"
       `);
       return NextResponse.json(rows);
     } finally {
@@ -204,5 +204,26 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('Deletion failed:', error);
     return NextResponse.json({ error: 'Failed to delete scheme' }, { status: 500 });
+  }
+}
+
+
+
+export async function PATCH(request: Request) {
+  const { user_id, status } = await request.json();
+
+  if (!user_id || !status) {
+    return NextResponse.json({ error: 'Scheme ID and status are required' }, { status: 400 });
+  }
+
+  try {
+    await pool.query(
+      'UPDATE users SET status = ? WHERE user_id = ?',
+      [status, user_id]
+    );
+    return NextResponse.json({ message: `Scheme ${status === 'active' ? 'activated' : 'deactivated'}` });
+  } catch (error) {
+    console.error('Status update error:', error);
+    return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
   }
 }
