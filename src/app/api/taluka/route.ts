@@ -64,16 +64,16 @@ export async function POST(req: Request) {
 
 
 export async function PATCH(request: Request) {
-    const { user_id, status } = await request.json();
+    const { taluka_id, status } = await request.json();
 
-    if (!user_id || !status) {
+    if (!taluka_id || !status) {
         return NextResponse.json({ error: 'Scheme ID and status are required' }, { status: 400 });
     }
 
     try {
         await pool.query(
             'UPDATE taluka SET status = ? WHERE taluka_id = ?',
-            [status, user_id]
+            [status, taluka_id]
         );
         return NextResponse.json({ message: `Scheme ${status === 'active' ? 'activated' : 'deactivated'}` });
     } catch (error) {

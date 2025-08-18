@@ -1,6 +1,7 @@
 import Breadcrumbs from '@/components/common/BreadcrumbItem';
-import Distdata from '@/components/District/Distdata'
+// import Distdata from '@/components/District/Distdata'
 import { Taluka } from '@/components/Taluka/Taluka';
+import Talukadata from '@/components/Taluka/Talukadata';
 import React from 'react'
 
 
@@ -27,7 +28,7 @@ const page = async () => {
     return (
         <div>
              <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
-            <Distdata district={taluka} />
+            <Talukadata district={taluka} />
         </div>
     )
 }

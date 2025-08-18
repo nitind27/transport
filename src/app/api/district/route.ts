@@ -57,16 +57,16 @@ export async function POST(req: Request) {
 
 
 export async function PATCH(request: Request) {
-    const { user_id, status } = await request.json();
+    const { district_id, status } = await request.json();
 
-    if (!user_id || !status) {
+    if (!district_id || !status) {
         return NextResponse.json({ error: 'Scheme ID and status are required' }, { status: 400 });
     }
 
     try {
         await pool.query(
             'UPDATE district SET status = ? WHERE district_id = ?',
-            [status, user_id]
+            [status, district_id]
         );
         return NextResponse.json({ message: `Scheme ${status === 'active' ? 'activated' : 'deactivated'}` });
     } catch (error) {
@@ -74,6 +74,7 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
     }
 }
+
 export async function PUT(req: Request) {
     let connection;
     try {

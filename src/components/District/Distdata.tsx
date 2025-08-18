@@ -148,7 +148,7 @@ const Distdata = ({ district }: Props) => {
         setIsActive(!isActive)
         setIsmodelopen(true);
         setIsEditmode(true);
-        setEditId(item.taluka_id)
+        setEditId(item.district_id)
         setTaluka(item.name)
         setEntaluka(item.name_en)
 
@@ -202,7 +202,7 @@ const Distdata = ({ district }: Props) => {
 
 
                     <span>
-                        <DefaultModal id={data.taluka_id} fetchData={fetchData} endpoint={"taluka"} bodyname='user_id' newstatus={data.status} />
+                        <DefaultModal id={data.district_id} fetchData={fetchData} endpoint={"district"} bodyname='district_id' newstatus={data.status} />
                     </span>
                 </div>
             )
