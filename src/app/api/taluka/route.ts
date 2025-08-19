@@ -8,9 +8,15 @@ export async function GET() {
     let connection;
     try {
         connection = await pool.getConnection();
-        const [rows] = await connection.query<RowDataPacket[]>(
-            'SELECT * FROM taluka WHERE status = "Active"'
-        );
+       const [rows] = await connection.query<RowDataPacket[]>(
+  `SELECT 
+      taluka.*, 
+      district.name AS districtname
+   FROM taluka
+   INNER JOIN district ON taluka.dist_id = district.district_id
+   WHERE taluka.status = "Active"`
+);
+
 
         return NextResponse.json(rows);
     } catch (error) {
@@ -29,7 +35,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { name, name_en, status } = body;
+        const { name, name_en, dist_id, status } = body;
 
         // Basic Validation
         if (!name) {
@@ -42,8 +48,8 @@ export async function POST(req: Request) {
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO taluka (name, name_en, status) VALUES (?, ?, ?)',
-            [name, name_en, status || 'Active']
+            'INSERT INTO taluka (name, name_en, dist_id, status) VALUES (?, ?, ?, ?)',
+            [name, name_en, dist_id, status || 'Active']
         );
 
         return NextResponse.json({
@@ -114,7 +120,7 @@ export async function PUT(req: Request) {
 
         connection = await pool.getConnection();
         const query = `UPDATE taluka SET ${fieldsToUpdate.join(', ')} WHERE taluka_id = ?`;
-   
+
         await connection.query(query, values);
 
         return NextResponse.json({ message: 'Taluka updated successfully' });

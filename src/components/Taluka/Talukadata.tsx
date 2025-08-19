@@ -21,6 +21,7 @@ import { FaEdit } from 'react-icons/fa';
 
 type Props = {
     district: Taluka[];
+    distoption: Taluka[];
 
 };
 type FormErrors = {
@@ -36,13 +37,14 @@ type FormErrors = {
     gp?: string;
 
 };
-const Talukadata = ({ district }: Props) => {
+const Talukadata = ({ district,distoption }: Props) => {
 
     const [data, setData] = useState<Taluka[]>(district || []);
 
     const [Taluka, setTaluka] = useState('');
     const [entaluka, setEntaluka] = useState('');
-    
+    const [distrcit, setDistrict] = useState('');
+
 
     const [editId, setEditId] = useState<number | null>(null);
     const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
@@ -74,7 +76,7 @@ const Talukadata = ({ district }: Props) => {
 
         setTaluka("")
         setEntaluka("")
-      
+
         setEditId(0);
     }
 
@@ -90,11 +92,11 @@ const Talukadata = ({ district }: Props) => {
         // Category validation
 
         // Documents validation
-       
+
         if (!Taluka) {
             newErrors.Taluka = "Taluka is required";
         }
-     
+
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -111,6 +113,7 @@ const Talukadata = ({ district }: Props) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     taluka_id: editId,
+                    dist_id: distrcit,
                     name: Taluka,
                     name_en: entaluka,
                     status: "Active"
@@ -177,13 +180,19 @@ const Talukadata = ({ district }: Props) => {
 
         {
             key: 'name',
-            label: 'Dist (Mr)',
+            label: 'District',
+            accessor: 'districtname',
+            render: (data) => <span>{data.districtname}</span>
+        },
+        {
+            key: 'name',
+            label: 'Taluka (Mr)',
             accessor: 'name',
             render: (data) => <span>{data.name}</span>
         },
         {
             key: 'name',
-            label: 'Dist (En)',
+            label: 'Taluka (En)',
             accessor: 'name',
             render: (data) => <span>{data.name_en}</span>
         },
@@ -221,9 +230,27 @@ const Talukadata = ({ district }: Props) => {
             </div>
             <ReusableTable
                 data={data}
-                classname={"h-[350px] overflow-y-auto scrollbar-hide"}
+                classname={"h-auto overflow-y-auto scrollbar-hide"}
                 inputfiled={
                     <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
+                        <div>
+                            <Label>District</Label>
+                            <select
+                                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                                    border-gray-300 bg-white text-gray-800
+                                    }`}
+                                value={distrcit}
+                                onChange={(e) => setDistrict(e.target.value)}
+                                // disabled={!selectedTaluka || !selectedGrampanchayat}
+                            >
+                                <option value="">सर्व गाव</option>
+                                {distoption.map((category) => (
+                                    <option key={category.dist_id} value={category.dist_id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
 
 

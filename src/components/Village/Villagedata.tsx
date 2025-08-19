@@ -1,11 +1,340 @@
-import React from 'react'
+"use client";
 
-const Villagedata = () => {
+import { useEffect, useState } from 'react';
+// import * as XLSX from 'xlsx';
+// import { saveAs } from 'file-saver';
+
+import Label from "../form/Label";
+import { ReusableTable } from "../tables/BasicTableOne";
+import { Column } from "../tables/tabletype";
+
+
+import { toast } from 'react-toastify';
+
+import { useToggleContext } from '@/context/ToggleContext';
+
+import { Taluka } from '../Taluka/Taluka';
+
+import DefaultModal from '../example/ModalExample/DefaultModal';
+import { FaEdit } from 'react-icons/fa';
+// import { Grampanchayattype } from '../grampanchayat/gptype';
+
+type Props = {
+  district: Taluka[];
+  distoption: Taluka[];
+
+};
+type FormErrors = {
+
+  usercategory?: string;
+  name?: string;
+  Contact?: string;
+  Username?: string;
+  Password?: string;
+  address?: string;
+  Taluka?: string;
+  Village?: string;
+  gp?: string;
+
+};
+const Villagedata = ({ district, distoption }: Props) => {
+
+  const [data, setData] = useState<Taluka[]>(district || []);
+
+  const [Taluka, setTaluka] = useState('');
+  // const [entaluka, setEntaluka] = useState('');
+  const [distrcit, setDistrict] = useState('');
+  const [villagedata, setVillagedata] = useState('');
+  const [mrvillagedata, setMrVillagedata] = useState('');
+  // const [distrcit, setDistrict] = useState('');
+
+
+  const [editId, setEditId] = useState<number | null>(null);
+  const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
+  const [loading, setLoading] = useState(false);
+  const [error, setErrors] = useState<FormErrors>({});
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/taluka');
+      const result = await response.json();
+      setData(result);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false); // End loading
+    }
+  };
+
+  useEffect(() => {
+
+    if (!isvalidation) {
+
+      setErrors({})
+    }
+  }, [isvalidation])
+
+  const reset = () => {
+
+    setTaluka("")
+    setVillagedata("")
+    setMrVillagedata("")
+
+    setEditId(0);
+  }
+
+  useEffect(() => {
+    if (!isEditMode) {
+      reset()
+    }
+  }, [isEditMode]);
+
+  const validateInputs = () => {
+    const newErrors: FormErrors = {};
+    setisvalidation(true)
+    // Category validation
+
+    // Documents validation
+
+    if (!Taluka) {
+      newErrors.Taluka = "Taluka is required";
+    }
+
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  const handleSave = async () => {
+    if (!validateInputs()) return;
+    setLoading(true);
+    const apiUrl = isEditMode ? `/api/villages` : '/api/villages';
+    const method = isEditMode ? 'PUT' : 'POST';
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          village_id : editId,
+          taluka_id: Taluka,
+          // village_id: Taluka,
+          name: villagedata,
+          marathi_name: mrvillagedata,
+          // gp_name: mrvillagedata,
+          status: "Active"
+
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast.success(editId
+        ? 'Updated successfully!'
+        : 'Inserted successfully!');
+
+
+      reset()
+      setEditId(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error saving Users:', error);
+      toast.error(editId
+        ? 'Failed to update Users. Please try again.'
+        : 'Failed to create Users. Please try again.');
+    } finally {
+      setLoading(false);
+      setIsmodelopen(false);
+    }
+  };
+
+
+
+
+  const handleEdit = (item: Taluka) => {
+    setIsActive(!isActive)
+    setIsmodelopen(true);
+    setIsEditmode(true);
+    setEditId(item.taluka_id)
+    setTaluka(item.name)
+    setMrVillagedata(item.name_en)
+    setVillagedata(item.name_en)
+
+  };
+
+  // const handleDownloadExcel = () => {
+  //     // Prepare data for Excel (remove unwanted fields if needed)
+  //     const exportData = data.map(({ ...rest }) => rest); // Example: exclude password
+
+  //     // Convert JSON to worksheet
+  //     const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+  //     // Create a new workbook and append the worksheet
+  //     const workbook = XLSX.utils.book_new();
+  //     XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+
+  //     // Generate buffer
+  //     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+
+  //     // Save file
+  //     const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+  //     saveAs(file, "users.xlsx");
+  // };
+
+  const columns: Column<Taluka>[] = [
+
+    {
+      key: 'name',
+      label: 'District',
+      accessor: 'districtname',
+      render: (data) => <span>{data.districtname}</span>
+    },
+    {
+      key: 'name',
+      label: 'Taluka (Mr)',
+      accessor: 'name',
+      render: (data) => <span>{data.name}</span>
+    },
+    {
+      key: 'name',
+      label: 'Taluka (En)',
+      accessor: 'name',
+      render: (data) => <span>{data.name_en}</span>
+    },
+
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (data) => (
+        <div className="flex gap-2 whitespace-nowrap w-full">
+          <span
+            onClick={() => handleEdit(data)}
+            className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
+            <FaEdit className="inline-block align-middle text-lg" />
+          </span>
+
+
+          <span>
+            <DefaultModal id={data.taluka_id} fetchData={fetchData} endpoint={"taluka"} bodyname='taluka_id' newstatus={data.status} />
+          </span>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div>
-      Village
-    </div>
-  )
-}
+    <div className="mt-5">
+      <div className="flex justify-end">
+        {/* <button
+                    onClick={handleDownloadExcel}
+                    className="bg-green-600 text-white py-2 px-4 rounded mb-4 hover:bg-green-700 transition-colors"
+                >
+                    Download Excel
+                </button> */}
+      </div>
+      <ReusableTable
+        data={data}
+        classname={"h-auto overflow-y-auto scrollbar-hide"}
+        inputfiled={
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
+            <div>
+              <Label>District</Label>
+              <select
+                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                                    border-gray-300 bg-white text-gray-800
+                                    }`}
+                value={distrcit}
+                onChange={(e) => setDistrict(e.target.value)}
+              // disabled={!selectedTaluka || !selectedGrampanchayat}
+              >
+                <option value="">सर्व जिल्हा</option>
+                {distoption.map((category) => (
+                  <option key={category.district_id } value={category.district_id }>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Taluka</Label>
+              <select
+                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+                                    border-gray-300 bg-white text-gray-800
+                                    }`}
+                value={Taluka}
+                onChange={(e) => setTaluka(e.target.value)}
+              // disabled={!selectedTaluka || !selectedGrampanchayat}
+              >
+                <option value="">सर्व तालुका </option>
+                {district.filter(data => data.dist_id == Number(distrcit)).map((category) => (
+                  <option key={category.taluka_id} value={category.taluka_id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-export default Villagedata
+
+
+            <div>
+              <Label>Village (En)</Label>
+              <input
+                type="text"
+                placeholder="Enter Village"
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Username ? "border-red-500" : ""
+                  }`}
+
+                value={villagedata}
+                onChange={(e) => setVillagedata((e.target.value))}
+              />
+              {error && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.Taluka}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Village (Mr)</Label>
+              <input
+                type="text"
+                placeholder="Enter Village"
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Username ? "border-red-500" : ""
+                  }`}
+
+                value={mrvillagedata}
+                onChange={(e) => setMrVillagedata((e.target.value))}
+              />
+              {error && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.Taluka}
+                </div>
+              )}
+            </div>
+          </div>
+        }
+
+        columns={columns}
+        title="Village"
+        filterOptions={[]}
+        // filterKey="role"
+        submitbutton={
+          <button
+            type='button'
+            onClick={handleSave}
+            className='bg-blue-700 text-white py-2 p-2 rounded'
+            disabled={loading}
+          >
+            {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
+          </button>
+        }
+        searchKey="username"
+      // 
+      />
+    </div>
+  );
+};
+
+export default Villagedata;

@@ -11,13 +11,21 @@ const getTalukas = async (): Promise<Taluka[]> => {
 };
 
 
+const getDist = async (): Promise<Taluka[]> => {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/district`, { cache: 'no-store' });
+    return res.json();
+};
 
 const page = async () => {
     const [taluka] = await Promise.all([
 
         getTalukas(),
+      
+    ]);
+    const [dist] = await Promise.all([
 
-        // getgrampanchayat()
+          getDist(),
+      
     ]);
 
   const breadcrumbItems = [
@@ -28,7 +36,7 @@ const page = async () => {
     return (
         <div>
              <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
-            <Talukadata district={taluka} />
+            <Talukadata district={taluka} distoption={dist}/>
         </div>
     )
 }
