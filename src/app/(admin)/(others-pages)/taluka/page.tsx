@@ -1,35 +1,34 @@
-import React from "react";
-import Breadcrumbs from "@/components/common/BreadcrumbItem";
-import { Taluka } from "@/components/Taluka/Taluka";
-import Talukadata from "@/components/Taluka/Talukadata";
+import Breadcrumbs from '@/components/common/BreadcrumbItem';
 
-// Reusable fetch function
-const fetchData = async <T,>(endpoint: string): Promise<T> => {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${endpoint}`);
-  }
-  return res.json();
-};
+import Talukadata from '@/components/Taluka/Talukadata';
+import React from 'react'
 
-const Page = async () => {
-  // Fetch taluka and district in parallel
+
+
+const page = async () => {
+     const [talukadata, distdata] = await Promise.all([
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/district`, { cache: 'no-store' }),
+ 
+  ]);
+
   const [taluka, dist] = await Promise.all([
-    fetchData<Taluka[]>("taluka"),
-    fetchData<Taluka[]>("district"),
+    talukadata.json(),
+    distdata.json(),
+ 
   ]);
 
   const breadcrumbItems = [
-    { label: "Home", href: "/" },
-    { label: "Taluka", href: "/distdata" },
+    { label: 'Home', href: '/' },
+    { label: 'Taluka', href: '/distdata' },
   ];
 
-  return (
-    <div>
-      <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
-      <Talukadata district={taluka} distoption={dist} />
-    </div>
-  );
-};
+    return (
+        <div>
+             <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
+            <Talukadata district={taluka} distoption={dist}/>
+        </div>
+    )
+}
 
-export default Page;
+export default page
