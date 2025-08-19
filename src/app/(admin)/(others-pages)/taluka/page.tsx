@@ -1,44 +1,35 @@
-import Breadcrumbs from '@/components/common/BreadcrumbItem';
-// import Distdata from '@/components/District/Distdata'
-import { Taluka } from '@/components/Taluka/Taluka';
-import Talukadata from '@/components/Taluka/Talukadata';
-import React from 'react'
+import React from "react";
+import Breadcrumbs from "@/components/common/BreadcrumbItem";
+import { Taluka } from "@/components/Taluka/Taluka";
+import Talukadata from "@/components/Taluka/Talukadata";
 
-
-const getTalukas = async (): Promise<Taluka[]> => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' });
-    return res.json();
+// Reusable fetch function
+const fetchData = async <T,>(endpoint: string): Promise<T> => {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${endpoint}`);
+  }
+  return res.json();
 };
 
-
-const getDist = async (): Promise<Taluka[]> => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/district`, { cache: 'no-store' });
-    return res.json();
-};
-
-const page = async () => {
-    const [taluka] = await Promise.all([
-
-        getTalukas(),
-      
-    ]);
-    const [dist] = await Promise.all([
-
-          getDist(),
-      
-    ]);
+const Page = async () => {
+  // Fetch taluka and district in parallel
+  const [taluka, dist] = await Promise.all([
+    fetchData<Taluka[]>("taluka"),
+    fetchData<Taluka[]>("district"),
+  ]);
 
   const breadcrumbItems = [
-    { label: 'Home', href: '/' },
-    { label: 'Taluka', href: '/distdata' },
+    { label: "Home", href: "/" },
+    { label: "Taluka", href: "/distdata" },
   ];
 
-    return (
-        <div>
-             <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
-            <Talukadata district={taluka} distoption={dist}/>
-        </div>
-    )
-}
+  return (
+    <div>
+      <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
+      <Talukadata district={taluka} distoption={dist} />
+    </div>
+  );
+};
 
-export default page
+export default Page;
