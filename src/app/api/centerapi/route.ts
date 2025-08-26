@@ -4,13 +4,13 @@ import pool from '@/lib/db';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 interface Village {
-    village_id: number;
+    center_id: number;
     name: string;
 }
 
 export async function GET() {
     try {
-        const [rows] = await pool.query<RowDataPacket[] & Village[]>(`SELECT * FROM village where status = "Active"`);
+        const [rows] = await pool.query<RowDataPacket[] & Village[]>(`SELECT * FROM centerdata where status = "Active"`);
 
 
         const safeVillages = (rows as Village[]).map(({ ...village }) => village);
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { taluka_id, village_id, name, marathi_name } = body;
+        const { taluka_id, center_id, name, marathi_name } = body;
 
         // Basic Validation
         if (!taluka_id) {
@@ -46,12 +46,12 @@ export async function POST(req: Request) {
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO village (taluka_id, village_id, name, marathi_name, status) VALUES (?, ?, ?, ?, ?)',
-            [taluka_id, village_id, name, marathi_name, 'Active']
+            'INSERT INTO centerdata (taluka_id, center_id, name, marathi_name, status) VALUES (?, ?, ?, ?, ?)',
+            [taluka_id, center_id, name, marathi_name, 'Active']
         );
 
         return NextResponse.json({
-            message: 'Village added successfully',
+            message: 'centerdata added successfully',
             taluka_id: result.insertId,
         });
     } catch (error) {
@@ -76,7 +76,7 @@ export async function PATCH(request: Request) {
 
     try {
         await pool.query(
-            'UPDATE village SET status = ? WHERE village_id = ?',
+            'UPDATE centerdata SET status = ? WHERE center_id = ?',
             [status, taluka_id]
         );
         return NextResponse.json({ message: `Scheme ${status === 'active' ? 'activated' : 'deactivated'}` });
@@ -89,9 +89,9 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { village_id, name, name_en } = body;
+        const { taluka_id, name, name_en } = body;
 
-        if (!village_id) {
+        if (!taluka_id) {
             return NextResponse.json({ message: 'Taluka ID is required' }, { status: 400 });
         }
 
@@ -114,10 +114,10 @@ export async function PUT(req: Request) {
         }
 
         // Add taluka_id for WHERE clause
-        values.push(village_id);
+        values.push(taluka_id);
 
         connection = await pool.getConnection();
-        const query = `UPDATE taluka SET ${fieldsToUpdate.join(', ')} WHERE taluka_id = ?`;
+        const query = `UPDATE centerdata SET ${fieldsToUpdate.join(', ')} WHERE center_id = ?`;
 
         await connection.query(query, values);
 

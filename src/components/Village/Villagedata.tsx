@@ -193,13 +193,19 @@ const Villagedata = ({ district, distoption }: Props) => {
     },
     {
       key: 'name',
-      label: 'Taluka (Mr)',
+      label: 'Taluka',
+      accessor: 'taluka_id',
+      render: (data) => <span>{data.taluka_id}</span>
+    },
+    {
+      key: 'name',
+      label: 'Village (Mr)',
       accessor: 'name',
       render: (data) => <span>{data.name}</span>
     },
     {
       key: 'name',
-      label: 'Taluka (En)',
+      label: 'Village (En)',
       accessor: 'name',
       render: (data) => <span>{data.name_en}</span>
     },

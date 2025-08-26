@@ -245,7 +245,7 @@ const Talukadata = ({ district,distoption }: Props) => {
                             >
                                 <option value="">सर्व गाव</option>
                                 {distoption.map((category) => (
-                                    <option key={category.dist_id} value={category.dist_id}>
+                                    <option key={category.district_id} value={category.district_id}>
                                         {category.name}
                                     </option>
                                 ))}

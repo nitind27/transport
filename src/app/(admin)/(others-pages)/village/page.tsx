@@ -25,7 +25,7 @@ const page = async () => {
 
     return (
         <div>
-             <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
+             <Breadcrumbs title="Village" breadcrumbs={breadcrumbItems} />
             <Villagedata district={taluka} distoption={dist}/>
         </div>
     )
