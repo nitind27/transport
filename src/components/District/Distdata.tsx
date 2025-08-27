@@ -228,10 +228,10 @@ const Distdata = ({ district }: Props) => {
 
 
                         <div>
-                            <Label>Taluka (En)</Label>
+                            <Label>District (En)</Label>
                             <input
                                 type="text"
-                                placeholder="Enter Taluka"
+                                placeholder="Enter District"
                                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Username ? "border-red-500" : ""
                                     }`}
 
@@ -246,10 +246,10 @@ const Distdata = ({ district }: Props) => {
                         </div>
 
                         <div>
-                            <Label>Taluka (Mr)</Label>
+                            <Label>District (Mr)</Label>
                             <input
                                 type="text"
-                                placeholder="Enter Taluka"
+                                placeholder="Enter District"
                                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Username ? "border-red-500" : ""
                                     }`}
 
@@ -269,7 +269,7 @@ const Distdata = ({ district }: Props) => {
                 }
 
                 columns={columns}
-                title="Taluka"
+                title="District"
                 filterOptions={[]}
                 // filterKey="role"
                 submitbutton={

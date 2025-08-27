@@ -73,6 +73,9 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
 
+    if (!selectedDistrict) {
+      newErrors.taluka_id = "District is required";
+    }
     if (!selectedTaluka) {
       newErrors.taluka_id = "Taluka is required";
     }
@@ -97,11 +100,13 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     try {
       const requestBody = isEditMode ? {
         center_id: editId,
+        dist_id: selectedDistrict,
         taluka_id: selectedTaluka,
         name: centerName,
         marathi_name: marathiName,
         status: "Active"
       } : {
+        dist_id: selectedDistrict,
         taluka_id: selectedTaluka,
         name: centerName,
         marathi_name: marathiName,
@@ -144,8 +149,9 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     setEditId(item.center_id);
     setSelectedTaluka(item.taluka_id?.toString() || '');
     setSelectedDistrict(item.dist_id?.toString() || '');
-    setCenterName(item.name_en || '');
-    setMarathiName(item.name || '');
+    // API returns name (Mr) and name_en (En) after JOIN
+    setCenterName(item.name || '');
+    setMarathiName(item.marathi_name || '');
   };
 
   const columns: Column<Taluka>[] = [
@@ -158,33 +164,22 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     {
       key: 'taluka',
       label: 'Taluka (Mr)',
-      accessor: 'name',
-      render: (data) => <span>{data.name || 'N/A'}</span>
+      accessor: 'talukaname',
+      render: (data) => <span>{data.talukaname || data.name || 'N/A'}</span>
     },
     {
       key: 'center_name',
       label: 'Center Name (En)',
       accessor: 'name_en',
-      render: (data) => <span>{data.name_en || 'N/A'}</span>
+      render: (data) => <span>{data.name || 'N/A'}</span>
     },
     {
       key: 'center_name_mr',
       label: 'Center Name (Mr)',
       accessor: 'name',
-      render: (data) => <span>{data.name || 'N/A'}</span>
+      render: (data) => <span>{data.marathi_name || 'N/A'}</span>
     },
-    {
-      key: 'status',
-      label: 'Status',
-      accessor: 'status',
-      render: (data) => (
-        <span className={`px-2 py-1 rounded-full text-xs ${
-          data.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {data.status || 'N/A'}
-        </span>
-      )
-    },
+    
     {
       key: 'actions',
       label: 'Actions',
@@ -198,7 +193,6 @@ const Centerdata = ({ district, distoption, center }: Props) => {
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
           <span>
-            
             <DefaultModal 
               id={data.center_id} 
               fetchData={fetchData} 
@@ -307,7 +301,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
             className='bg-blue-700 text-white py-2 p-2 rounded hover:bg-blue-800 transition-colors'
             disabled={loading}
           >
-            {loading ? 'Submitting...' : (editId ? 'Update Center' : 'Create Center')}
+            {loading ? 'Submitting...' : (editId ? 'Update' : 'Add')}
           </button>
         }
         searchKey="name"

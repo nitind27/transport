@@ -22,6 +22,7 @@ import { FaEdit } from 'react-icons/fa';
 type Props = {
   district: Taluka[];
   distoption: Taluka[];
+  village: Taluka[];
 
 };
 type FormErrors = {
@@ -37,9 +38,9 @@ type FormErrors = {
   gp?: string;
 
 };
-const Villagedata = ({ district, distoption }: Props) => {
+const Villagedata = ({ district, distoption, village }: Props) => {
 
-  const [data, setData] = useState<Taluka[]>(district || []);
+  const [data, setData] = useState<Taluka[]>(village || []);
 
   const [Taluka, setTaluka] = useState('');
   // const [entaluka, setEntaluka] = useState('');
@@ -57,7 +58,7 @@ const Villagedata = ({ district, distoption }: Props) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/taluka');
+      const response = await fetch('/api/villages');
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -93,14 +94,19 @@ const Villagedata = ({ district, distoption }: Props) => {
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true)
-    // Category validation
 
-    // Documents validation
-
+    if (!distrcit) {
+      newErrors.Taluka = "District is required";
+    }
     if (!Taluka) {
       newErrors.Taluka = "Taluka is required";
     }
-
+    if (!villagedata) {
+      newErrors.Village = "Village (En) is required";
+    }
+    if (!mrvillagedata) {
+      newErrors.Village = "Village (Mr) is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -108,7 +114,7 @@ const Villagedata = ({ district, distoption }: Props) => {
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
-    const apiUrl = isEditMode ? `/api/villages` : '/api/villages';
+    const apiUrl = '/api/villages';
     const method = isEditMode ? 'PUT' : 'POST';
 
     try {
@@ -116,12 +122,11 @@ const Villagedata = ({ district, distoption }: Props) => {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          village_id : editId,
+          village_id: editId,
           taluka_id: Taluka,
-          // village_id: Taluka,
+          dist_id: distrcit,
           name: villagedata,
           marathi_name: mrvillagedata,
-          // gp_name: mrvillagedata,
           status: "Active"
 
         })
@@ -132,18 +137,18 @@ const Villagedata = ({ district, distoption }: Props) => {
       }
 
       toast.success(editId
-        ? 'Updated successfully!'
-        : 'Inserted successfully!');
+        ? 'Village updated successfully!'
+        : 'Village inserted successfully!');
 
 
       reset()
       setEditId(null);
       fetchData();
     } catch (error) {
-      console.error('Error saving Users:', error);
+      console.error('Error saving Village:', error);
       toast.error(editId
-        ? 'Failed to update Users. Please try again.'
-        : 'Failed to create Users. Please try again.');
+        ? 'Failed to update Village. Please try again.'
+        : 'Failed to create Village. Please try again.');
     } finally {
       setLoading(false);
       setIsmodelopen(false);
@@ -152,15 +157,15 @@ const Villagedata = ({ district, distoption }: Props) => {
 
 
 
-
   const handleEdit = (item: Taluka) => {
     setIsActive(!isActive)
     setIsmodelopen(true);
     setIsEditmode(true);
-    setEditId(item.taluka_id)
-    setTaluka(item.name)
-    setMrVillagedata(item.name_en)
-    setVillagedata(item.name_en)
+    setEditId(item.village_id)
+    setDistrict(String(item.dist_id ?? ''))
+    setTaluka(String(item.taluka_id ?? ''))
+    setMrVillagedata(item.marathi_name ?? '')
+    setVillagedata(item.name ?? '')
 
   };
 
@@ -194,22 +199,21 @@ const Villagedata = ({ district, distoption }: Props) => {
     {
       key: 'name',
       label: 'Taluka',
-      accessor: 'taluka_id',
-      render: (data) => <span>{data.taluka_id}</span>
+      accessor: 'talukaname',
+      render: (data) => <span>{data.talukaname}</span>
     },
     {
       key: 'name',
       label: 'Village (Mr)',
       accessor: 'name',
-      render: (data) => <span>{data.name}</span>
+      render: (data) => <span>{data.marathi_name}</span>
     },
     {
       key: 'name',
       label: 'Village (En)',
       accessor: 'name',
-      render: (data) => <span>{data.name_en}</span>
+      render: (data) => <span>{data.name}</span>
     },
-
     {
       key: 'actions',
       label: 'Actions',
@@ -224,7 +228,7 @@ const Villagedata = ({ district, distoption }: Props) => {
 
 
           <span>
-            <DefaultModal id={data.taluka_id} fetchData={fetchData} endpoint={"taluka"} bodyname='taluka_id' newstatus={data.status} />
+            <DefaultModal id={data.village_id} fetchData={fetchData} endpoint={"villages"} bodyname='village_id' newstatus={data.status} />
           </span>
         </div>
       )
@@ -258,7 +262,7 @@ const Villagedata = ({ district, distoption }: Props) => {
               >
                 <option value="">सर्व जिल्हा</option>
                 {distoption.map((category) => (
-                  <option key={category.district_id } value={category.district_id }>
+                  <option key={category.district_id} value={category.district_id}>
                     {category.name}
                   </option>
                 ))}
@@ -298,7 +302,7 @@ const Villagedata = ({ district, distoption }: Props) => {
               />
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
-                  {error.Taluka}
+                  {error.Taluka || error.Village}
                 </div>
               )}
             </div>
@@ -315,7 +319,7 @@ const Villagedata = ({ district, distoption }: Props) => {
               />
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
-                  {error.Taluka}
+                  {error.Taluka || error.Village}
                 </div>
               )}
             </div>
@@ -336,8 +340,9 @@ const Villagedata = ({ district, distoption }: Props) => {
             {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
           </button>
         }
+
         searchKey="username"
-      // 
+
       />
     </div>
   );
