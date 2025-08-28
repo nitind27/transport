@@ -243,7 +243,7 @@ const Talukadata = ({ district,distoption }: Props) => {
                                 onChange={(e) => setDistrict(e.target.value)}
                                 // disabled={!selectedTaluka || !selectedGrampanchayat}
                             >
-                                <option value="">सर्व गाव</option>
+                                <option value="">सर्व जिल्हा</option>
                                 {distoption.map((category) => (
                                     <option key={category.district_id} value={category.district_id}>
                                         {category.name}

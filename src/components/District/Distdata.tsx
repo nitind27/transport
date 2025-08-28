@@ -32,6 +32,7 @@ type FormErrors = {
     Password?: string;
     address?: string;
     Taluka?: string;
+    entaluka?: string;
     Village?: string;
     gp?: string;
 
@@ -90,10 +91,13 @@ const Distdata = ({ district }: Props) => {
         // Category validation
 
         // Documents validation
-       
-        if (!Taluka) {
-            newErrors.Taluka = "Taluka is required";
-        }
+   if (!entaluka) {
+    newErrors.Taluka = "District Marathi name is required";
+}
+   if (!Taluka) {
+    newErrors.entaluka = "District English name is required";
+}
+
      
 
         setErrors(newErrors);
@@ -240,7 +244,7 @@ const Distdata = ({ district }: Props) => {
                             />
                             {error && (
                                 <div className="text-red-500 text-sm mt-1 pl-1">
-                                    {error.Taluka}
+                                    {error.entaluka}
                                 </div>
                             )}
                         </div>

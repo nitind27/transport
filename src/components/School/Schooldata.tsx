@@ -27,7 +27,7 @@ type FormErrors = {
   udais_no?: string;
 };
 
-const Schooldata = ({ district, distoption, village, center, school }: Props) => {
+const Schooldata = ({ district, distoption, center, school }: Props) => {
   const [data, setData] = useState<Taluka[]>(school || []);
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedTaluka, setSelectedTaluka] = useState('');
@@ -108,7 +108,7 @@ const Schooldata = ({ district, distoption, village, center, school }: Props) =>
         ...(isEditMode ? {schoolid: editId } : {}),
         district: selectedDistrict,
         taluka_id: selectedTaluka,
-        village_id: selectedVillage,
+        village_id: 1,
         center: selectedCenter,
         schoolname: schoolName,
         udaisno: udaisNo,
@@ -244,7 +244,7 @@ const Schooldata = ({ district, distoption, village, center, school }: Props) =>
               {error.taluka && <div className="text-red-500 text-sm mt-1 pl-1">{error.taluka}</div>}
             </div>
 
-            <div>
+            {/* <div>
               <Label>Village</Label>
               <select
                 className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
@@ -265,7 +265,7 @@ const Schooldata = ({ district, distoption, village, center, school }: Props) =>
                   ))}
               </select>
               {error.village && <div className="text-red-500 text-sm mt-1 pl-1">{error.village}</div>}
-            </div>
+            </div> */}
 
             <div>
               <Label>Center</Label>

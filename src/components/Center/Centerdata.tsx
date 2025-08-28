@@ -20,6 +20,7 @@ type FormErrors = {
   taluka_id?: string;
   name?: string;
   marathi_name?: string;
+  selectedDist?: string;
 };
 
 const Centerdata = ({ district, distoption, center }: Props) => {
@@ -74,7 +75,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     setisvalidation(true);
 
     if (!selectedDistrict) {
-      newErrors.taluka_id = "District is required";
+      newErrors.selectedDist = "District is required";
     }
     if (!selectedTaluka) {
       newErrors.taluka_id = "Taluka is required";
@@ -228,6 +229,11 @@ const Centerdata = ({ district, distoption, center }: Props) => {
                   </option>
                 ))}
               </select>
+               {error.selectedDist && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.selectedDist}
+                </div>
+              )}
             </div>
             
             <div>
@@ -292,7 +298,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
           </div>
         }
         columns={columns}
-        title="Center Management"
+        title="Center"
         filterOptions={[]}
         submitbutton={
           <button
@@ -301,7 +307,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
             className='bg-blue-700 text-white py-2 p-2 rounded hover:bg-blue-800 transition-colors'
             disabled={loading}
           >
-            {loading ? 'Submitting...' : (editId ? 'Update' : 'Add')}
+            {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
           </button>
         }
         searchKey="name"

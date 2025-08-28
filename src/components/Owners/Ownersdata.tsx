@@ -183,7 +183,7 @@ const Ownersdata = ({ district }: Props) => {
                     </div>
                 }
                 columns={columns}
-                title="Owners"
+                title="Owner"
                 filterOptions={[]}
                 submitbutton={
                     <button

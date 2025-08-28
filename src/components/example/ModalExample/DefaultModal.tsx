@@ -26,7 +26,7 @@ export default function DefaultModal({ id, fetchData, endpoint, bodyname, newsta
       });
 
       if (response.ok) {
-        toast.success(`Status updated to ${'newStatus'}!`);
+        toast.success(`Delete Successfully`);
         fetchData();
         closeModal();
       } else {
