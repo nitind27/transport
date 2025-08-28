@@ -31,7 +31,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   const [data, setData] = useState<Taluka[]>(school || []);
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedTaluka, setSelectedTaluka] = useState('');
-  const [selectedVillage, setSelectedVillage] = useState('');
+  // const [selectedVillage, setSelectedVillage] = useState('');
   const [selectedCenter, setSelectedCenter] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [udaisNo, setUdaisNo] = useState('');
@@ -67,7 +67,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   const reset = () => {
     setSelectedDistrict('');
     setSelectedTaluka('');
-    setSelectedVillage('');
+    // setSelectedVillage('');
     setSelectedCenter('');
     setSchoolName('');
     setUdaisNo('');
@@ -146,7 +146,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     setEditId(item.schoolid);
     setSelectedDistrict(String(item.district ?? ''));
     setSelectedTaluka(String(item.taluka_id ?? ''));
-    setSelectedVillage(String(item.village_id ?? ''));
+    // setSelectedVillage(String(item.village_id ?? ''));
     setSelectedCenter(String(item.center ?? ''));
     setSchoolName(item.schoolname ?? '');
     setUdaisNo(item.udaisno ?? '');
@@ -207,7 +207,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 onChange={(e) => {
                   setSelectedDistrict(e.target.value);
                   setSelectedTaluka('');
-                  setSelectedVillage('');
+                  // setSelectedVillage('');
                   setSelectedCenter('');
                 }}
               >
@@ -228,7 +228,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 value={selectedTaluka}
                 onChange={(e) => {
                   setSelectedTaluka(e.target.value);
-                  setSelectedVillage('');
+                  // setSelectedVillage('');
                   setSelectedCenter('');
                 }}
               >   

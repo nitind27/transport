@@ -34,13 +34,15 @@ type FormErrors = {
     address?: string;
     Taluka?: string;
     Village?: string;
+    entaluka?: string;
+    distrcit?: string;
     gp?: string;
 
 };
 const Talukadata = ({ district, distoption }: Props) => {
 
     const [data, setData] = useState<Taluka[]>(district || []);
-// console.log("distoption",distoption)
+    // console.log("distoption",distoption)
     const [Taluka, setTaluka] = useState('');
     const [entaluka, setEntaluka] = useState('');
     const [distrcit, setDistrict] = useState('');
@@ -93,8 +95,14 @@ const Talukadata = ({ district, distoption }: Props) => {
 
         // Documents validation
 
+        if (!distrcit) {
+            newErrors.distrcit = "Distrcit is required";
+        }
+        if (!entaluka) {
+            newErrors.entaluka = "Taluka English name is required";
+        }
         if (!Taluka) {
-            newErrors.Taluka = "Taluka is required";
+            newErrors.Taluka = "Taluka Marathi name is required";
         }
 
 
@@ -252,6 +260,11 @@ const Talukadata = ({ district, distoption }: Props) => {
                                     </option>
                                 ))}
                             </select>
+                            {error && (
+                                <div className="text-red-500 text-sm mt-1 pl-1">
+                                    {error.distrcit}
+                                </div>
+                            )}
                         </div>
 
 
@@ -269,7 +282,7 @@ const Talukadata = ({ district, distoption }: Props) => {
                             />
                             {error && (
                                 <div className="text-red-500 text-sm mt-1 pl-1">
-                                    {error.Taluka}
+                                    {error.entaluka}
                                 </div>
                             )}
                         </div>
@@ -291,7 +304,7 @@ const Talukadata = ({ district, distoption }: Props) => {
                                 </div>
                             )}
                         </div>
-
+                       
 
 
                     </div>
