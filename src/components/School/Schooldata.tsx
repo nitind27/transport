@@ -86,7 +86,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
 
     if (!selectedDistrict) newErrors.dist = "District is required";
     if (!selectedTaluka) newErrors.taluka = "Taluka is required";
-    if (!selectedVillage) newErrors.village = "Village is required";
+    // if (!selectedVillage) newErrors.village = "Village is required";
     if (!selectedCenter) newErrors.center = "Center is required";
     if (!schoolName) newErrors.name = "School name is required";
     if (!udaisNo) newErrors.udais_no = "UDAIS No is required";

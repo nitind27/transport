@@ -37,10 +37,10 @@ type FormErrors = {
     gp?: string;
 
 };
-const Talukadata = ({ district,distoption }: Props) => {
+const Talukadata = ({ district, distoption }: Props) => {
 
     const [data, setData] = useState<Taluka[]>(district || []);
-
+// console.log("distoption",distoption)
     const [Taluka, setTaluka] = useState('');
     const [entaluka, setEntaluka] = useState('');
     const [distrcit, setDistrict] = useState('');
@@ -148,8 +148,10 @@ const Talukadata = ({ district,distoption }: Props) => {
 
 
     const handleEdit = (item: Taluka) => {
+        // console.log("fafdfa",item)
         setIsActive(!isActive)
         setIsmodelopen(true);
+        setDistrict(String(item.dist_id))
         setIsEditmode(true);
         setEditId(item.taluka_id)
         setTaluka(item.name)
@@ -241,7 +243,7 @@ const Talukadata = ({ district,distoption }: Props) => {
                                     }`}
                                 value={distrcit}
                                 onChange={(e) => setDistrict(e.target.value)}
-                                // disabled={!selectedTaluka || !selectedGrampanchayat}
+                            // disabled={!selectedTaluka || !selectedGrampanchayat}
                             >
                                 <option value="">सर्व जिल्हा</option>
                                 {distoption.map((category) => (
