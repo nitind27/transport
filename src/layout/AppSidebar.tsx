@@ -52,7 +52,7 @@ const allNavItems: NavItem[] = [
       { name: "Schools", path: "/school" },
       { name: "Items / Grains", path: "/itemsgrains" },
       { name: "Owners", path: "/owner" },
-      { name: "Trucks", path: "/users" },
+      { name: "Trucks", path: "/trucks" },
       { name: "Dealer", path: "/users" },
       { name: "Godown", path: "/users" },
     ],
