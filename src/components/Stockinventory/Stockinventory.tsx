@@ -40,7 +40,7 @@ interface StockInventoryProps {
 }
 
 const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
-  const { isActive, setIsActive,setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
+  const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
   // Table data
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
@@ -182,7 +182,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
       if (response.ok) {
         // const result = await response.json();
-        
+
         if (editId) {
           toast.success("Stock updated successfully!");
         } else {
@@ -191,7 +191,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
         // Refresh data from API
         await fetchStockData();
-        
+
         resetForm();
         setIsEditmode(false);
         setIsmodelopen(false);
@@ -312,12 +312,12 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
           <span>
-            <DefaultModal 
-              id={row.id} 
-              fetchData={fetchStockData} 
-              endpoint={"stockinventory"} 
-              bodyname='id' 
-              newstatus={row.status || "Active"} 
+            <DefaultModal
+              id={row.id}
+              fetchData={fetchStockData}
+              endpoint={"stockinventory"}
+              bodyname='id'
+              newstatus={row.status || "Active"}
             />
           </span>
         </div>
@@ -390,15 +390,16 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 onChange={(selectedDates) => {
                   if (selectedDates && selectedDates.length > 0) {
                     const date = selectedDates[0];
-                    // Format as dd-mm-yyyy
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    // ✅ Store in DB-friendly format: yyyy-mm-dd
                     const year = date.getFullYear();
-                    const formattedDate = `${day}-${month}-${year}`;
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const formattedDate = `${year}-${month}-${day}`;
                     setInvoiceDate(formattedDate);
                   }
                 }}
               />
+
               {error.invoiceDate && (
                 <div className="text-red-500 text-sm mt-1 pl-1">{error.invoiceDate}</div>
               )}
@@ -413,13 +414,13 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 value={truckNo}
                 // onChange={(e) => setTruckNo(e.target.value)}
                 onChange={(e) => {
-									// Allow only alphabets and digits, max length 10
-									if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
-										// Convert to uppercase for display and storage
-										const upperCaseValue = e.target.value.toUpperCase();
-										setTruckNo(upperCaseValue);
-									}
-								}}
+                  // Allow only alphabets and digits, max length 10
+                  if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
+                    // Convert to uppercase for display and storage
+                    const upperCaseValue = e.target.value.toUpperCase();
+                    setTruckNo(upperCaseValue);
+                  }
+                }}
               />
               {error.truckNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.truckNo}</div>}
             </div>
