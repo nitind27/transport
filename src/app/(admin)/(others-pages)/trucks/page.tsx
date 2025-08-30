@@ -1,14 +1,15 @@
 import Breadcrumbs from '@/components/common/BreadcrumbItem';
 
-import Talukadata from '@/components/Taluka/Talukadata';
+// import Talukadata from '@/components/Taluka/Talukadata';
 import React from 'react'
+import Truckdata from '../../../../components/Truckdata/Truckdata';
 
 
 
 const page = async () => {
      const [talukadata, distdata] = await Promise.all([
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/district`, { cache: 'no-store' }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/truckdata`, { cache: 'no-store' }),
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ownerdata`, { cache: 'no-store' }),
  
   ]);
 
@@ -20,13 +21,13 @@ const page = async () => {
 
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
-    { label: 'Taluka', href: '/distdata' },
+    { label: 'Truck', href: '/distdata' },
   ];
 
     return (
         <div>
-             <Breadcrumbs title="Taluka" breadcrumbs={breadcrumbItems} />
-            <Talukadata district={taluka} distoption={dist}/>
+             <Breadcrumbs title="Truck" breadcrumbs={breadcrumbItems} />
+            <Truckdata truckdata={taluka} owner={dist}/>
         </div>
     )
 }

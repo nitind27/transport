@@ -26,8 +26,8 @@ type TruckRow = {
 
 type Props = {
 	// Keeping props for compatibility, not used now
-	district?: any[];
-	distoption?: any[];
+	truckdata: TruckRow[];
+	owner: Owner[];
 };
 
 type FormErrors = {
@@ -36,8 +36,9 @@ type FormErrors = {
 	mobileNumber?: string;
 };
 
-const Truckdata = (_props: Props) => {
-	const [data, setData] = useState<TruckRow[]>([]);
+const Truckdata = ({ truckdata }: Props) => {
+	//    const [data, setData] = useState<Taluka[]>(district || []);
+	const [data, setData] = useState<TruckRow[]>(truckdata || []);
 	const [owners, setOwners] = useState<Owner[]>([]);
 
 	// Form state
@@ -64,9 +65,15 @@ const Truckdata = (_props: Props) => {
 
 	// TODO: Hook this to your truck API when available
 	const fetchData = async () => {
-		// Placeholder: setData([]) or fetch from /api/truckdata if you have it
-		setData([]);
+		try {
+			const response = await fetch('/api/truckdata');
+			const trucks: TruckRow[] = await response.json();
+			setData(trucks);
+		} catch  {
+			toast.error('Failed to load truck data');
+		}
 	};
+
 
 	useEffect(() => {
 		fetchOwners();
@@ -101,54 +108,53 @@ const Truckdata = (_props: Props) => {
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleSave = async () => {
-		if (!validateInputs()) return;
-		setLoading(true);
+	   const handleSave = async () => {
+        if (!validateInputs()) return;
+        setLoading(true);
+ 	const apiUrl = editId ? '/api/truckdata' : '/api/truckdata';
+			const method = editId ? 'PUT' : 'POST';
 
-		try {
-			// Replace with your actual API endpoint when ready:
-			// const apiUrl = editId ? '/api/truckdata' : '/api/truckdata';
-			// const method = editId ? 'PUT' : 'POST';
-			// await fetch(apiUrl, {
-			// 	method,
-			// 	headers: { 'Content-Type': 'application/json' },
-			// 	body: JSON.stringify({
-			// 		id: editId,
-			// 		truckNo,
-			// 		ownerId,
-			// 		ownerName,
-			// 		mobileNumber,
-			// 		status: "Active",
-			// 	})
-			// });
+        try {
+            const response = await fetch(apiUrl, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+					id: editId,
+					truckNo,
+					ownerId,
+					ownerName,
+					mobileNumber,
+					status: "Active",
+				})
+            });
 
-			// Temporary local update for UI feedback
-			const newRow: TruckRow = {
-				id: editId ?? Date.now(),
-				truckNo,
-				ownerId: Number(ownerId),
-				ownerName,
-				mobileNumber,
-				status: "Active",
-			};
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-			if (editId) {
-				setData(prev => prev.map(r => (r.id === editId ? newRow : r)));
-				toast.success('Updated successfully!');
-			} else {
-				setData(prev => [newRow, ...prev]);
-				toast.success('Inserted successfully!');
-			}
+            toast.success(editId
+                ? 'Updated successfully!'
+                : 'Inserted successfully!');
 
-			reset();
-			setEditId(null);
-			setIsmodelopen(false);
-		} catch {
-			toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
-		} finally {
-			setLoading(false);
-		}
-	};
+
+            reset()
+            setEditId(null);
+            fetchData();
+            	fetchOwners();
+        } catch (error) {
+            console.error('Error saving Users:', error);
+            toast.error(editId
+                ? 'Failed to update Users. Please try again.'
+                : 'Failed to create Users. Please try again.');
+        } finally {
+            setLoading(false);
+            setIsmodelopen(false);
+            fetchData();
+			fetchOwners();
+        }
+    };
+
+
 
 	const handleEdit = (row: TruckRow) => {
 		setIsActive(!isActive);
@@ -175,9 +181,9 @@ const Truckdata = (_props: Props) => {
 	};
 
 	const columns: Column<TruckRow>[] = [
-		{ key: 'truckNo', label: 'Truck No', accessor: 'truckNo', render: (r) => <span>{r.truckNo}</span> },
-		{ key: 'ownerName', label: 'Owner', accessor: 'ownerName', render: (r) => <span>{r.ownerName}</span> },
-		{ key: 'mobileNumber', label: 'Mobile', accessor: 'mobileNumber', render: (r) => <span>{r.mobileNumber}</span> },
+		{ key: 'truckNo', label: 'Truck No', accessor: 'truckNo', render: (row) => <span>{row.truckNo}</span> },
+		{ key: 'ownerName', label: 'Owner', accessor: 'ownerName', render: (row) => <span>{row.ownerName}</span> },
+		{ key: 'mobileNumber', label: 'Mobile', accessor: 'mobileNumber', render: (row) => <span>{row.mobileNumber}</span> },
 		{
 			key: 'actions',
 			label: 'Actions',
@@ -187,13 +193,13 @@ const Truckdata = (_props: Props) => {
 						<FaEdit className="inline-block align-middle text-lg" />
 					</span>
 					<span>
-						{/* Update DefaultModal target when you have a truck API */}
 						<DefaultModal id={row.id} fetchData={fetchData} endpoint={"truckdata"} bodyname='id' newstatus={row.status} />
 					</span>
 				</div>
-			)
+			),
 		}
 	];
+
 
 	return (
 		<div className="mt-5">
@@ -245,7 +251,7 @@ const Truckdata = (_props: Props) => {
 					</div>
 				}
 				columns={columns}
-				title="Trucks"
+				title="Truck"
 				filterOptions={[]}
 				submitbutton={
 					<button

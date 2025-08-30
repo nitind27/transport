@@ -53,8 +53,8 @@ const allNavItems: NavItem[] = [
       { name: "Items / Grains", path: "/itemsgrains" },
       { name: "Owners", path: "/owner" },
       { name: "Trucks", path: "/trucks" },
-      { name: "Dealer", path: "/users" },
-      { name: "Godown", path: "/users" },
+      { name: "Dealer", path: "/dealer" },
+      { name: "Godown", path: "/godown" },
     ],
   },
   {
