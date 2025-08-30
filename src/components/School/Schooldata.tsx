@@ -140,6 +140,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   };
 
   const handleEdit = (item:Taluka) => {
+    console.log("fasfasf",item)
     setIsActive(!isActive);
     setIsmodelopen(true);
     setIsEditmode(true);
@@ -160,7 +161,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
       render: (data) => <span>{(data).districtname}</span>
     },
     { key: 'taluka', label: 'Taluka', accessor: 'talukaname', render: (row) => <span>{(row).talukaname || 'N/A'}</span> },
-    { key: 'village', label: 'Village', accessor: 'villagename', render: (row) => <span>{(row).villagename || 'N/A'}</span> },
+  
     { key: 'center', label: 'Center', accessor: 'centername', render: (row) => <span>{(row).centername || 'N/A'}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{(row).udaisno || 'N/A'}</span> },
@@ -206,9 +207,9 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 value={selectedDistrict}
                 onChange={(e) => {
                   setSelectedDistrict(e.target.value);
-                  setSelectedTaluka('');
+                  // setSelectedTaluka('');
                   // setSelectedVillage('');
-                  setSelectedCenter('');
+                  // setSelectedCenter('');
                 }}
               >
                 <option value="">सर्व जिल्हा</option>
@@ -268,6 +269,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
             </div> */}
 
             <div>
+         
               <Label>Center</Label>
               <select
                 className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
@@ -278,12 +280,12 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 <option value="">सर्व केंद्र</option>
                 {center
                   .filter(c =>
-                    (!selectedDistrict || c.dist_id == Number(selectedDistrict)) &&
-                    (!selectedTaluka || c.taluka_id == Number(selectedTaluka))
+                    (c.dist_id == Number(selectedDistrict)) &&
+                    (c.taluka_id == Number(selectedTaluka))
                   )
                   .map((c) => (
                     <option key={c.center_id} value={c.center_id}>
-                      {c.name}
+                      {c.marathi_name}
                     </option>
                   ))}
               </select>

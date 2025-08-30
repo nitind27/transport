@@ -9,6 +9,9 @@ import { ReusableTable } from "../tables/BasicTableOne";
 import { Column } from "../tables/tabletype";
 import { useToggleContext } from "@/context/ToggleContext";
 import { toast } from "react-toastify";
+import DefaultModal from "../example/ModalExample/DefaultModal";
+import { FaEdit } from "react-icons/fa";
+import DatePicker from "../form/date-picker";
 
 type StockEntry = {
   id: number;
@@ -23,48 +26,52 @@ type StockEntry = {
   rate?: number; // per unit
   totalAmount?: number; // manual
   remarks?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type FormErrors = Partial<Record<keyof Omit<StockEntry, "id">, string>>;
+type FormErrors = Partial<Record<keyof Omit<StockEntry, "id" | "status" | "created_at" | "updated_at">, string>>;
 
-const StockInventory = () => {
-  const { setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
+interface StockInventoryProps {
+  dealers: Array<{ id: number; name: string; status: string }>;
+  grains: Array<{ id: number; name: string; Unit: string; status: string }>;
+  initialStockData: StockEntry[];
+}
+
+const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
+  const { isActive, setIsActive,setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
   // Table data
-  const [data, setData] = useState<StockEntry[]>([]);
+  const [data, setData] = useState<StockEntry[]>(initialStockData || []);
   const [loading, setLoading] = useState(false);
 
-  // Dropdown masters (static for now; can be fetched later)
+  // Dropdown masters from API
   const dealerOptions = useMemo(
     () => [
       { value: "", label: "Select Dealer / Vendor" },
-      { value: "Shree Traders", label: "Shree Traders" },
-      { value: "Om Agro", label: "Om Agro" },
-      { value: "Maheshwari Grain", label: "Maheshwari Grain" },
+      ...dealers
+        .filter(dealer => dealer.status === "Active")
+        .map(dealer => ({ value: dealer.name, label: dealer.name }))
     ],
-    []
+    [dealers]
   );
 
   const grainOptions = useMemo(
     () => [
       { value: "", label: "Select Grain" },
-      { value: "Wheat", label: "Wheat" },
-      { value: "Rice", label: "Rice" },
-      { value: "Maize", label: "Maize" },
-      { value: "Bajra", label: "Bajra" },
-      { value: "Jowar", label: "Jowar" },
-      { value: "Pulses", label: "Pulses" },
+      ...grains
+        .filter(grain => grain.status === "Active")
+        .map(grain => ({ value: grain.name, label: grain.name }))
     ],
-    []
+    [grains]
   );
 
   const unitOptions = useMemo(
     () => [
       { value: "", label: "Select Units" },
       { value: "kg", label: "KG" },
-      { value: "quintal", label: "Quintal" },
-      { value: "ton", label: "Ton" },
-      { value: "bags", label: "Bags" },
+      { value: "ltr", label: "Ltr" },
     ],
     []
   );
@@ -88,6 +95,13 @@ const StockInventory = () => {
   useEffect(() => {
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
+
+  // Load initial data
+  useEffect(() => {
+    if (initialStockData) {
+      setData(initialStockData);
+    }
+  }, [initialStockData]);
 
   const resetForm = () => {
     setDealer("");
@@ -121,13 +135,26 @@ const StockInventory = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Fetch stock data from API
+  const fetchStockData = async () => {
+    try {
+      const response = await fetch('/api/stockinventory');
+      if (response.ok) {
+        const stockData = await response.json();
+        setData(stockData);
+      }
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      toast.error('Failed to fetch stock data');
+    }
+  };
+
   const handleSave = async () => {
     if (!validateInputs()) return;
 
     setLoading(true);
     try {
-      const newRow: StockEntry = {
-        id: editId ?? Date.now(),
+      const stockData = {
         dealer,
         ewayBillNo: ewayBillNo || undefined,
         billNo: billNo || undefined,
@@ -141,22 +168,62 @@ const StockInventory = () => {
         remarks: remarks || undefined,
       };
 
-      if (editId) {
-        setData(prev => prev.map(r => (r.id === editId ? newRow : r)));
-        toast.success("Stock updated successfully!");
-      } else {
-        setData(prev => [newRow, ...prev]);
-        toast.success("Stock added successfully!");
-      }
+      const url = editId ? '/api/stockinventory' : '/api/stockinventory';
+      const method = editId ? 'PUT' : 'POST';
+      const body = editId ? { ...stockData, id: editId } : stockData;
 
-      resetForm();
-      setIsEditmode(false);
-      setIsmodelopen(false);
-    } catch{
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        // const result = await response.json();
+        
+        if (editId) {
+          toast.success("Stock updated successfully!");
+        } else {
+          toast.success("Stock added successfully!");
+        }
+
+        // Refresh data from API
+        await fetchStockData();
+        
+        resetForm();
+        setIsEditmode(false);
+        setIsmodelopen(false);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving stock:', error);
       toast.error("Failed to save. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle edit - populate form fields with row data
+  const handleEdit = (row: StockEntry) => {
+    setEditId(row.id);
+    setDealer(row.dealer);
+    setEwayBillNo(row.ewayBillNo || "");
+    setBillNo(row.billNo || "");
+    setInvoiceDate(row.invoiceDate || "");
+    setTruckNo(row.truckNo || "");
+    setGrain(row.grain);
+    setUnits(row.units);
+    setWeight(row.weight);
+    setRate(row.rate || "");
+    setTotalAmount(row.totalAmount || "");
+    setRemarks(row.remarks || "");
+    setIsActive(!isActive);
+    setIsmodelopen(true);
+    setIsEditmode(true);
   };
 
   // const handleDownloadExcel = () => {
@@ -170,18 +237,18 @@ const StockInventory = () => {
   // };
 
   const columns: Column<StockEntry>[] = [
-    {
-      key: "invoiceDate",
-      label: "Invoice Date",
-      accessor: "invoiceDate",
-      render: (row) => <span>{row.invoiceDate || "-"}</span>,
-    },
-    {
-      key: "dealer",
-      label: "Dealer / Vendor",
-      accessor: "dealer",
-      render: (row) => <span>{row.dealer}</span>,
-    },
+    // {
+    //   key: "invoiceDate",
+    //   label: "Invoice Date",
+    //   accessor: "invoiceDate",
+    //   render: (row) => <span>{row.invoiceDate || "-"}</span>,
+    // },
+    // {
+    //   key: "dealer",
+    //   label: "Dealer / Vendor",
+    //   accessor: "dealer",
+    //   render: (row) => <span>{row.dealer}</span>,
+    // },
     {
       key: "grain",
       label: "Item (Grain)",
@@ -197,41 +264,64 @@ const StockInventory = () => {
         </span>
       ),
     },
+    // {
+    //   key: "rate",
+    //   label: "Rate",
+    //   accessor: "rate",
+    //   render: (row) => <span>{row.rate ?? "-"}</span>,
+    // },
+    // {
+    //   key: "totalAmount",
+    //   label: "Total Amount",
+    //   accessor: "totalAmount",
+    //   render: (row) => <span>{row.totalAmount ?? "-"}</span>,
+    // },
+    // {
+    //   key: "ewayBillNo",
+    //   label: "E-Way Bill No",
+    //   accessor: "ewayBillNo",
+    //   render: (row) => <span>{row.ewayBillNo || "-"}</span>,
+    // },
+    // {
+    //   key: "billNo",
+    //   label: "Bill No",
+    //   accessor: "billNo",
+    //   render: (row) => <span>{row.billNo || "-"}</span>,
+    // },
+    // {
+    //   key: "truckNo",
+    //   label: "Truck No",
+    //   accessor: "truckNo",
+    //   render: (row) => <span>{row.truckNo || "-"}</span>,
+    // },
+    // {
+    //   key: "remarks",
+    //   label: "Remarks",
+    //   accessor: "remarks",
+    //   render: (row) => <span className="line-clamp-1">{row.remarks || "-"}</span>,
+    // },
     {
-      key: "rate",
-      label: "Rate",
-      accessor: "rate",
-      render: (row) => <span>{row.rate ?? "-"}</span>,
-    },
-    {
-      key: "totalAmount",
-      label: "Total Amount",
-      accessor: "totalAmount",
-      render: (row) => <span>{row.totalAmount ?? "-"}</span>,
-    },
-    {
-      key: "ewayBillNo",
-      label: "E-Way Bill No",
-      accessor: "ewayBillNo",
-      render: (row) => <span>{row.ewayBillNo || "-"}</span>,
-    },
-    {
-      key: "billNo",
-      label: "Bill No",
-      accessor: "billNo",
-      render: (row) => <span>{row.billNo || "-"}</span>,
-    },
-    {
-      key: "truckNo",
-      label: "Truck No",
-      accessor: "truckNo",
-      render: (row) => <span>{row.truckNo || "-"}</span>,
-    },
-    {
-      key: "remarks",
-      label: "Remarks",
-      accessor: "remarks",
-      render: (row) => <span className="line-clamp-1">{row.remarks || "-"}</span>,
+      key: "actions",
+      label: "Actions",
+      render: (row) => (
+        <div className="flex gap-2 whitespace-nowrap w-full">
+          <span
+            onClick={() => handleEdit(row)}
+            className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
+            <FaEdit className="inline-block align-middle text-lg" />
+          </span>
+          <span>
+            <DefaultModal 
+              id={row.id} 
+              fetchData={fetchStockData} 
+              endpoint={"stockinventory"} 
+              bodyname='id' 
+              newstatus={row.status || "Active"} 
+            />
+          </span>
+        </div>
+      ),
     },
   ];
 
@@ -292,11 +382,18 @@ const StockInventory = () => {
 
             <div>
               <Label>Date of Invoice</Label>
-              <input
-                type="date"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.invoiceDate ? "border-red-500" : ""}`}
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
+              <DatePicker
+                id="invoiceDate"
+                label=""
+                placeholder="Select Invoice Date"
+                defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
+                onChange={(selectedDates) => {
+                  if (selectedDates && selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const formattedDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+                    setInvoiceDate(formattedDate);
+                  }
+                }}
               />
               {error.invoiceDate && (
                 <div className="text-red-500 text-sm mt-1 pl-1">{error.invoiceDate}</div>
@@ -409,7 +506,7 @@ const StockInventory = () => {
             className="bg-blue-700 text-white py-2 p-2 rounded"
             disabled={loading}
           >
-            {loading ? "Submitting..." : editId ? "Update" : "Save"}
+            {loading ? "Submitting..." : editId ? "Update" : "Submit"}
           </button>
         }
         searchKey="dealer"
