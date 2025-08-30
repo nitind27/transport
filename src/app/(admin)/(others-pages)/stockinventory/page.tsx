@@ -1,4 +1,5 @@
 // import Distdata from '@/components/District/Distdata'
+import Breadcrumbs from '@/components/common/BreadcrumbItem';
 import StockInventory from '@/components/Stockinventory/Stockinventory';
 // import { Taluka } from '@/components/Taluka/Taluka';
 import React from 'react'
@@ -34,9 +35,14 @@ const getDropdownData = async () => {
 const page = async () => {
     const { dealers, grains, stockData } = await getDropdownData();
 
+       const breadcrumbItems = [
+        { label: 'Home', href: '/' },
+        { label: 'Stock Inventory', href: '/stockinventory' },
+    ];
     return (
         <div className="grid grid-cols-6 gap-4 md:gap-6">
             <div className="col-span-12 space-y-6 xl:col-span-7">
+                 <Breadcrumbs title="Stock Inventory" breadcrumbs={breadcrumbItems} />
                 <StockInventory
                     dealers={dealers}
                     grains={grains}

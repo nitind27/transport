@@ -390,7 +390,11 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 onChange={(selectedDates) => {
                   if (selectedDates && selectedDates.length > 0) {
                     const date = selectedDates[0];
-                    const formattedDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+                    // Format as dd-mm-yyyy
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const formattedDate = `${day}-${month}-${year}`;
                     setInvoiceDate(formattedDate);
                   }
                 }}
@@ -407,7 +411,15 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 placeholder="Enter Truck No"
                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.truckNo ? "border-red-500" : ""}`}
                 value={truckNo}
-                onChange={(e) => setTruckNo(e.target.value)}
+                // onChange={(e) => setTruckNo(e.target.value)}
+                onChange={(e) => {
+									// Allow only alphabets and digits, max length 10
+									if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
+										// Convert to uppercase for display and storage
+										const upperCaseValue = e.target.value.toUpperCase();
+										setTruckNo(upperCaseValue);
+									}
+								}}
               />
               {error.truckNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.truckNo}</div>}
             </div>
