@@ -169,7 +169,7 @@ const Godowndata = ({ district }: Props) => {
                             <Label>Name</Label>
                             <input
                                 type="text"
-                                placeholder="Enter Owner Name"
+                                placeholder="Enter Name"
                                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.name ? "border-red-500" : ""}`}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
@@ -192,7 +192,7 @@ const Godowndata = ({ district }: Props) => {
                         className='bg-blue-700 text-white py-2 p-2 rounded'
                         disabled={loading}
                     >
-                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Add')}
+                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
                     </button>
                 }
                 searchKey="name"

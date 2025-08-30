@@ -69,7 +69,7 @@ const Truckdata = ({ truckdata }: Props) => {
 			const response = await fetch('/api/truckdata');
 			const trucks: TruckRow[] = await response.json();
 			setData(trucks);
-		} catch  {
+		} catch {
 			toast.error('Failed to load truck data');
 		}
 	};
@@ -108,17 +108,17 @@ const Truckdata = ({ truckdata }: Props) => {
 		return Object.keys(newErrors).length === 0;
 	};
 
-	   const handleSave = async () => {
-        if (!validateInputs()) return;
-        setLoading(true);
- 	const apiUrl = editId ? '/api/truckdata' : '/api/truckdata';
-			const method = editId ? 'PUT' : 'POST';
+	const handleSave = async () => {
+		if (!validateInputs()) return;
+		setLoading(true);
+		const apiUrl = editId ? '/api/truckdata' : '/api/truckdata';
+		const method = editId ? 'PUT' : 'POST';
 
-        try {
-            const response = await fetch(apiUrl, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+		try {
+			const response = await fetch(apiUrl, {
+				method: method,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
 					id: editId,
 					truckNo,
 					ownerId,
@@ -126,33 +126,33 @@ const Truckdata = ({ truckdata }: Props) => {
 					mobileNumber,
 					status: "Active",
 				})
-            });
+			});
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
 
-            toast.success(editId
-                ? 'Updated successfully!'
-                : 'Inserted successfully!');
+			toast.success(editId
+				? 'Updated successfully!'
+				: 'Inserted successfully!');
 
 
-            reset()
-            setEditId(null);
-            fetchData();
-            	fetchOwners();
-        } catch (error) {
-            console.error('Error saving Users:', error);
-            toast.error(editId
-                ? 'Failed to update Users. Please try again.'
-                : 'Failed to create Users. Please try again.');
-        } finally {
-            setLoading(false);
-            setIsmodelopen(false);
-            fetchData();
+			reset()
+			setEditId(null);
+			fetchData();
 			fetchOwners();
-        }
-    };
+		} catch (error) {
+			console.error('Error saving Users:', error);
+			toast.error(editId
+				? 'Failed to update Users. Please try again.'
+				: 'Failed to create Users. Please try again.');
+		} finally {
+			setLoading(false);
+			setIsmodelopen(false);
+			fetchData();
+			fetchOwners();
+		}
+	};
 
 
 
@@ -215,7 +215,16 @@ const Truckdata = ({ truckdata }: Props) => {
 								placeholder="Enter Truck No"
 								className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.truckNo ? "border-red-500" : ""}`}
 								value={truckNo}
-								onChange={(e) => setTruckNo(e.target.value)}
+								onChange={(e) => {
+									// Allow only alphabets and digits, max length 10
+									if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
+										// Convert to uppercase for display and storage
+										const upperCaseValue = e.target.value.toUpperCase();
+										setTruckNo(upperCaseValue);
+									}
+								}}
+
+
 							/>
 							{error.truckNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.truckNo}</div>}
 						</div>
@@ -244,14 +253,22 @@ const Truckdata = ({ truckdata }: Props) => {
 								placeholder="Enter Mobile Number"
 								className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.mobileNumber ? "border-red-500" : ""}`}
 								value={mobileNumber}
-								onChange={(e) => setMobileNumber(e.target.value)}
+								// onChange={(e) => setMobileNumber(e.target.value)}
+								onChange={(e) => {
+									if (/^\d{0,10}$/.test(e.target.value)) {
+										setMobileNumber(e.target.value);
+										if (e.target.value.length === 10) {
+											setMobileNumber(e.target.value);
+										}
+									}
+								}}
 							/>
 							{error.mobileNumber && <div className="text-red-500 text-sm mt-1 pl-1">{error.mobileNumber}</div>}
 						</div>
 					</div>
 				}
 				columns={columns}
-				title="Truck"
+				title="Trucks"
 				filterOptions={[]}
 				submitbutton={
 					<button
@@ -260,7 +277,7 @@ const Truckdata = ({ truckdata }: Props) => {
 						className='bg-blue-700 text-white py-2 p-2 rounded'
 						disabled={loading}
 					>
-						{loading ? 'Submitting...' : (editId ? 'Update' : 'Save')}
+						{loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
 					</button>
 				}
 				searchKey="truckNo"

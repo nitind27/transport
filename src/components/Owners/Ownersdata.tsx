@@ -183,7 +183,7 @@ const Ownersdata = ({ district }: Props) => {
                     </div>
                 }
                 columns={columns}
-                title="Owner"
+                title="Owners"
                 filterOptions={[]}
                 submitbutton={
                     <button
@@ -192,7 +192,7 @@ const Ownersdata = ({ district }: Props) => {
                         className='bg-blue-700 text-white py-2 p-2 rounded'
                         disabled={loading}
                     >
-                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Add')}
+                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
                     </button>
                 }
                 searchKey="name"

@@ -298,7 +298,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
           </div>
         }
         columns={columns}
-        title="Center"
+        title="Center's"
         filterOptions={[]}
         submitbutton={
           <button
@@ -307,7 +307,7 @@ const Centerdata = ({ district, distoption, center }: Props) => {
             className='bg-blue-700 text-white py-2 p-2 rounded hover:bg-blue-800 transition-colors'
             disabled={loading}
           >
-            {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
+            {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
           </button>
         }
         searchKey="name"

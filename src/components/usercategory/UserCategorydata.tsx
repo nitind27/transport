@@ -182,7 +182,7 @@ const UserCategorydata: React.FC<Props> = ({ serverData }) => {
             className="bg-blue-700 text-white py-2 px-4 rounded"
             disabled={loading}
           >
-            {loading ? 'Submitting...' : isEditMode ? 'Update' : 'Save Changes'}
+            {loading ? 'Submitting...' : isEditMode ? 'Update' : 'Submit'}
           </button>
         }
         searchKey="category_name"

@@ -184,7 +184,16 @@ const Dealerdata = ({ dealerdata }: Props) => {
                                 placeholder="Enter Contact Number"
                                 className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm ${error.contactnumber ? "border-red-500" : "border-gray-300"}`}
                                 value={contactnumber}
-                                onChange={(e) => setContactnumber(e.target.value)}
+                                // onChange={(e) => setContactnumber(e.target.value)}
+                                onChange={(e) => {
+									if (/^\d{0,10}$/.test(e.target.value)) {
+										setContactnumber(e.target.value);
+										if (e.target.value.length === 10) {
+											setContactnumber(e.target.value);
+										}
+									}
+								}}
+
                             />
                             {error.contactnumber && <div className="text-red-500 text-sm mt-1 pl-1">{error.contactnumber}</div>}
                         </div>
@@ -206,14 +215,22 @@ const Dealerdata = ({ dealerdata }: Props) => {
                                 placeholder="Enter GST No"
                                 className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm ${error.gstno ? "border-red-500" : "border-gray-300"}`}
                                 value={gstno}
-                                onChange={(e) => setGstno(e.target.value)}
+                                // onChange={(e) => setGstno(e.target.value)}
+                                onChange={(e) => {
+									// Allow only alphabets and digits, max length 10
+									if (/^[a-zA-Z0-9]{0,15}$/.test(e.target.value)) {
+										// Convert to uppercase for display and storage
+										const upperCaseValue = e.target.value.toUpperCase();
+										setGstno(upperCaseValue);
+									}
+								}}
                             />
                             {error.gstno && <div className="text-red-500 text-sm mt-1 pl-1">{error.gstno}</div>}
                         </div>
                     </div>
                 }
                 columns={columns}
-                title="Dealer"
+                title="Dealers"
                 filterOptions={[]}
                 submitbutton={
                     <button
@@ -222,7 +239,7 @@ const Dealerdata = ({ dealerdata }: Props) => {
                         className='bg-blue-700 text-white py-2 p-2 rounded'
                         disabled={loading}
                     >
-                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Save')}
+                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
                     </button>
                 }
                 searchKey="name"

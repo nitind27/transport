@@ -56,7 +56,7 @@ export default function FullScreenModal() {
               Close
             </Button>
             <Button size="sm" onClick={handleSave}>
-              Save Changes
+              Submit
             </Button>
           </div>
         </div>

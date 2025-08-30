@@ -123,8 +123,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     if (!address || address.length === 0) {
       newErrors.address = "Address is required";
     }
-  
- 
+
+
 
 
     setErrors(newErrors);
@@ -253,7 +253,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       accessor: 'address',
       render: (data) => <span>{data.address}</span>
     },
-    
+
     {
       key: 'status',
       label: 'Status',
@@ -345,12 +345,18 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
               <input
                 type="text"
                 placeholder="Enter Contact"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Contact ? "border-red-500" : ""
-                  }`}
-
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.Contact ? "border-red-500" : ""}`}
                 value={Contact}
-                onChange={(e) => setContact(e.target.value)}
+                onChange={(e) => {
+                  if (/^\d{0,10}$/.test(e.target.value)) {
+                    setContact(e.target.value);
+                    if (e.target.value.length === 10) {
+                       setContact(e.target.value);
+                    }
+                  }
+                }}
               />
+    
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
                   {error.Contact}
@@ -408,8 +414,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
                 </div>
               )}
             </div>
-        
-          
+
+
 
           </div>
         }
@@ -425,7 +431,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
             className='bg-blue-700 text-white py-2 p-2 rounded'
             disabled={loading}
           >
-            {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
+            {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
           </button>
         }
         searchKey="username"

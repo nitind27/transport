@@ -222,7 +222,7 @@ export default function UserMetaCard() {
                 Close
               </Button>
               <Button size="sm" onClick={handleSave}>
-                Save Changes
+                Submit
               </Button>
             </div>
           </form>

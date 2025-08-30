@@ -23,13 +23,13 @@ const page = async () => {
     ])
     const breadcrumbItems = [
         { label: 'Home', href: '/' },
-        { label: 'School', href: '/school' },
+        { label: 'Schools', href: '/school' },
     ];
 
     return (
         <div>
 
-            <Breadcrumbs title="School" breadcrumbs={breadcrumbItems} />
+            <Breadcrumbs title="Schools" breadcrumbs={breadcrumbItems} />
             <Schooldata district={taluka} distoption={dist} village={village} center={center} school={school} />
 
         </div>

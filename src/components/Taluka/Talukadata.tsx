@@ -321,7 +321,7 @@ const Talukadata = ({ district, distoption }: Props) => {
                         className='bg-blue-700 text-white py-2 p-2 rounded'
                         disabled={loading}
                     >
-                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Save Changes')}
+                        {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
                     </button>
                 }
                 searchKey="username"

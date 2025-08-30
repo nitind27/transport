@@ -2159,7 +2159,7 @@ const Bhautikadatafilter: React.FC<Props> = ({
                         className='bg-blue-700 text-white py-2 p-2 rounded'
                         disabled={loading}
                     >
-                        {loading ? 'Submitting...' : (isEditMode ? 'Update' : 'Save Changes')}
+                        {loading ? 'Submitting...' : (isEditMode ? 'Update' : 'Submit')}
                     </button>
                 }
                 searchKey="beneficiery_name"

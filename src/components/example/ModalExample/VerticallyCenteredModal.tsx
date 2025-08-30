@@ -37,7 +37,7 @@ export default function VerticallyCenteredModal() {
               Close
             </Button>
             <Button size="sm" onClick={handleSave}>
-              Save Changes
+              Submit
             </Button>
           </div>
         </div>

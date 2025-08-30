@@ -21,12 +21,12 @@ const page = async () => {
 
     const breadcrumbItems = [
         { label: 'Home', href: '/' },
-        { label: 'Items / Grains', href: '/distdata' },
+        { label: 'Items', href: '/distdata' },
     ];
 
     return (
         <div>
-            <Breadcrumbs title="Items / Grains" breadcrumbs={breadcrumbItems} />
+            <Breadcrumbs title="Items" breadcrumbs={breadcrumbItems} />
             <Itemsgrains district={taluka} />
         </div>
     )
