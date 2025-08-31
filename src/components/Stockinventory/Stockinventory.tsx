@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import DefaultModal from "../example/ModalExample/DefaultModal";
 import { FaEdit } from "react-icons/fa";
 import DatePicker from "../form/date-picker";
+import { Withoutbutton } from "../tables/Withoutbutton";
 
 type StockEntry = {
   id: number;
@@ -31,6 +32,12 @@ type StockEntry = {
   updated_at?: string;
 };
 
+type AggregatedStock = {
+  grain: string;
+  units: string;
+  totalQuantity: number;
+};
+
 type FormErrors = Partial<Record<keyof Omit<StockEntry, "id" | "status" | "created_at" | "updated_at">, string>>;
 
 interface StockInventoryProps {
@@ -41,6 +48,9 @@ interface StockInventoryProps {
 
 const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
   const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'inventory' | 'addStock'>('inventory');
 
   // Table data
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
@@ -103,6 +113,26 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     }
   }, [initialStockData]);
 
+  // Aggregate stock data by grain and units
+  const aggregatedStockData = useMemo(() => {
+    const aggregated: { [key: string]: AggregatedStock } = {};
+    
+    data.forEach(item => {
+      const key = `${item.grain}-${item.units}`;
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          grain: item.grain,
+          units: item.units,
+          totalQuantity: 0
+        };
+      }
+      // Sum all quantities for the same grain and units
+      aggregated[key].totalQuantity += Number(item.weight);
+    });
+
+    return Object.values(aggregated);
+  }, [data]);
+
   const resetForm = () => {
     setDealer("");
     setEwayBillNo("");
@@ -130,7 +160,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     if (!grain) newErrors.grain = "Grain is required";
     if (!units) newErrors.units = "Units is required";
     if (weight === "" || Number.isNaN(Number(weight))) newErrors.weight = "Weight is required";
-    // Optional fields can be left blank; keep minimal validation
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -181,8 +211,6 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       });
 
       if (response.ok) {
-        // const result = await response.json();
-
         if (editId) {
           toast.success("Stock updated successfully!");
         } else {
@@ -191,10 +219,12 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
         // Refresh data from API
         await fetchStockData();
-
         resetForm();
         setIsEditmode(false);
         setIsmodelopen(false);
+        
+        // Switch to inventory tab after successful addition
+        setActiveTab('inventory');
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || 'Failed to save');
@@ -236,19 +266,30 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   //   saveAs(file, "stock_inventory.xlsx");
   // };
 
-  const columns: Column<StockEntry>[] = [
-    // {
-    //   key: "invoiceDate",
-    //   label: "Invoice Date",
-    //   accessor: "invoiceDate",
-    //   render: (row) => <span>{row.invoiceDate || "-"}</span>,
-    // },
-    // {
-    //   key: "dealer",
-    //   label: "Dealer / Vendor",
-    //   accessor: "dealer",
-    //   render: (row) => <span>{row.dealer}</span>,
-    // },
+  // Stock Inventory columns (read-only, aggregated)
+  const inventoryColumns: Column<AggregatedStock>[] = [
+    {
+      key: "grain",
+      label: "Item (Grain)",
+      accessor: "grain",
+      render: (row) => <span>{row.grain}</span>,
+    },
+    {
+      key: "units",
+      label: "Units",
+      accessor: "units",
+      render: (row) => <span>{row.units}</span>,
+    },
+    {
+      key: "totalQuantity",
+      label: "Total Quantity",
+      accessor: "totalQuantity",
+      render: (row) => <span>{row.totalQuantity}</span>,
+    },
+  ];
+
+  // Add Stock columns (with edit/delete actions)
+  const addStockColumns: Column<StockEntry>[] = [
     {
       key: "grain",
       label: "Item (Grain)",
@@ -264,42 +305,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         </span>
       ),
     },
-    // {
-    //   key: "rate",
-    //   label: "Rate",
-    //   accessor: "rate",
-    //   render: (row) => <span>{row.rate ?? "-"}</span>,
-    // },
-    // {
-    //   key: "totalAmount",
-    //   label: "Total Amount",
-    //   accessor: "totalAmount",
-    //   render: (row) => <span>{row.totalAmount ?? "-"}</span>,
-    // },
-    // {
-    //   key: "ewayBillNo",
-    //   label: "E-Way Bill No",
-    //   accessor: "ewayBillNo",
-    //   render: (row) => <span>{row.ewayBillNo || "-"}</span>,
-    // },
-    // {
-    //   key: "billNo",
-    //   label: "Bill No",
-    //   accessor: "billNo",
-    //   render: (row) => <span>{row.billNo || "-"}</span>,
-    // },
-    // {
-    //   key: "truckNo",
-    //   label: "Truck No",
-    //   accessor: "truckNo",
-    //   render: (row) => <span>{row.truckNo || "-"}</span>,
-    // },
-    // {
-    //   key: "remarks",
-    //   label: "Remarks",
-    //   accessor: "remarks",
-    //   render: (row) => <span className="line-clamp-1">{row.remarks || "-"}</span>,
-    // },
+    {
+      key: "dealer",
+      label: "Dealer / Vendor",
+      accessor: "dealer",
+      render: (row) => <span>{row.dealer}</span>,
+    },
+    {
+      key: "invoiceDate",
+      label: "Invoice Date",
+      accessor: "invoiceDate",
+      render: (row) => <span>{row.invoiceDate || "-"}</span>,
+    },
     {
       key: "actions",
       label: "Actions",
@@ -327,203 +344,240 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
   return (
     <div className="">
-      <div className="flex justify-end">
-        {/* <button
-          onClick={handleDownloadExcel}
-          className="bg-green-600 text-white py-2 px-4 rounded mb-4 hover:bg-green-700 transition-colors"
+      {/* Tab Navigation */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${
+            activeTab === 'inventory'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
         >
-          Download Excel
-        </button> */}
+          Stock Inventory
+        </button>
+        <button
+          onClick={() => setActiveTab('addStock')}
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${
+            activeTab === 'addStock'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Add Stock
+        </button>
       </div>
 
-      <ReusableTable
-        data={data}
-        classname={"h-[650px] overflow-y-auto scrollbar-hide"}
-        inputfiled={
-          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-            <div>
-              <Label>Dealer / Vendor</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.dealer ? "border-red-500" : ""}`}
-                value={dealer}
-                onChange={(e) => setDealer(e.target.value)}
-              >
-                {dealerOptions.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-              {error.dealer && <div className="text-red-500 text-sm mt-1 pl-1">{error.dealer}</div>}
-            </div>
-
-            <div>
-              <Label>E-Way bill no</Label>
-              <input
-                type="text"
-                placeholder="Enter E-Way bill no"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
-                value={ewayBillNo}
-                onChange={(e) => setEwayBillNo(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label>Bill no</Label>
-              <input
-                type="text"
-                placeholder="Enter Bill no"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.billNo ? "border-red-500" : ""}`}
-                value={billNo}
-                onChange={(e) => setBillNo(e.target.value)}
-              />
-              {error.billNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.billNo}</div>}
-            </div>
-
-            <div>
-              <Label>Date of Invoice</Label>
-              <DatePicker
-                id="invoiceDate"
-                label=""
-                placeholder="Select Invoice Date"
-                defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
-                onChange={(selectedDates) => {
-                  if (selectedDates && selectedDates.length > 0) {
-                    const date = selectedDates[0];
-                    // ✅ Store in DB-friendly format: yyyy-mm-dd
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                    const day = String(date.getDate()).padStart(2, "0");
-                    const formattedDate = `${year}-${month}-${day}`;
-                    setInvoiceDate(formattedDate);
-                  }
-                }}
-              />
-
-              {error.invoiceDate && (
-                <div className="text-red-500 text-sm mt-1 pl-1">{error.invoiceDate}</div>
-              )}
-            </div>
-
-            <div>
-              <Label>Truck No</Label>
-              <input
-                type="text"
-                placeholder="Enter Truck No"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.truckNo ? "border-red-500" : ""}`}
-                value={truckNo}
-                // onChange={(e) => setTruckNo(e.target.value)}
-                onChange={(e) => {
-                  // Allow only alphabets and digits, max length 10
-                  if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
-                    // Convert to uppercase for display and storage
-                    const upperCaseValue = e.target.value.toUpperCase();
-                    setTruckNo(upperCaseValue);
-                  }
-                }}
-              />
-              {error.truckNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.truckNo}</div>}
-            </div>
-
-            <div>
-              <Label>Grain</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.grain ? "border-red-500" : ""}`}
-                value={grain}
-                onChange={(e) => setGrain(e.target.value)}
-              >
-                {grainOptions.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
-              {error.grain && <div className="text-red-500 text-sm mt-1 pl-1">{error.grain}</div>}
-            </div>
-
-            <div>
-              <Label>Units</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.units ? "border-red-500" : ""}`}
-                value={units}
-                onChange={(e) => setUnits(e.target.value)}
-              >
-                {unitOptions.map((u) => (
-                  <option key={u.value} value={u.value}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
-              {error.units && <div className="text-red-500 text-sm mt-1 pl-1">{error.units}</div>}
-            </div>
-
-            <div>
-              <Label>Weight</Label>
-              <input
-                type="number"
-                placeholder="Enter Weight"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.weight ? "border-red-500" : ""}`}
-                value={weight}
-                onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
-              />
-              {error.weight && <div className="text-red-500 text-sm mt-1 pl-1">{error.weight}</div>}
-            </div>
-
-            <div>
-              <Label>Rate</Label>
-              <input
-                type="number"
-                placeholder="Enter Rate"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.rate ? "border-red-500" : ""}`}
-                value={rate}
-                onChange={(e) => setRate(e.target.value === "" ? "" : Number(e.target.value))}
-              />
-              {error.rate && <div className="text-red-500 text-sm mt-1 pl-1">{error.rate}</div>}
-            </div>
-
-            <div>
-              <Label>Total Amount</Label>
-              <input
-                type="number"
-                placeholder="Enter Total Amount"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.totalAmount ? "border-red-500" : ""}`}
-                value={totalAmount}
-                onChange={(e) =>
-                  setTotalAmount(e.target.value === "" ? "" : Number(e.target.value))
-                }
-              />
-              {error.totalAmount && (
-                <div className="text-red-500 text-sm mt-1 pl-1">{error.totalAmount}</div>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
-              <Label>Remarks</Label>
-              <textarea
-                placeholder="Enter Remarks"
-                rows={3}
-                className={`w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-              />
-            </div>
+      {/* Tab Content */}
+      {activeTab === 'inventory' ? (
+        // Stock Inventory Tab - Read Only
+        <div>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+              Current Stock Summary
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Total quantities by item (read-only view)
+            </p>
           </div>
-        }
-        columns={columns}
-        title="Add Stock"
-        filterOptions={[]}
-        submitbutton={
-          <button
-            type="button"
-            onClick={handleSave}
-            className="bg-blue-700 text-white py-2 p-2 rounded"
-            disabled={loading}
-          >
-            {loading ? "Submitting..." : editId ? "Update" : "Submit"}
-          </button>
-        }
-        searchKey="dealer"
-      />
+          
+          <Withoutbutton
+            data={aggregatedStockData}
+            classname={"h-[650px] overflow-y-auto scrollbar-hide"}
+            columns={inventoryColumns}
+            title="Stock Inventory"
+            filterOptions={[]}
+            searchKey="grain"
+          />
+        </div>
+      ) : (
+        // Add Stock Tab - With Form and Actions
+        <div>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+              Add New Stock Entry
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Add new stock entries and manage existing ones
+            </p>
+          </div>
+
+          <ReusableTable
+            data={data}
+            classname={"h-[650px] overflow-y-auto scrollbar-hide"}
+            inputfiled={
+              <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                <div>
+                  <Label>Dealer / Vendor</Label>
+                  <select
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.dealer ? "border-red-500" : ""}`}
+                    value={dealer}
+                    onChange={(e) => setDealer(e.target.value)}
+                  >
+                    {dealerOptions.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                  {error.dealer && <div className="text-red-500 text-sm mt-1 pl-1">{error.dealer}</div>}
+                </div>
+
+                <div>
+                  <Label>E-Way bill no</Label>
+                  <input
+                    type="text"
+                    placeholder="Enter E-Way bill no"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={ewayBillNo}
+                    onChange={(e) => setEwayBillNo(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Bill no</Label>
+                  <input
+                    type="text"
+                    placeholder="Enter Bill no"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={billNo}
+                    onChange={(e) => setBillNo(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>Date of Invoice</Label>
+                  <DatePicker
+                    id="invoiceDate"
+                    label=""
+                    placeholder="Select Invoice Date"
+                    defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
+                    onChange={(selectedDates) => {
+                      if (selectedDates && selectedDates.length > 0) {
+                        const date = selectedDates[0];
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, "0");
+                        const day = String(date.getDate()).padStart(2, "0");
+                        const formattedDate = `${year}-${month}-${day}`;
+                        setInvoiceDate(formattedDate);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <Label>Truck No</Label>
+                  <input
+                    type="text"
+                    placeholder="Enter Truck No"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={truckNo}
+                    onChange={(e) => {
+                      if (/^[a-zA-Z0-9]{0,10}$/.test(e.target.value)) {
+                        const upperCaseValue = e.target.value.toUpperCase();
+                        setTruckNo(upperCaseValue);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <Label>Grain</Label>
+                  <select
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.grain ? "border-red-500" : ""}`}
+                    value={grain}
+                    onChange={(e) => setGrain(e.target.value)}
+                  >
+                    {grainOptions.map((g) => (
+                      <option key={g.value} value={g.value}>
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                  {error.grain && <div className="text-red-500 text-sm mt-1 pl-1">{error.grain}</div>}
+                </div>
+
+                <div>
+                  <Label>Units</Label>
+                  <select
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.units ? "border-red-500" : ""}`}
+                    value={units}
+                    onChange={(e) => setUnits(e.target.value)}
+                  >
+                    {unitOptions.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                  {error.units && <div className="text-red-500 text-sm mt-1 pl-1">{error.units}</div>}
+                </div>
+
+                <div>
+                  <Label>Weight</Label>
+                  <input
+                    type="number"
+                    placeholder="Enter Weight"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.weight ? "border-red-500" : ""}`}
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                  {error.weight && <div className="text-red-500 text-sm mt-1 pl-1">{error.weight}</div>}
+                </div>
+
+                <div>
+                  <Label>Rate</Label>
+                  <input
+                    type="number"
+                    placeholder="Enter Rate"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                </div>
+
+                <div>
+                  <Label>Total Amount</Label>
+                  <input
+                    type="number"
+                    placeholder="Enter Total Amount"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={totalAmount}
+                    onChange={(e) =>
+                      setTotalAmount(e.target.value === "" ? "" : Number(e.target.value))
+                    }
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label>Remarks</Label>
+                  <textarea
+                    placeholder="Enter Remarks"
+                    rows={3}
+                    className={`w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                  />
+                </div>
+              </div>
+            }
+            columns={addStockColumns}
+            title="Add Stock"
+            filterOptions={[]}
+            submitbutton={
+              <button
+                type="button"
+                onClick={handleSave}
+                className="bg-blue-700 text-white py-2 p-2 rounded"
+                disabled={loading}
+              >
+                {loading ? "Submitting..." : editId ? "Update" : "Submit"}
+              </button>
+            }
+            searchKey="grain"
+          />
+        </div>
+      )}
     </div>
   );
 };
