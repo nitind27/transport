@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 // import * as XLSX from 'xlsx';
 // import { saveAs } from 'file-saver';
 
@@ -46,16 +46,7 @@ const ZPorderdetails = ({ users }: Props) => {
   const [quantity, setQuantity] = useState<number | ''>('');
   const [period, setPeriod] = useState('');
 
-  // Dropdown options for Items (static for now)
-  const itemOptions = useMemo(
-    () => [
-      { value: '', label: 'Select Item' },
-      { value: 'Item 1', label: 'Item 1' },
-      { value: 'Item 2', label: 'Item 2' },
-      { value: 'Item 3', label: 'Item 3' },
-    ],
-    []
-  );
+
 
   useEffect(() => {
     if (!isvalidation) setErrors({});
@@ -123,14 +114,14 @@ const ZPorderdetails = ({ users }: Props) => {
   // };
 
   const columns: Column<UserData>[] = [
-    { key: 'name', label: 'Name', accessor: 'name', render: (row) => <span>{row.name}</span> },
-    { key: 'user_category_id', label: 'User Category', accessor: 'user_category_id', render: (row) => <span>{row.user_category_name}</span> },
-    { key: 'username', label: 'User Name', accessor: 'username', render: (row) => <span>{row.username}</span> },
-    { key: 'password', label: 'Password', accessor: 'password', render: (row) => <span>{row.password}</span> },
-    { key: 'contact_no', label: 'Contact No', accessor: 'contact_no', render: (row) => <span>{row.contact_no}</span> },
-    { key: 'address', label: 'Address', accessor: 'address', render: (row) => <span>{row.address}</span> },
-    { key: 'taluka_id', label: 'Taluka', accessor: 'taluka_id', render: (row) => <span>{row.taluka_name}</span> },
-    { key: 'village_id', label: 'Village', accessor: 'village_id', render: (row) => <span>{row.village_name}</span> },
+    { key: 'name', label: 'Order No', accessor: 'name', render: (row) => <span>{row.name}</span> },
+    { key: 'user_category_id', label: 'No of Days', accessor: 'user_category_id', render: (row) => <span>{row.user_category_name}</span> },
+    { key: 'username', label: 'Period', accessor: 'username', render: (row) => <span>{row.username}</span> },
+    // { key: 'password', label: 'Password', accessor: 'password', render: (row) => <span>{row.password}</span> },
+    // { key: 'contact_no', label: 'Contact No', accessor: 'contact_no', render: (row) => <span>{row.contact_no}</span> },
+    // { key: 'address', label: 'Address', accessor: 'address', render: (row) => <span>{row.address}</span> },
+    // { key: 'taluka_id', label: 'Taluka', accessor: 'taluka_id', render: (row) => <span>{row.taluka_name}</span> },
+    // { key: 'village_id', label: 'Village', accessor: 'village_id', render: (row) => <span>{row.village_name}</span> },
     { key: 'status', label: 'Status', accessor: 'status', render: (row) => <span>{row.status}</span> },
     {
       key: 'actions',
@@ -164,7 +155,7 @@ const ZPorderdetails = ({ users }: Props) => {
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
-            <div className='grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2'>
+            <div className='grid grid-cols-1 gap-x-2 gap-y-2 sm:grid-cols-3'>
 
 
               <div>
@@ -190,39 +181,7 @@ const ZPorderdetails = ({ users }: Props) => {
                 />
                 {error.days && <div className="text-red-500 text-sm mt-1 pl-1">{error.days}</div>}
               </div>
-            </div>
-             <div className='grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2'>
-
-            <div>
-              <Label>Items</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.item ? "border-red-500" : ""}`}
-                value={item}
-                onChange={(e) => setItem(e.target.value)}
-              >
-                {itemOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {error.item && <div className="text-red-500 text-sm mt-1 pl-1">{error.item}</div>}
-            </div>
-
-            <div>
-              <Label>Quantity</Label>
-              <input
-                type="number"
-                placeholder="Enter Quantity"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.quantity ? "border-red-500" : ""}`}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
-              />
-              {error.quantity && <div className="text-red-500 text-sm mt-1 pl-1">{error.quantity}</div>}
-            </div>
-            </div>
-
-            <div>
+              <div>
               <Label>Period</Label>
               <input
                 type="text"
@@ -233,6 +192,9 @@ const ZPorderdetails = ({ users }: Props) => {
               />
               {error.period && <div className="text-red-500 text-sm mt-1 pl-1">{error.period}</div>}
             </div>
+            </div>
+     
+        
           </div>
         }
         columns={columns}

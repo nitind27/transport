@@ -12,7 +12,6 @@ import { toast } from "react-toastify";
 import DefaultModal from "../example/ModalExample/DefaultModal";
 import { FaEdit } from "react-icons/fa";
 import DatePicker from "../form/date-picker";
-import { Withoutbutton } from "../tables/Withoutbutton";
 
 type StockEntry = {
   id: number;
@@ -32,7 +31,15 @@ type StockEntry = {
   updated_at?: string;
 };
 
+type ItemGrain = {
+  id: number;
+  name: string;
+  Unit: string;
+  status?: string;
+};
+
 type AggregatedStock = {
+  itemId: number;
   grain: string;
   units: string;
   totalQuantity: number;
@@ -55,6 +62,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   // Table data
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
   const [loading, setLoading] = useState(false);
+  const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
 
   // Dropdown masters from API
   const dealerOptions = useMemo(
@@ -77,14 +85,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     [grains]
   );
 
-  const unitOptions = useMemo(
-    () => [
-      { value: "", label: "Select Units" },
-      { value: "kg", label: "KG" },
-      { value: "ltr", label: "Ltr" },
-    ],
-    []
-  );
+
 
   // Form state
   const [dealer, setDealer] = useState("");
@@ -113,26 +114,90 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     }
   }, [initialStockData]);
 
-  // Aggregate stock data by grain and units
-  const aggregatedStockData = useMemo(() => {
-    const aggregated: { [key: string]: AggregatedStock } = {};
-    
-    data.forEach(item => {
-      const key = `${item.grain}-${item.units}`;
-      if (!aggregated[key]) {
-        aggregated[key] = {
-          grain: item.grain,
-          units: item.units,
-          totalQuantity: 0
-        };
+  // Fetch item grains from API
+  const fetchItemGrains = async () => {
+    try {
+      const response = await fetch('/api/itemgrains');
+      if (response.ok) {
+        const grainsData = await response.json();
+        setItemGrains(grainsData);
       }
-      // Sum all quantities for the same grain and units
-      aggregated[key].totalQuantity += Number(item.weight);
+    } catch (error) {
+      console.error('Error fetching item grains:', error);
+      toast.error('Failed to fetch item grains');
+    }
+  };
+
+  useEffect(() => {
+    fetchItemGrains();
+  }, []);
+
+  function formatDate(dateString: string | undefined | null): string {
+    if (!dateString) return 'उपलब्ध नाही';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'उपलब्ध नाही';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
+  // Enhanced aggregate stock data by grain and units, including item ID
+  const aggregatedStockData = useMemo(() => {
+    const stockMap: { [key: string]: AggregatedStock } = {};
+    
+    // Initialize all items from itemGrains with zero quantity and item IDs
+    itemGrains.forEach((item,index) => {
+      const key = `${item.name}-${item.Unit}`;
+      stockMap[key] = {
+        itemId: index +1,
+        grain: item.name,
+        units: item.Unit,
+        totalQuantity: 0
+      };
     });
-
-    return Object.values(aggregated);
-  }, [data]);
-
+    
+    // Sum the weights from existing stock data
+    data.forEach(item => {
+      // Try to find matching item in itemGrains by name
+      const matchingItem = itemGrains.find(grain => 
+        grain.name.toLowerCase().trim() === item.grain.toLowerCase().trim()
+      );
+      
+      if (matchingItem) {
+        // Use the matching item's key format
+        const key = `${matchingItem.name}-${matchingItem.Unit}`;
+        if (stockMap[key]) {
+          stockMap[key].totalQuantity += Number(item.weight);
+        } else {
+          // Create entry with proper item ID
+          stockMap[key] = {
+            itemId: matchingItem.id,
+            grain: matchingItem.name,
+            units: matchingItem.Unit,
+            totalQuantity: Number(item.weight)
+          };
+        }
+      } else {
+        // If not found in master, use original key format
+        const key = `${item.grain}-${item.units}`;
+        if (stockMap[key]) {
+          stockMap[key].totalQuantity += Number(item.weight);
+        } else {
+          // Create entry with temp ID
+          stockMap[key] = {
+            itemId: 0,
+            grain: item.grain,
+            units: item.units,
+            totalQuantity: Number(item.weight)
+          };
+        }
+      }
+    });
+    
+    return Object.values(stockMap);
+  }, [data, itemGrains]);
+  
   const resetForm = () => {
     setDealer("");
     setEwayBillNo("");
@@ -256,38 +321,6 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     setIsEditmode(true);
   };
 
-  // const handleDownloadExcel = () => {
-  //   const exportData = data.map(({...rest }) => rest);
-  //   const worksheet = XLSX.utils.json_to_sheet(exportData);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Stock");
-  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  //   const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-  //   saveAs(file, "stock_inventory.xlsx");
-  // };
-
-  // Stock Inventory columns (read-only, aggregated)
-  const inventoryColumns: Column<AggregatedStock>[] = [
-    {
-      key: "grain",
-      label: "Item (Grain)",
-      accessor: "grain",
-      render: (row) => <span>{row.grain}</span>,
-    },
-    {
-      key: "units",
-      label: "Units",
-      accessor: "units",
-      render: (row) => <span>{row.units}</span>,
-    },
-    {
-      key: "totalQuantity",
-      label: "Total Quantity",
-      accessor: "totalQuantity",
-      render: (row) => <span>{row.totalQuantity}</span>,
-    },
-  ];
-
   // Add Stock columns (with edit/delete actions)
   const addStockColumns: Column<StockEntry>[] = [
     {
@@ -315,7 +348,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       key: "invoiceDate",
       label: "Invoice Date",
       accessor: "invoiceDate",
-      render: (row) => <span>{row.invoiceDate || "-"}</span>,
+      render: (row) => <span>{formatDate(row.invoiceDate) || "-"}</span>,
     },
     {
       key: "actions",
@@ -341,6 +374,16 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       ),
     },
   ];
+
+  // Calculate total amount automatically when weight or units change
+  useEffect(() => {
+    if (weight !== "" && units !== "") {
+      const calculatedAmount = Number(weight) * 1; // Multiplying by 1 since units is a string (kg/ltr)
+      setTotalAmount(calculatedAmount);
+    } else {
+      setTotalAmount("");
+    }
+  }, [weight, units]);
 
   return (
     <div className="">
@@ -372,35 +415,54 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       {activeTab === 'inventory' ? (
         // Stock Inventory Tab - Read Only
         <div>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-              Current Stock Summary
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Total quantities by item (read-only view)
-            </p>
-          </div>
+      
           
-          <Withoutbutton
-            data={aggregatedStockData}
-            classname={"h-[650px] overflow-y-auto scrollbar-hide"}
-            columns={inventoryColumns}
-            title="Stock Inventory"
-            filterOptions={[]}
-            searchKey="grain"
-          />
+          {/* Enhanced Table for Current Stock Summary */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Item ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Item (Grain)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Units
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Total Quantity
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {aggregatedStockData.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
+                        {item.itemId || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {item.grain}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {item.units}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600 dark:text-green-400">
+                        {item.totalQuantity.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : (
         // Add Stock Tab - With Form and Actions
         <div>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-              Add New Stock Entry
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Add new stock entries and manage existing ones
-            </p>
-          </div>
+         
 
           <ReusableTable
             data={data}
@@ -486,7 +548,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                   <select
                     className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.grain ? "border-red-500" : ""}`}
                     value={grain}
-                    onChange={(e) => setGrain(e.target.value)}
+                    onChange={(e) => {
+                      const selectedGrain = e.target.value;
+                      setGrain(selectedGrain);
+                      
+                      // Find the selected grain and set its unit
+                      const selectedGrainData = grains.find(g => g.name === selectedGrain);
+                      if (selectedGrainData) {
+                        setUnits(selectedGrainData.Unit);
+                      } else {
+                        setUnits("");
+                      }
+                    }}
                   >
                     {grainOptions.map((g) => (
                       <option key={g.value} value={g.value}>
@@ -500,15 +573,11 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 <div>
                   <Label>Units</Label>
                   <select
-                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.units ? "border-red-500" : ""}`}
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-gray-100 text-gray-600 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 cursor-not-allowed ${error.units ? "border-red-500" : ""}`}
                     value={units}
-                    onChange={(e) => setUnits(e.target.value)}
+                    disabled={true}
                   >
-                    {unitOptions.map((u) => (
-                      <option key={u.value} value={u.value}>
-                        {u.label}
-                      </option>
-                    ))}
+                    <option value="">{units || "Select Grain first"}</option>
                   </select>
                   {error.units && <div className="text-red-500 text-sm mt-1 pl-1">{error.units}</div>}
                 </div>
@@ -520,7 +589,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                     placeholder="Enter Weight"
                     className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.weight ? "border-red-500" : ""}`}
                     value={weight}
-                    onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => {
+                      const newWeight = e.target.value === "" ? "" : Number(e.target.value);
+                      setWeight(newWeight);
+                      
+                      // Calculate total amount: Weight × Rate
+                      if (newWeight !== "" && rate !== "") {
+                        const calculatedAmount = Number(newWeight) * Number(rate);
+                        setTotalAmount(calculatedAmount);
+                      } else {
+                        setTotalAmount("");
+                      }
+                    }}
                   />
                   {error.weight && <div className="text-red-500 text-sm mt-1 pl-1">{error.weight}</div>}
                 </div>
@@ -532,7 +612,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                     placeholder="Enter Rate"
                     className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
                     value={rate}
-                    onChange={(e) => setRate(e.target.value === "" ? "" : Number(e.target.value))}
+                    onChange={(e) => {
+                      const newRate = e.target.value === "" ? "" : Number(e.target.value);
+                      setRate(newRate);
+                      
+                      // Calculate total amount: Weight × Rate
+                      if (weight !== "" && newRate !== "") {
+                        const calculatedAmount = Number(weight) * Number(newRate);
+                        setTotalAmount(calculatedAmount);
+                      } else {
+                        setTotalAmount("");
+                      }
+                    }}
                   />
                 </div>
 
@@ -540,12 +631,11 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                   <Label>Total Amount</Label>
                   <input
                     type="number"
-                    placeholder="Enter Total Amount"
-                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90`}
+                    placeholder="Auto-calculated (Weight × Rate)"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 cursor-not-allowed`}
                     value={totalAmount}
-                    onChange={(e) =>
-                      setTotalAmount(e.target.value === "" ? "" : Number(e.target.value))
-                    }
+                    disabled={true}
+                    readOnly
                   />
                 </div>
 

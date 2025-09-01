@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from 'react';
 import Label from "../form/Label";
 import { ReusableTable } from "../tables/BasicTableOne";
@@ -8,13 +7,11 @@ import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
 import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
-
 type Owner = {
 	id: number;
 	name: string;
 	status: string;
 };
-
 type TruckRow = {
 	id: number;
 	truckNo: string;
@@ -23,13 +20,11 @@ type TruckRow = {
 	mobileNumber: string;
 	status: string;
 };
-
 type Props = {
 	// Keeping props for compatibility, not used now
 	truckdata: TruckRow[];
 	owner: Owner[];
 };
-
 type FormErrors = {
 	truckNo?: string;
 	ownerId?: string;
