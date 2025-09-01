@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-// import * as XLSX from "xlsx";
-// import { saveAs } from "file-saver";
+
 
 import Label from "../form/Label";
 import { ReusableTable } from "../tables/BasicTableOne";
@@ -376,18 +375,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     },
   ];
 
-  // Modify the useEffect to not override totalAmount when in edit mode
-  useEffect(() => {
-    // Only auto-calculate if not in edit mode or if totalAmount is empty
-    if (!isEditMode && weight !== "" && units !== "") {
-      const calculatedAmount = Number(weight) * 1; // Multiplying by 1 since units is a string (kg/ltr)
-      setTotalAmount(calculatedAmount);
-    } else if (isEditMode && weight !== "" && rate !== "" && totalAmount === "") {
-      // Only calculate if in edit mode and totalAmount is empty
-      const calculatedAmount = Number(weight) * Number(rate);
-      setTotalAmount(calculatedAmount);
-    }
-  }, [weight, units, rate, isEditMode, totalAmount]);
+  // Remove the problematic useEffect that interferes with manual calculation
+  // useEffect(() => {
+  //   // Only auto-calculate if not in edit mode or if totalAmount is empty
+  //   if (!isEditMode && weight !== "" && units !== "") {
+  //     const calculatedAmount = Number(weight) * 1; // Multiplying by 1 since units is a string (kg/ltr)
+  //     setTotalAmount(calculatedAmount);
+  //   } else if (isEditMode && weight !== "" && rate !== "" && totalAmount === "") {
+  //     // Only calculate if in edit mode and totalAmount is empty
+  //     const calculatedAmount = Number(weight) * Number(rate);
+  //     setTotalAmount(calculatedAmount);
+  //   }
+  // }, [weight, units, rate, isEditMode, totalAmount]);
 
   return (
     <div className="">
@@ -601,7 +600,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                       if (newWeight !== "" && rate !== "") {
                         const calculatedAmount = Number(newWeight) * Number(rate);
                         setTotalAmount(calculatedAmount);
-                      } else {
+                      } else if (newWeight === "" || rate === "") {
                         setTotalAmount("");
                       }
                     }}
@@ -624,7 +623,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                       if (weight !== "" && newRate !== "") {
                         const calculatedAmount = Number(weight) * Number(newRate);
                         setTotalAmount(calculatedAmount);
-                      } else {
+                      } else if (weight === "" || newRate === "") {
                         setTotalAmount("");
                       }
                     }}
