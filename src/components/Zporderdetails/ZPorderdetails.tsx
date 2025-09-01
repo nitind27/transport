@@ -1,52 +1,30 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-// import * as XLSX from 'xlsx';
-// import { saveAs } from 'file-saver';
-
 import Label from "../form/Label";
 import { ReusableTable } from "../tables/BasicTableOne";
 import { Column } from "../tables/tabletype";
-
 import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
-import { UserCategory } from '../usercategory/userCategory';
-import { Taluka } from '../Taluka/Taluka';
-import { Village } from '../Village/village';
 import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
-import { UserData } from '../usersdata/Userdata';
+import { ZPOrderDetail, FormErrors } from './ZPOrderDetailsType';
 
 type Props = {
-  users: UserData[];
-  datavillage: Village[];
-  datataluka: Taluka[];
-  datausercategorycrud: UserCategory[];
+  zpOrderDetails: ZPOrderDetail[];
 };
 
-type FormErrors = {
-  orderNo?: string;
-  days?: string;
-  item?: string;
-  quantity?: string;
-  period?: string;
-};
-
-const ZPorderdetails = ({ users }: Props) => {
-  const [data] = useState<UserData[]>(users || []);
+const ZPorderdetails = ({ zpOrderDetails }: Props) => {
+  const [data, setData] = useState<ZPOrderDetail[]>(zpOrderDetails || []);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [error, setErrors] = useState<FormErrors>({});
   const [editId, setEditId] = useState<number | null>(null);
 
-  // New form fields
+  // Form fields
   const [orderNo, setOrderNo] = useState('');
   const [days, setDays] = useState<number | ''>('');
-  const [item, setItem] = useState('');
-  const [quantity, setQuantity] = useState<number | ''>('');
   const [period, setPeriod] = useState('');
-
-
 
   useEffect(() => {
     if (!isvalidation) setErrors({});
@@ -55,10 +33,8 @@ const ZPorderdetails = ({ users }: Props) => {
   const reset = () => {
     setOrderNo('');
     setDays('');
-    setItem('');
-    setQuantity('');
     setPeriod('');
-    setEditId(0);
+    setEditId(null);
   };
 
   useEffect(() => {
@@ -69,70 +45,116 @@ const ZPorderdetails = ({ users }: Props) => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
 
-    if (!orderNo) newErrors.orderNo = "Order No is required";
-    if (days === '' || Number(days) <= 0) newErrors.days = "No of Days is required";
-    if (!item) newErrors.item = "Item is required";
-    if (quantity === '' || Number(quantity) <= 0) newErrors.quantity = "Quantity is required";
-    if (!period) newErrors.period = "Period is required";
+    if (!orderNo.trim()) newErrors.order_no = "Order No is required";
+    if (days === '' || Number(days) <= 0) newErrors.no_of_days = "No of Days is required and must be greater than 0";
+    if (!period.trim()) newErrors.period = "Period is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/zporderdetails');
+      if (response.ok) {
+        const result = await response.json();
+        setData(result);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
+
+    const apiUrl = '/api/zporderdetails';
+    const method = isEditMode ? 'PUT' : 'POST';
+
     try {
-      // No backend specified yet for these fields; just simulate success:
+      const response = await fetch(apiUrl, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editId,
+          order_no: orderNo,
+          no_of_days: Number(days),
+          period: period
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       toast.success(editId ? 'Order updated successfully!' : 'Order created successfully!');
       reset();
       setEditId(null);
-    } catch {
-      toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
+      fetchData();
+    } catch (error) {
+      console.error('Error saving order:', error);
+      toast.error(editId ? 'Failed to update order. Please try again.' : 'Failed to create order. Please try again.');
     } finally {
       setLoading(false);
       setIsmodelopen(false);
     }
   };
 
-  const handleEdit = (itemRow: UserData) => {
-    // Keeping table edit open behavior for now; not pre-filling new fields
+  const handleEdit = (item: ZPOrderDetail) => {
     setIsActive(!isActive);
     setIsmodelopen(true);
     setIsEditmode(true);
-    setEditId(itemRow.user_id);
+    setEditId(item.id);
+    setOrderNo(item.order_no);
+    setDays(item.no_of_days);
+    setPeriod(item.period);
   };
 
-  // const handleDownloadExcel = () => {
-  //   const exportData = data.map(({ ...rest }) => rest);
-  //   const worksheet = XLSX.utils.json_to_sheet(exportData);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
-  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  //   const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-  //   saveAs(file, "users.xlsx");
-  // };
-
-  const columns: Column<UserData>[] = [
-    { key: 'name', label: 'Order No', accessor: 'name', render: (row) => <span>{row.name}</span> },
-    { key: 'user_category_id', label: 'No of Days', accessor: 'user_category_id', render: (row) => <span>{row.user_category_name}</span> },
-    { key: 'username', label: 'Period', accessor: 'username', render: (row) => <span>{row.username}</span> },
-    // { key: 'password', label: 'Password', accessor: 'password', render: (row) => <span>{row.password}</span> },
-    // { key: 'contact_no', label: 'Contact No', accessor: 'contact_no', render: (row) => <span>{row.contact_no}</span> },
-    // { key: 'address', label: 'Address', accessor: 'address', render: (row) => <span>{row.address}</span> },
-    // { key: 'taluka_id', label: 'Taluka', accessor: 'taluka_id', render: (row) => <span>{row.taluka_name}</span> },
-    // { key: 'village_id', label: 'Village', accessor: 'village_id', render: (row) => <span>{row.village_name}</span> },
-    { key: 'status', label: 'Status', accessor: 'status', render: (row) => <span>{row.status}</span> },
+  const columns: Column<ZPOrderDetail>[] = [
+    { 
+      key: 'order_no', 
+      label: 'Order No', 
+      accessor: 'order_no', 
+      render: (row) => <span>{row.order_no}</span> 
+    },
+    { 
+      key: 'no_of_days', 
+      label: 'No of Days', 
+      accessor: 'no_of_days', 
+      render: (row) => <span>{row.no_of_days}</span> 
+    },
+    { 
+      key: 'period', 
+      label: 'Period', 
+      accessor: 'period', 
+      render: (row) => <span>{row.period}</span> 
+    },
+    { 
+      key: 'status', 
+      label: 'Status', 
+      accessor: 'status', 
+      render: (row) => <span>{row.status}</span> 
+    },
     {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
         <div className="flex gap-2 whitespace-nowrap w-full">
-          <span onClick={() => handleEdit(row)} className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200">
+          <span 
+            onClick={() => handleEdit(row)} 
+            className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
           <span>
-            <DefaultModal id={row.user_id} fetchData={() => { }} endpoint={"users/insert"} bodyname='user_id' newstatus={row.status} />
+            <DefaultModal 
+              id={row.id} 
+              fetchData={fetchData} 
+              endpoint="zporderdetails" 
+              bodyname='id' 
+              newstatus={row.status} 
+            />
           </span>
         </div>
       )
@@ -141,33 +163,22 @@ const ZPorderdetails = ({ users }: Props) => {
 
   return (
     <div className="">
-      <div className="flex justify-end">
-        {/* <button
-          onClick={handleDownloadExcel}
-          className="bg-green-600 text-white py-2 px-4 rounded mb-4 hover:bg-green-700 transition-colors"
-        >
-          Download Excel
-        </button> */}
-      </div>
-
       <ReusableTable
         data={data}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
             <div className='grid grid-cols-1 gap-x-2 gap-y-2 sm:grid-cols-3'>
-
-
               <div>
                 <Label>Order No</Label>
                 <input
                   type="text"
                   placeholder="Enter Order No"
-                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.order_no ? "border-red-500" : ""}`}
                   value={orderNo}
                   onChange={(e) => setOrderNo(e.target.value)}
                 />
-                {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
+                {error.order_no && <div className="text-red-500 text-sm mt-1 pl-1">{error.order_no}</div>}
               </div>
 
               <div>
@@ -175,30 +186,29 @@ const ZPorderdetails = ({ users }: Props) => {
                 <input
                   type="number"
                   placeholder="Enter No of Days"
-                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.days ? "border-red-500" : ""}`}
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.no_of_days ? "border-red-500" : ""}`}
                   value={days}
                   onChange={(e) => setDays(e.target.value === "" ? "" : Number(e.target.value))}
                 />
-                {error.days && <div className="text-red-500 text-sm mt-1 pl-1">{error.days}</div>}
+                {error.no_of_days && <div className="text-red-500 text-sm mt-1 pl-1">{error.no_of_days}</div>}
               </div>
+
               <div>
-              <Label>Period</Label>
-              <input
-                type="text"
-                placeholder="Enter Period"
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.period ? "border-red-500" : ""}`}
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-              />
-              {error.period && <div className="text-red-500 text-sm mt-1 pl-1">{error.period}</div>}
+                <Label>Period</Label>
+                <input
+                  type="text"
+                  placeholder="Enter Period"
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.period ? "border-red-500" : ""}`}
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                />
+                {error.period && <div className="text-red-500 text-sm mt-1 pl-1">{error.period}</div>}
+              </div>
             </div>
-            </div>
-     
-        
           </div>
         }
         columns={columns}
-        title="Order Details"
+        title="ZP Order Details"
         filterOptions={[]}
         submitbutton={
           <button
@@ -210,7 +220,7 @@ const ZPorderdetails = ({ users }: Props) => {
             {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
           </button>
         }
-        searchKey="username"
+        searchKey="order_no"
       />
     </div>
   );

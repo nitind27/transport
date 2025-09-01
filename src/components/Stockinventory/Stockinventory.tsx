@@ -314,7 +314,8 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     setUnits(row.units);
     setWeight(row.weight);
     setRate(row.rate || "");
-    setTotalAmount(row.totalAmount || "");
+    // Fix: Properly handle totalAmount - use the actual value from database
+    setTotalAmount(row.totalAmount !== undefined && row.totalAmount !== null ? row.totalAmount : "");
     setRemarks(row.remarks || "");
     setIsActive(!isActive);
     setIsmodelopen(true);
@@ -375,15 +376,18 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     },
   ];
 
-  // Calculate total amount automatically when weight or units change
+  // Modify the useEffect to not override totalAmount when in edit mode
   useEffect(() => {
-    if (weight !== "" && units !== "") {
+    // Only auto-calculate if not in edit mode or if totalAmount is empty
+    if (!isEditMode && weight !== "" && units !== "") {
       const calculatedAmount = Number(weight) * 1; // Multiplying by 1 since units is a string (kg/ltr)
       setTotalAmount(calculatedAmount);
-    } else {
-      setTotalAmount("");
+    } else if (isEditMode && weight !== "" && rate !== "" && totalAmount === "") {
+      // Only calculate if in edit mode and totalAmount is empty
+      const calculatedAmount = Number(weight) * Number(rate);
+      setTotalAmount(calculatedAmount);
     }
-  }, [weight, units]);
+  }, [weight, units, rate, isEditMode, totalAmount]);
 
   return (
     <div className="">

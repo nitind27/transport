@@ -1,29 +1,21 @@
--- Create stockinventory table
-CREATE TABLE IF NOT EXISTS `stockinventory` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `dealer` varchar(255) NOT NULL,
-  `ewayBillNo` varchar(100) DEFAULT NULL,
-  `billNo` varchar(100) DEFAULT NULL,
-  `invoiceDate` date DEFAULT NULL,
-  `truckNo` varchar(50) DEFAULT NULL,
-  `grain` varchar(100) NOT NULL,
-  `units` varchar(50) NOT NULL,
-  `weight` decimal(10,2) NOT NULL,
-  `rate` decimal(10,2) DEFAULT NULL,
-  `totalAmount` decimal(12,2) DEFAULT NULL,
-  `remarks` text DEFAULT NULL,
-  `status` enum('Active','Inactive') DEFAULT 'Active',
-  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_dealer` (`dealer`),
-  KEY `idx_grain` (`grain`),
-  KEY `idx_status` (`status`),
-  KEY `idx_created_at` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Create ZP Order Details table
+CREATE TABLE IF NOT EXISTS zp_order_details (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_no VARCHAR(100) NOT NULL,
+  no_of_days INT NOT NULL,
+  period VARCHAR(100) NOT NULL,
+  status ENUM('Active', 'Inactive') DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  -- Add indexes for better performance
+  INDEX idx_order_no (order_no),
+  INDEX idx_status (status),
+  INDEX idx_created_at (created_at)
+);
 
--- Insert sample data (optional)
-INSERT INTO `stockinventory` (`dealer`, `grain`, `units`, `weight`, `rate`, `totalAmount`, `remarks`) VALUES
-('Shree Traders', 'Wheat', 'kg', 1000.00, 25.50, 25500.00, 'Sample wheat stock'),
-('Om Agro', 'Rice', 'kg', 500.00, 30.00, 15000.00, 'Sample rice stock'),
-('Maheshwari Grain', 'Oil', 'ltr', 100.00, 120.00, 12000.00, 'Sample oil stock');
+-- Optional: Add some sample data
+INSERT INTO zp_order_details (order_no, no_of_days, period, status) VALUES
+('ZP-001', 30, 'Monthly', 'Active'),
+('ZP-002', 15, 'Bi-weekly', 'Active'),
+('ZP-003', 7, 'Weekly', 'Active');
