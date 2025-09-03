@@ -268,7 +268,7 @@ const Dipatchdetials = () => {
     },
     { key: 'grain', label: 'Item', accessor: 'grain', render: (row) => <span>{row.grain}</span> },
     { key: 'unit', label: 'Unit', accessor: 'unit', render: (row) => <span>{row.unit}</span> },
-    { key: 'totalQty', label: 'Remaining Qty', accessor: 'totalQty', render: (row) => <span>{row.totalQty}</span> },
+    { key: 'totalQty', label: 'Quantity', accessor: 'totalQty', render: (row) => <span>{row.totalQty}</span> },
     {
       key: 'qtyDispatch',
       label: 'Qty Dispatch',
@@ -301,14 +301,13 @@ const Dipatchdetials = () => {
 
   // Read-only list columns (default view)
   const listColumns: Column<DispatchListRow>[] = [
-    { key: 'dispatch_code', label: 'Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
-    { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_id}</span> },
-    { key: 'school', label: 'School', render: (r) => <span>{r.schoolname || r.school_id}</span> },
+    // { key: 'dispatch_code', label: 'Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
+
     { key: 'center', label: 'Center', render: (r) => <span>{r.center_name || r.center_id}</span> },
     { key: 'truck', label: 'Truck', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
     { key: 'item', label: 'Item', render: (r) => <span>{r.item_name}</span> },
     { key: 'unit', label: 'Unit', accessor: 'unit', render: (r) => <span>{r.unit}</span> },
-    { key: 'qty', label: 'Qty Dispatch', render: (r) => <span>{r.qty_dispatch}</span> },
+    { key: 'qty', label: 'Dispatch', render: (r) => <span>{r.qty_dispatch}</span> },
     { key: 'bal', label: 'Bal Qty', render: (r) => <span>{r.bal_qty}</span> },
     { key: 'created', label: 'Created', render: (r) => <span>{new Date(r.created_at).toLocaleString()}</span> },
   ];
@@ -316,45 +315,55 @@ const Dipatchdetials = () => {
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
 
-  // Inline toolbar with filters + submit
   const toolbar = (
     <div className="grid grid-cols-6 gap-2 items-center">
-      <select
-        className="h-10  rounded-md border px-3 text-sm"
-        value={orderNo}
-        onChange={(e) => { handleOrderChange(e.target.value); }}
-      >
-        {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
-      </select>
-  
-      <select
-        className="h-10 rounded-md border px-3 text-sm"
-        value={selectedTruckId}
-        onChange={(e) => setSelectedTruckId(e.target.value)}
-      >
-        {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-      </select>
-  
-      <select
-        className="h-10  rounded-md border px-3 text-sm"
-        value={selectedCenterId}
-        onChange={(e) => setSelectedCenterId(e.target.value)}
-      >
-        {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
-      </select>
-  
-      <select
-        className="h-10 rounded-md border px-3 text-sm"
-        value={selectedSchoolId}
-        onChange={(e) => setSelectedSchoolId(e.target.value)}
-        disabled={!orderNo}
-      >
-        {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select School'}</option>)}
-      </select>
-  
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
+        <select
+          className="h-10  rounded-md border px-3 text-sm"
+          value={orderNo}
+          onChange={(e) => { handleOrderChange(e.target.value); }}
+        >
+          {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedTruckId}
+          onChange={(e) => setSelectedTruckId(e.target.value)}
+        >
+          {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col"> 
+        <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
+        <select
+          className="h-10  rounded-md border px-3 text-sm"
+          value={selectedCenterId}
+          onChange={(e) => setSelectedCenterId(e.target.value)}
+        >
+          {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">School</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedSchoolId}
+          onChange={(e) => setSelectedSchoolId(e.target.value)}
+          disabled={!orderNo}
+        >
+          {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select School'}</option>)}
+        </select>
+      </div>
       <button
         type="button"
-        className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium"
+        className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
         onClick={() => {
           if (!allFiltersSelected) {
             toast.error('Select Order, Truck, Center, and School');
@@ -368,7 +377,7 @@ const Dipatchdetials = () => {
   
       <button
         type="button"
-        className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium"
+        className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
         onClick={async () => {
             try {
               if (!orderNo || !selectedTruckId || !selectedCenterId || !selectedSchoolId) {
@@ -410,12 +419,19 @@ const Dipatchdetials = () => {
               const ok = await resp.json();
               toast.success(`Dispatch saved (Code: ${ok.dispatch_code})`);
               setDispatchInputs({});
+              // clear filters after successful submit
+              setOrderNo('');
+              setSelectedTruckId('');
+              setSelectedCenterId('');
+              setSelectedSchoolId('');
+              setDidSearch(false);
               await fetchDispatchList(); // refresh list
             } catch{
             //   console.error(e);
               toast.error('Failed to save');
             } finally {
               setLoading(false);
+              setDidSearch(false)
             }
           }}
         disabled={loading || !showInputMode}
