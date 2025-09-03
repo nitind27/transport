@@ -97,14 +97,6 @@ export function Withoutbutton<T extends object>({
         />
       </div>
 
-        {/* <div className="w-full md:w-auto">
-            <FormInModal
-            inputfiled={inputfiled}
-            title={title}
-            submitbutton={submitbutton}
-            classname={classname}
-            />
-        </div> */}
     </div>
   );
 
