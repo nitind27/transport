@@ -62,6 +62,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
   const [loading, setLoading] = useState(false);
   const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
+  const [schoolWiseTotals, setSchoolWiseTotals] = useState<Array<{ grain: string; totalQuantity: number; units: string }>>([]);
 
   // Dropdown masters from API
   const dealerOptions = useMemo(
@@ -131,6 +132,40 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     fetchItemGrains();
   }, []);
 
+  useEffect(() => {
+    const fetchSchoolWiseTotals = async () => {
+      try {
+        const res = await fetch('/api/schoolwiseorders/aggregate');
+        if (res.ok) {
+          const json = await res.json();
+          setSchoolWiseTotals(json);
+        }
+      } catch (e) {
+        console.error('Failed to load school-wise totals', e);
+      }
+    };
+    fetchSchoolWiseTotals();
+  }, []);
+
+  // Map Marathi item name -> Item (Grain).name in master
+  const MARATHI_TO_GRAIN: Record<string, string> = {
+    'तांदुळ': 'तांदुळ',
+    'मुंगदाळ': 'मुंगदाळ',
+    'मसूरदाळ': 'मसूरदाळ',
+    'तूरदाल': 'तूरदाळ',
+    'हरभरा': 'हरभरा',
+    'चवळी': 'चवळी',
+    'मटकी': 'मटकी',
+    'मुंग': 'मुंग',
+    'वाटाणा': 'वाटाणा',
+    'सोया वडी': 'सोया वडी',
+    'मसाला': 'मसाला',
+    'सोया तेल': 'सोया तेल',
+    'हळद': 'हळद',
+    'मीठ': 'मीठ',
+    'मोहरी': 'मोहरी',
+  };
+
   function formatDate(dateString: string | undefined | null): string {
     if (!dateString) return 'उपलब्ध नाही';
     const date = new Date(dateString);
@@ -139,64 +174,77 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
-}
+  }
 
   // Enhanced aggregate stock data by grain and units, including item ID
   const aggregatedStockData = useMemo(() => {
     const stockMap: { [key: string]: AggregatedStock } = {};
-    
-    // Initialize all items from itemGrains with zero quantity and item IDs
-    itemGrains.forEach((item,index) => {
+
+    // Initialize from item master
+    itemGrains.forEach((item, index) => {
       const key = `${item.name}-${item.Unit}`;
       stockMap[key] = {
-        itemId: index +1,
+        itemId: item.id ?? index + 1,
         grain: item.name,
         units: item.Unit,
-        totalQuantity: 0
+        totalQuantity: 0,
       };
     });
-    
-    // Sum the weights from existing stock data
+
+    // Sum existing stock rows
     data.forEach(item => {
-      // Try to find matching item in itemGrains by name
-      const matchingItem = itemGrains.find(grain => 
-        grain.name.toLowerCase().trim() === item.grain.toLowerCase().trim()
-      );
-      
+      const matchingItem = itemGrains.find(g => g.name.toLowerCase().trim() === item.grain.toLowerCase().trim());
       if (matchingItem) {
-        // Use the matching item's key format
         const key = `${matchingItem.name}-${matchingItem.Unit}`;
-        if (stockMap[key]) {
-          stockMap[key].totalQuantity += Number(item.weight);
-        } else {
-          // Create entry with proper item ID
-          stockMap[key] = {
-            itemId: matchingItem.id,
-            grain: matchingItem.name,
-            units: matchingItem.Unit,
-            totalQuantity: Number(item.weight)
-          };
-        }
+        stockMap[key].totalQuantity += Number(item.weight);
       } else {
-        // If not found in master, use original key format
         const key = `${item.grain}-${item.units}`;
-        if (stockMap[key]) {
-          stockMap[key].totalQuantity += Number(item.weight);
-        } else {
-          // Create entry with temp ID
+        if (!stockMap[key]) {
           stockMap[key] = {
             itemId: 0,
             grain: item.grain,
             units: item.units,
-            totalQuantity: Number(item.weight)
+            totalQuantity: 0,
           };
         }
+        stockMap[key].totalQuantity += Number(item.weight);
       }
     });
-    
+
+    // Merge School-wise Orders aggregate (Marathi JSON keys)
+    schoolWiseTotals.forEach(sw => {
+      const mappedName = MARATHI_TO_GRAIN[sw.grain] ?? sw.grain; // fall back to the same name
+      // Try to find a matching item in master by name
+      const matchingItem = itemGrains.find(g => g.name.trim() === mappedName.trim());
+      if (matchingItem) {
+        const key = `${matchingItem.name}-${matchingItem.Unit}`;
+        if (!stockMap[key]) {
+          stockMap[key] = {
+            itemId: matchingItem.id,
+            grain: matchingItem.name,
+            units: matchingItem.Unit,
+            totalQuantity: 0,
+          };
+        }
+        stockMap[key].totalQuantity += Number(sw.totalQuantity || 0);
+      } else {
+        // If not in master, still show it
+        const key = `${mappedName}-${sw.units || ''}`;
+        if (!stockMap[key]) {
+          stockMap[key] = {
+            itemId: 0,
+            grain: mappedName,
+            units: sw.units || '',
+            totalQuantity: 0,
+          };
+        }
+        stockMap[key].totalQuantity += Number(sw.totalQuantity || 0);
+      }
+    });
+
     return Object.values(stockMap);
-  }, [data, itemGrains]);
-  
+  }, [data, itemGrains, schoolWiseTotals]);
+
   const resetForm = () => {
     setDealer("");
     setEwayBillNo("");
@@ -224,7 +272,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     if (!grain) newErrors.grain = "Grain is required";
     if (!units) newErrors.units = "Units is required";
     if (weight === "" || Number.isNaN(Number(weight))) newErrors.weight = "Weight is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -286,7 +334,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         resetForm();
         setIsEditmode(false);
         setIsmodelopen(false);
-        
+
         // Switch to inventory tab after successful addition
         setActiveTab('inventory');
       } else {
@@ -394,21 +442,19 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       <div className="flex border-b border-gray-200 mb-6">
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${
-            activeTab === 'inventory'
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'inventory'
               ? 'border-b-2 border-blue-600 text-blue-600'
               : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
+            }`}
         >
           Stock Inventory
         </button>
         <button
           onClick={() => setActiveTab('addStock')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${
-            activeTab === 'addStock'
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'addStock'
               ? 'border-b-2 border-blue-600 text-blue-600'
               : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
+            }`}
         >
           Add Stock
         </button>
@@ -418,8 +464,8 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       {activeTab === 'inventory' ? (
         // Stock Inventory Tab - Read Only
         <div>
-      
-          
+
+
           {/* Enhanced Table for Current Stock Summary */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
@@ -427,7 +473,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Item ID
+                      Sr
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Item (Grain)
@@ -444,7 +490,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                   {aggregatedStockData.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
-                        {item.itemId || "-"}
+                        {index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {item.grain}
@@ -465,7 +511,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       ) : (
         // Add Stock Tab - With Form and Actions
         <div>
-         
+
 
           <ReusableTable
             data={data}
@@ -554,7 +600,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                     onChange={(e) => {
                       const selectedGrain = e.target.value;
                       setGrain(selectedGrain);
-                      
+
                       // Find the selected grain and set its unit
                       const selectedGrainData = grains.find(g => g.name === selectedGrain);
                       if (selectedGrainData) {
@@ -595,7 +641,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                     onChange={(e) => {
                       const newWeight = e.target.value === "" ? "" : Number(e.target.value);
                       setWeight(newWeight);
-                      
+
                       // Calculate total amount: Weight × Rate
                       if (newWeight !== "" && rate !== "") {
                         const calculatedAmount = Number(newWeight) * Number(rate);
@@ -618,7 +664,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                     onChange={(e) => {
                       const newRate = e.target.value === "" ? "" : Number(e.target.value);
                       setRate(newRate);
-                      
+
                       // Calculate total amount: Weight × Rate
                       if (weight !== "" && newRate !== "") {
                         const calculatedAmount = Number(weight) * Number(newRate);

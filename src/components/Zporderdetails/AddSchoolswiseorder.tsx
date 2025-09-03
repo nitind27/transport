@@ -446,10 +446,10 @@ const AddSchoolswiseorder = () => {
       <Modal
         isOpen={viewOpen}
         onClose={() => setViewOpen(false)}
-        className="max-w-[900px] p-6"
+        className="max-w-[550px] p-6"
       >
         {viewItem && (
-          <div className="space-y-6 h-[550px] overflow-scroll">
+          <div className="space-y-3 h-[550px] overflow-scroll">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
               {viewItem.schoolname}
               <span className="ml-2 text-sm font-normal text-gray-500 dark:text-white/60">
@@ -457,10 +457,9 @@ const AddSchoolswiseorder = () => {
               </span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 text-sm">
               <div><span className="font-medium text-gray-600 dark:text-white/70">Order No: </span>{viewItem.order_no}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">School: </span>{viewItem.schoolname}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">UDAIS No: </span>{viewItem.udaisno}</div>
+
               <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{viewItem.no_of_days}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{viewItem.period}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Total Weight: </span>{viewItem.total_weight} kg</div>
@@ -469,13 +468,14 @@ const AddSchoolswiseorder = () => {
             <div>
               <h5 className="font-medium mb-3 text-gray-800 dark:text-white/90">Items</h5>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 border-collapse">
                   <thead className="bg-gray-100 dark:bg-gray-800">
                     <tr>
-                      <th className="px-3 py-2 text-left">Item</th>
-                      <th className="px-3 py-2 text-right">Quantity</th>
+                      <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 w-5">Sr</th>
+                      <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">Item</th>
+                      <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Quantity</th>
                     </tr>
-                  </thead>
+                  </thead>  
                   <tbody>
                     {Object.entries(
                       typeof viewItem.items_data === 'string'
@@ -483,10 +483,11 @@ const AddSchoolswiseorder = () => {
                         : (viewItem.items_data || {})
                     )
                       .filter(([, val]) => Number(val) > 0)
-                      .map(([key, val]) => (
+                      .map(([key, val], index) => (
                         <tr key={key} className="border-t border-gray-200 dark:border-gray-700">
-                          <td className="px-3 py-2">{key}</td>
-                          <td className="px-3 py-2 text-right">{val as number}</td>
+                          <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{index + 1}</td>
+                          <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{key}</td>
+                          <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{val as number}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -494,6 +495,7 @@ const AddSchoolswiseorder = () => {
               </div>
             </div>
 
+{/* 
             <div className="flex justify-end">
               <button
                 onClick={() => setViewOpen(false)}
@@ -501,7 +503,7 @@ const AddSchoolswiseorder = () => {
               >
                 Close
               </button>
-            </div>
+            </div> */}
           </div>
         )}
       </Modal>
