@@ -354,9 +354,8 @@ const AddSchoolswiseorder = () => {
   };
 
   const columns: Column<SchoolWiseOrder>[] = [
-    { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     {
-      key: 'actions',
+      key: 'order_no',
       label: 'Actions',
       render: (row) => {
         const isFirst = (row as ExtendedSWO)._isFirstInGroup === true;
@@ -371,17 +370,17 @@ const AddSchoolswiseorder = () => {
                 <MdDelete className="inline-block align-middle text-lg" />
               </span>
             )}
-            <span className='cursor-pointer' onClick={() => handleView(row)} title="View">
-              <IoEyeSharp size={20} color='blue' />
-            </span>
+           
           </div>
         );
       }
     },
-    { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
-    { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
+    { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
+    { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
+    { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
+
     { key: 'total_weight', label: 'Total Weight', accessor: 'total_weight', render: (row) => <span>{row.total_weight} kg</span> },
     // { key: 'status', label: 'Status', accessor: 'status', render: (row) => <span>{row.status}</span> },
     {
