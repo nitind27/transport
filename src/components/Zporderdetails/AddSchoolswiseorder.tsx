@@ -4,15 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 import Label from "../form/Label";
-import { ReusableTable } from "../tables/BasicTableOne";
+
 import { Column } from "../tables/tabletype";
 
 import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
-import DefaultModal from '../example/ModalExample/DefaultModal';
-import { FaEdit } from 'react-icons/fa';
 import { IoEyeSharp } from 'react-icons/io5';
 import { Modal } from '../ui/modal';
+import { Schoolwisetable } from '../tables/Schoolwisetable';
+import { MdDelete } from 'react-icons/md';
 
 // Types
 interface ZPOrderDetail {
@@ -73,10 +73,15 @@ type FormErrors = {
   file?: string;
 };
 
+type ExtendedSWO = SchoolWiseOrder & {
+  _isFirstInGroup?: boolean;
+  _groupCount?: number;
+  _groupKey?: string;
+};
 
 
 const AddSchoolswiseorder = () => {
-  const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
+  const {  isEditMode,  setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [error, setErrors] = useState<FormErrors>({});
   const [editId, setEditId] = useState<number | null>(null);
@@ -318,18 +323,61 @@ const AddSchoolswiseorder = () => {
     }
   };
 
-  const handleEdit = (itemRow: SchoolWiseOrder) => {
-    setIsActive(!isActive);
-    setIsmodelopen(true);
-    setIsEditmode(true);
-    setEditId(itemRow.id);
-    setOrderNo(itemRow.order_id.toString());
-    setNoOfDays(itemRow.no_of_days);
-    setPeriod(itemRow.period);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingOrderNo, setPendingOrderNo] = useState<string | null>(null);
+
+  const openBulkDelete = (orderNo: string) => {
+    setPendingOrderNo(orderNo);
+    setConfirmOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!pendingOrderNo) return;
+    try {
+      const targets = schoolWiseOrders.filter(r => r.order_no === pendingOrderNo);
+      for (const t of targets) {
+        await fetch('/api/schoolwiseorders', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: t.id, status: 'Inactive' }),
+        });
+      }
+      toast.success('Deleted all rows for the order');
+      await fetchSchoolWiseOrders();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to delete rows for the order');
+    } finally {
+      setConfirmOpen(false);
+      setPendingOrderNo(null);
+    }
   };
 
   const columns: Column<SchoolWiseOrder>[] = [
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row) => {
+        const isFirst = (row as ExtendedSWO)._isFirstInGroup === true;
+        return (
+          <div className="flex gap-2 whitespace-nowrap w-full items-center">
+            {isFirst && (
+              <span
+                onClick={() => openBulkDelete(row.order_no)}
+                className="cursor-pointer text-red-600 hover:text-red-800 transition-colors duration-200"
+                title="Delete all rows for this order"
+              >
+                <MdDelete className="inline-block align-middle text-lg" />
+              </span>
+            )}
+            <span className='cursor-pointer' onClick={() => handleView(row)} title="View">
+              <IoEyeSharp size={20} color='blue' />
+            </span>
+          </div>
+        );
+      }
+    },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
@@ -339,33 +387,23 @@ const AddSchoolswiseorder = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (row) => (
-        <div className="flex gap-2 whitespace-nowrap w-full">
-          {false &&
-            <span onClick={() => handleEdit(row)} className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors duration-200">
-              <FaEdit className="inline-block align-middle text-lg" />
+      render: (row) => {
+
+        return (
+          <div className="flex gap-2 whitespace-nowrap w-full items-center">
+
+            <span className='cursor-pointer' onClick={() => handleView(row)} title="View">
+              <IoEyeSharp size={20} color='blue' />
             </span>
-          }
-          <span>
-            <DefaultModal
-              id={row.id}
-              fetchData={fetchSchoolWiseOrders}
-              endpoint={"schoolwiseorders"}
-              bodyname='id'
-              newstatus={row.status}
-            />
-          </span>
-          <span className='cursor-pointer' onClick={() => handleView(row)}>
-            <IoEyeSharp size={20} color='blue' />
-          </span>
-        </div>
-      )
+          </div>
+        );
+      }
     }
   ];
 
   return (
     <div className="">
-      <ReusableTable
+      <Schoolwisetable
         data={schoolWiseOrders}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
@@ -440,6 +478,8 @@ const AddSchoolswiseorder = () => {
           </button>
         }
         searchKey="schoolname"
+        groupByKey="order_no"
+        colspanKeys={['order_no', 'no_of_days', 'period']}
       />
 
       {/* View Details Modal */}
@@ -475,7 +515,7 @@ const AddSchoolswiseorder = () => {
                       <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">Item</th>
                       <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Quantity</th>
                     </tr>
-                  </thead>  
+                  </thead>
                   <tbody>
                     {Object.entries(
                       typeof viewItem.items_data === 'string'
@@ -495,7 +535,7 @@ const AddSchoolswiseorder = () => {
               </div>
             </div>
 
-{/* 
+            {/* 
             <div className="flex justify-end">
               <button
                 onClick={() => setViewOpen(false)}
@@ -506,6 +546,33 @@ const AddSchoolswiseorder = () => {
             </div> */}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={confirmOpen}
+        onClose={() => { setConfirmOpen(false); setPendingOrderNo(null); }}
+        className="max-w-[480px] p-6"
+      >
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">Confirmation</h4>
+          <p className="text-sm text-gray-600 dark:text-white/70">
+            Delete all rows for order no: <span className="font-semibold">{pendingOrderNo}</span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => { setConfirmOpen(false); setPendingOrderNo(null); }}
+              className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

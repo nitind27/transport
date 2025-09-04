@@ -249,23 +249,7 @@ const Dipatchdetials = () => {
 
   // Input-mode columns
   const inputColumns: Column<DispatchRow>[] = [
-    {
-      key: 'order',
-      label: 'Order No (ID)',
-      render: () => {
-        const ord = zpOrders.find(o => String(o.id) === orderNo);
-        return <span>{ord ? `${ord.order_no} (${ord.id})` : '-'}</span>;
-      }
-    },
-    {
-      key: 'school',
-      label: 'School (ID)',
-      render: () => (
-        <span>
-          {selectedOrderSchool ? `${selectedOrderSchool.schoolname} (${selectedOrderSchool.school_id})` : '-'}
-        </span>
-      )
-    },
+   
     { key: 'grain', label: 'Item', accessor: 'grain', render: (row) => <span>{row.grain}</span> },
     { key: 'unit', label: 'Unit', accessor: 'unit', render: (row) => <span>{row.unit}</span> },
     { key: 'totalQty', label: 'Quantity', accessor: 'totalQty', render: (row) => <span>{row.totalQty}</span> },
@@ -302,7 +286,14 @@ const Dipatchdetials = () => {
   // Read-only list columns (default view)
   const listColumns: Column<DispatchListRow>[] = [
     // { key: 'dispatch_code', label: 'Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
-
+    // {
+    //   key: 'order',
+    //   label: 'Order No (ID)',
+    //   render: (r) => <span>{r.center_name || r.center_id}</span> }
+    // },
+    { key: 'order', label: 'Order No', render: (r) => <span>{r.order_no || r.order_no}</span> },
+    { key: 'school', label: 'School', render: (r) => <span>{r.schoolname || r.schoolname}</span> },
+  
     { key: 'center', label: 'Center', render: (r) => <span>{r.center_name || r.center_id}</span> },
     { key: 'truck', label: 'Truck', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
     { key: 'item', label: 'Item', render: (r) => <span>{r.item_name}</span> },
