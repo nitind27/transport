@@ -25,6 +25,21 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
   const [orderNo, setOrderNo] = useState('');
   const [days, setDays] = useState<number | ''>('');
   const [period, setPeriod] = useState('');
+  const [financialYear, setFinancialYear] = useState('');
+
+  // Generate financial year options (current year and next 5 years)
+  const generateFinancialYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = 0; i < 6; i++) {
+      const year = currentYear + i;
+      const nextYear = year + 1;
+      years.push(`${year}-${nextYear.toString().slice(-2)}`);
+    }
+    return years;
+  };
+
+  const financialYearOptions = generateFinancialYears();
 
   useEffect(() => {
     if (!isvalidation) setErrors({});
@@ -34,6 +49,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     setOrderNo('');
     setDays('');
     setPeriod('');
+    setFinancialYear('');
     setEditId(null);
   };
 
@@ -48,6 +64,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     if (!orderNo.trim()) newErrors.order_no = "Order No is required";
     if (days === '' || Number(days) <= 0) newErrors.no_of_days = "No of Days is required and must be greater than 0";
     if (!period.trim()) newErrors.period = "Period is required";
+    if (!financialYear.trim()) newErrors.financial_year = "Financial Year is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -80,7 +97,8 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
           id: editId,
           order_no: orderNo,
           no_of_days: Number(days),
-          period: period
+          period: period,
+          financial_year: financialYear
         })
       });
 
@@ -109,6 +127,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     setOrderNo(item.order_no);
     setDays(item.no_of_days);
     setPeriod(item.period);
+    setFinancialYear(item.financial_year);
   };
 
   const columns: Column<ZPOrderDetail>[] = [
@@ -129,6 +148,12 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
       label: 'Period', 
       accessor: 'period', 
       render: (row) => <span>{row.period}</span> 
+    },
+    { 
+      key: 'financial_year', 
+      label: 'Financial Year', 
+      accessor: 'financial_year', 
+      render: (row) => <span>{row.financial_year}</span> 
     },
     { 
       key: 'status', 
@@ -168,7 +193,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
-            <div className='grid grid-cols-1 gap-x-2 gap-y-2 sm:grid-cols-3'>
+            <div className='grid grid-cols-1 gap-x-2 gap-y-2 sm:grid-cols-2'>
               <div>
                 <Label>Order No</Label>
                 <input
@@ -203,6 +228,23 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
                   onChange={(e) => setPeriod(e.target.value)}
                 />
                 {error.period && <div className="text-red-500 text-sm mt-1 pl-1">{error.period}</div>}
+              </div>
+
+              <div>
+                <Label>Financial Year</Label>
+                <select
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.financial_year ? "border-red-500" : ""}`}
+                  value={financialYear}
+                  onChange={(e) => setFinancialYear(e.target.value)}
+                >
+                  <option value="">Select Financial Year</option>
+                  {financialYearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                {error.financial_year && <div className="text-red-500 text-sm mt-1 pl-1">{error.financial_year}</div>}
               </div>
             </div>
           </div>

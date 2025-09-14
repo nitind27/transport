@@ -20,6 +20,7 @@ interface ZPOrderDetail {
   order_no: string;
   no_of_days: number;
   period: string;
+  financial_year: string;
   status: string;
 }
 
@@ -42,6 +43,7 @@ interface SchoolWiseOrder {
   order_no: string;
   no_of_days: number;
   period: string;
+  financial_year: string;
   schoolname: string;
   udaisno: string;
   status: string;
@@ -81,7 +83,7 @@ type ExtendedSWO = SchoolWiseOrder & {
 
 
 const AddSchoolswiseorder = () => {
-  const {  isEditMode,  setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
+  const { isEditMode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [error, setErrors] = useState<FormErrors>({});
   const [editId, setEditId] = useState<number | null>(null);
@@ -90,6 +92,7 @@ const AddSchoolswiseorder = () => {
   const [orderNo, setOrderNo] = useState('');
   const [noOfDays, setNoOfDays] = useState<number | null>(null);
   const [period, setPeriod] = useState('');
+  const [financialYear, setFinancialYear] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [excelData, setExcelData] = useState<ExcelRow[]>([]);
 
@@ -156,7 +159,7 @@ const AddSchoolswiseorder = () => {
     zpOrders.forEach(order => {
       options.push({
         value: order.id.toString(),
-        label: order.order_no
+        label: `${order.order_no} (${order.financial_year})`
       });
     });
     return options;
@@ -170,10 +173,12 @@ const AddSchoolswiseorder = () => {
       if (selectedOrder) {
         setNoOfDays(selectedOrder.no_of_days);
         setPeriod(selectedOrder.period);
+        setFinancialYear(selectedOrder.financial_year);
       }
     } else {
       setNoOfDays(null);
       setPeriod('');
+      setFinancialYear('');
     }
   };
 
@@ -222,6 +227,7 @@ const AddSchoolswiseorder = () => {
     setOrderNo('');
     setNoOfDays(null);
     setPeriod('');
+    setFinancialYear('');
     setSelectedFile(null);
     setExcelData([]);
     setEditId(null);
@@ -370,7 +376,7 @@ const AddSchoolswiseorder = () => {
                 <MdDelete className="inline-block align-middle text-lg" />
               </span>
             )}
-           
+
           </div>
         );
       }
@@ -378,6 +384,7 @@ const AddSchoolswiseorder = () => {
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
+    { key: 'financial_year', label: 'Financial Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
 
@@ -406,60 +413,75 @@ const AddSchoolswiseorder = () => {
         data={schoolWiseOrders}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
-          <div className={`grid grid-cols-1 gap-x-6 gap-y-5 ${orderNo ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
-            <div>
-              <Label>Select Order Number</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
-                value={orderNo}
-                onChange={(e) => handleOrderChange(e.target.value)}
-              >
-                {orderNoOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
+          <div className="space-y-6">
+            {/* First row - 3 fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-5">
+              <div>
+                <Label>Select Order Number</Label>
+                <select
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
+                  value={orderNo}
+                  onChange={(e) => handleOrderChange(e.target.value)}
+                >
+                  {orderNoOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
+              </div>
+
+              {orderNo && (
+                <>
+                  <div>
+                    <Label>No of Days</Label>
+                    <input
+                      type="number"
+                      value={noOfDays || ''}
+                      disabled
+                      className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
+                    />
+                  </div>
+                  <div>
+                    <Label>Period</Label>
+                    <input
+                      type="text"
+                      value={period}
+                      disabled
+                      className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
-            {orderNo && (
-              <>
-                <div>
-                  <Label>No of Days</Label>
-                  <input
-                    type="number"
-                    value={noOfDays || ''}
-                    disabled
-                    className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
-                  />
-                </div>
-                <div>
-                  <Label>Period</Label>
-                  <input
-                    type="text"
-                    value={period}
-                    disabled
-                    className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className={orderNo ? "sm:col-span-3" : ""}>
-              <Label>Excel File</Label>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.file ? "border-red-500" : ""}`}
-              />
-              {error.file && <div className="text-red-500 text-sm mt-1 pl-1">{error.file}</div>}
-              {selectedFile && (
-                <div className="text-green-600 text-sm mt-1 pl-1">
-                  Selected: {selectedFile.name} ({excelData.length} rows)
-                </div>
-              )}
+            {/* Second row - 2 fields in flex */}
+            <div className="flex flex-col sm:flex-row gap-x-6 gap-y-5">
+              <div className="flex-1">
+                <Label>Financial Year</Label>
+                <input
+                  type="text"
+                  value={financialYear}
+                  disabled
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
+                />
+              </div>
+              <div className="flex-1">
+                <Label>Excel File</Label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileChange}
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.file ? "border-red-500" : ""}`}
+                />
+                {error.file && <div className="text-red-500 text-sm mt-1 pl-1">{error.file}</div>}
+                {selectedFile && (
+                  <div className="text-green-600 text-sm mt-1 pl-1">
+                    Selected: {selectedFile.name} ({excelData.length} rows)
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         }
@@ -467,18 +489,33 @@ const AddSchoolswiseorder = () => {
         title="Add Schools Wise Order Details"
         filterOptions={[]}
         submitbutton={
-          <button
-            type='button'
-            onClick={handleSave}
-            className='bg-blue-700 text-white py-2 p-2 rounded'
-            disabled={loading}
-          >
-            {loading ? 'Submitting...' : 'Save'}
-          </button>
+          <div className="flex gap-3 items-center">
+
+            <button
+              type='button'
+              onClick={handleSave}
+              className='bg-blue-700 text-white py-2 px-4 rounded'
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Save'}
+            </button>
+            <a
+              href="/excel/sample_school_wise_order.xlsx"
+              download="sample_school_wise_order.xlsx"
+              className="inline-flex items-center gap-2 px-2 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Sample
+            </a>
+          </div>
         }
+
+        // ... existing code ...
         searchKey="schoolname"
         groupByKey="order_no"
-        colspanKeys={['order_no', 'no_of_days', 'period']}
+        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year']}
       />
 
       {/* View Details Modal */}
@@ -501,6 +538,7 @@ const AddSchoolswiseorder = () => {
 
               <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{viewItem.no_of_days}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{viewItem.period}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Financial Year: </span>{viewItem.financial_year}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Total Weight: </span>{viewItem.total_weight} kg</div>
             </div>
 

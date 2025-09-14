@@ -17,20 +17,20 @@ export async function GET() {
 // POST - Create new ZP order detail
 export async function POST(request: Request) {
     try {
-        const { order_no, no_of_days, period } = await request.json();
+        const { order_no, no_of_days, period, financial_year } = await request.json();
 
         // Validation
-        if (!order_no || !no_of_days || !period) {
+        if (!order_no || !no_of_days || !period || !financial_year) {
             return NextResponse.json(
-                { error: 'Order No, No of Days, and Period are required' },
+                { error: 'Order No, No of Days, Period, and Financial Year are required' },
                 { status: 400 }
             );
         }
 
         const [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO zp_order_details (order_no, no_of_days, period, status) 
-       VALUES (?, ?, ?, 'Active')`,
-            [order_no, no_of_days, period]
+            `INSERT INTO zp_order_details (order_no, no_of_days, period, financial_year, status) 
+       VALUES (?, ?, ?, ?, 'Active')`,
+            [order_no, no_of_days, period, financial_year]
         );
 
         return NextResponse.json({
@@ -49,21 +49,21 @@ export async function POST(request: Request) {
 // PUT - Update ZP order detail
 export async function PUT(request: Request) {
     try {
-        const { id, order_no, no_of_days, period } = await request.json();
+        const { id, order_no, no_of_days, period, financial_year } = await request.json();
 
         // Validation
-        if (!id || !order_no || !no_of_days || !period) {
+        if (!id || !order_no || !no_of_days || !period || !financial_year) {
             return NextResponse.json(
-                { error: 'ID, Order No, No of Days, and Period are required' },
+                { error: 'ID, Order No, No of Days, Period, and Financial Year are required' },
                 { status: 400 }
             );
         }
 
         const [result] = await pool.query<ResultSetHeader>(
             `UPDATE zp_order_details 
-       SET order_no = ?, no_of_days = ?, period = ?, updated_at = NOW()
+       SET order_no = ?, no_of_days = ?, period = ?, financial_year = ?, updated_at = NOW()
        WHERE id = ?`,
-            [order_no, no_of_days, period, id]
+            [order_no, no_of_days, period, financial_year, id]
         );
 
         if (result.affectedRows === 0) {

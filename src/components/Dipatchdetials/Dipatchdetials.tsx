@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 import { Filterdispached } from "../tables/Filterdispached";
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
 
 interface ZPOrderDetail {
   id: number;
@@ -26,6 +28,28 @@ interface SchoolWiseOrder {
   udaisno: string;
   status: string;
   created_at: string;
+}
+
+// Add proper type declarations for flatpickr
+declare module 'flatpickr' {
+  interface Instance {
+    destroy(): void;
+    clear(): void;
+  }
+  
+  interface BaseOptions {
+    dateFormat?: string;
+    defaultDate?: Date | string | number | Date[] | string[] | number[];
+    onChange?: (selectedDates: Date[], dateStr: string, instance: Instance) => void;
+    static?: boolean;
+    monthSelectorType?: "static" | "dropdown";
+    enableTime?: boolean;
+    allowInput?: boolean;
+    clickOpens?: boolean;
+    locale?: {
+      firstDayOfWeek?: number;
+    };
+  }
 }
 
 interface TruckRow {
@@ -94,8 +118,9 @@ interface PrintModalProps {
 }
 
 const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }) => {
-  // const [selectedReceiptType, setSelectedReceiptType] = useState<'kirana' | 'rice' | null>(null);
-
+  const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
+  const [previewContent, setPreviewContent] = useState<string>('');
+  
   // Separate rice items from other items - तांदुळ is rice
   const riceItems = dispatchData.items.filter(item => {
     const itemName = item.name.toLowerCase();
@@ -111,7 +136,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
       !itemName.includes('तांदुळ');
   });
 
-  const generateCleanPDF = async (type: 'kirana' | 'rice') => {
+  const generatePreview = (type: 'kirana' | 'rice') => {
     const items = type === 'rice' ? riceItems : kiranaItems;
 
     if (items.length === 0) {
@@ -119,159 +144,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
       return;
     }
 
-    try {
-      // Dynamically import the PDF libraries
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).jsPDF;
-
-      // Create a temporary div with the receipt content
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.style.width = '210mm'; // A4 width
-      tempDiv.style.padding = '20mm';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '14px';
-      tempDiv.style.lineHeight = '1.4';
-      tempDiv.style.color = '#000';
-      tempDiv.style.backgroundColor = '#fff';
-
-      // Create the HTML content
-      tempDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">डिलीव्हरी चलन</div>
-          <div style="font-size: 16px; font-weight: 500; margin-bottom: 5px;">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-          <div style="font-size: 16px; font-weight: 500; margin-bottom: 5px;">ता. भोकरदन जि. जालना</div>
-          <div style="font-size: 14px; margin-bottom: 5px;">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
-        </div>
-
-        <div style="margin-bottom: 15px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <div>पावती क्र- <strong>${dispatchData.dispatch_code}</strong></div>
-            <div>दिनांक : <strong>${dispatchData.date}</strong></div>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <div>Udise No.- <strong>${dispatchData.udaisno}</strong></div>
-            <div>तालुका: <strong>${dispatchData.taluka}</strong></div>
-          </div>
-        </div>
-
-        <div style="margin: 15px 0;">
-          <div style="margin-bottom: 5px;">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
-          <div style="margin-bottom: 5px;">शाळेचे नाव: <strong>${dispatchData.schoolname}</strong></div>
-          <div style="margin-bottom: 5px;">केंद्र / शाळेचा पुर्ण पत्ता: <strong>${dispatchData.center_name}</strong></div>
-        </div>
-
-        <div style="margin: 15px 0; text-align: justify; line-height: 1.6;">
-          आपल्या मागणी प्रमाणे आपणास माहे जुन-जुलै 2025 (38) दिवस कालावधी साठी सन 2025-2026 करीता 
-          इयत्ता 1 ली ते 5 वी साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी 
-          मालाचा पुरवठा वाहन क्रमांक <strong>${dispatchData.truckNo}</strong> मधुन करण्यात आला आहे.
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; text-align: center;">अ.क्रं.</th>
-              <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; text-align: center;">धान्याचे नाव</th>
-              <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; text-align: center;">वजन किलो ग्रॅम</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map((item, index) => `
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px; text-align: center;">${index + 1}</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: left;">${item.name}</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.qty}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div style="margin: 15px 0; text-align: justify; line-height: 1.6;">
-          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष 
-          मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
-        </div>
-
-        <div style="margin-top: 40px;">
-          <div style="display: flex; justify-content: space-between; font-size: 14px;">
-            <div style="text-align: left; width: 50%;">
-              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर<br>
-              ता. भोकरदन जि. जालना
-            </div>
-            <div style="text-align: right; width: 50%;">
-              माल ताब्यात घेणाऱ्याची सही व शिक्का
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Add to document
-      document.body.appendChild(tempDiv);
-
-      // Generate canvas from HTML
-      const canvas = await html2canvas(tempDiv, {
-        useCORS: true,
-        allowTaint: true,
-        background: '#ffffff',
-        width: tempDiv.offsetWidth,
-        height: tempDiv.offsetHeight
-      });
-
-      // Remove temporary div
-      document.body.removeChild(tempDiv);
-
-      // Create PDF
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Save the PDF
-      const fileName = `${type === 'rice' ? 'Rice' : 'Kirana'}_Receipt_${dispatchData.dispatch_code}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
-
-      toast.success(`${type === 'rice' ? 'Rice' : 'Kirana'} PDF downloaded successfully`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
-    }
-  };
-
-  const handlePrint = (type: 'kirana' | 'rice') => {
-    const items = type === 'rice' ? riceItems : kiranaItems;
-
-    if (items.length === 0) {
-      toast.error(`No ${type} items found`);
-      return;
-    }
-
-    // Create print window with clean styles
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const printContent = `
+    const content = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -280,7 +153,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
   <style>
     @page {
       margin: 0;
-      size: A4;
+      size: A5; /* Half of A4 */
     }
     * {
       margin: 0;
@@ -290,11 +163,13 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
-      padding: 20px;
-      font-size: 14px;
-      line-height: 1.4;
+      padding: 15px;
+      font-size: 12px; /* Smaller font for half-size */
+      line-height: 1.3;
       color: #000;
       background: white;
+      width: 148mm; /* A5 width */
+      height: 210mm; /* A5 height */
     }
     .container {
       max-width: 100%;
@@ -302,30 +177,30 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     }
     .header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
     .title {
-      font-size: 20px;
+      font-size: 16px;
       font-weight: bold;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .subtitle {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: 500;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .subtitle-small {
-      font-size: 14px;
-      margin-bottom: 5px;
+      font-size: 12px;
+      margin-bottom: 4px;
     }
     .info-section {
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
     .info-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
+      margin-bottom: 6px;
+      font-size: 12px;
     }
     .info-left, .info-right {
       flex-basis: 50%;
@@ -337,51 +212,51 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
       text-align: right;
     }
     .recipient-info {
-      margin: 15px 0;
+      margin: 12px 0;
     }
     .recipient-info div {
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .description-text {
-      margin: 15px 0;
-      font-size: 14px;
-      line-height: 1.6;
+      margin: 12px 0;
+      font-size: 12px;
+      line-height: 1.4;
       text-align: justify;
     }
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
-      font-size: 14px;
+      margin: 15px 0;
+      font-size: 11px;
     }
     .table th, .table td {
       border: 1px solid #000;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
-      font-size: 14px;
+      font-size: 11px;
     }
     .table th {
       background-color: #f0f0f0;
       font-weight: bold;
     }
     .table td:first-child {
-      width: 50px;
+      width: 40px;
     }
     .table td:nth-child(2) {
       text-align: left;
       width: 60%;
     }
     .table td:last-child {
-      width: 100px;
+      width: 80px;
     }
     .footer {
-      margin-top: 30px;
+      margin-top: 25px;
     }
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 40px;
-      font-size: 14px;
+      margin-top: 30px;
+      font-size: 12px;
     }
     .signature-left {
       text-align: left;
@@ -390,6 +265,25 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     .signature-right {
       text-align: right;
       width: 50%;
+    }
+    
+    /* Hide elements when printing */
+    @media print {
+      body {
+        padding: 10px;
+      }
+      /* Hide any browser-added elements like page numbers, URLs, etc. */
+      @page {
+        margin: 0;
+        size: A5;
+        /* Remove any default headers/footers */
+        marks: none;
+        -webkit-print-color-adjust: exact;
+      }
+      /* Hide URL and page info that browsers might add */
+      ::after, ::before {
+        content: none !important;
+      }
     }
   </style>
 </head>
@@ -461,11 +355,33 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 </html>
     `;
 
-    printWindow.document.write(printContent);
+    setPreviewType(type);
+    setPreviewContent(content);
+  };
+
+  const printPreview = () => {
+    if (!previewContent) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    printWindow.document.write(previewContent);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    
+    // Wait for content to load before printing
+    printWindow.onload = () => {
+      printWindow.focus();
+      
+      // Add a small delay to ensure all content is rendered
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    };
+  };
+
+  const closePreview = () => {
+    setPreviewType(null);
+    setPreviewContent('');
   };
 
   if (!isOpen) return null;
@@ -484,18 +400,12 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
         </div>
 
         <div className="space-y-6">
-          {/* <div className="text-center">
-            <p className="text-lg text-gray-600 mb-6">
-              Select receipt type to print or download
-            </p>
-          </div> */}
-
           {/* Dispatch Data Table */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4">Dispatch Details</h3>
             <div className="bg-gray-50 p-4 rounded-lg mb-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Dispatch Code:</strong> {dispatchData.dispatch_code}</div>
+                <div><strong>Tp No:</strong> {dispatchData.dispatch_code}</div>
                 <div><strong>Date:</strong> {dispatchData.date}</div>
                 <div><strong>School:</strong> {dispatchData.schoolname}</div>
                 <div><strong>Udise No:</strong> {dispatchData.udaisno}</div>
@@ -544,39 +454,57 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center">
             <button
-              onClick={() => {
-                // setSelectedReceiptType('kirana');
-                handlePrint('kirana');
-              }}
+              onClick={() => generatePreview('kirana')}
               className="flex-1 min-w-[200px] px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={kiranaItems.length === 0}
             >
-              Kirana Receipt ({kiranaItems.length} items)
+              Preview Kirana Receipt ({kiranaItems.length} items)
             </button>
 
             <button
-              onClick={() => {
-                // setSelectedReceiptType('rice');
-                handlePrint('rice');
-              }}
+              onClick={() => generatePreview('rice')}
               className="flex-1 min-w-[200px] px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              disabled={riceItems.length === 0}
             >
-              Rice Receipt ({riceItems.length} items)
-            </button>
-
-            <button
-              onClick={() => generateCleanPDF('kirana')}
-              className="flex-1 min-w-[200px] px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-            >
-              Download Kirana PDF
-            </button>
-
-            <button
-              onClick={() => generateCleanPDF('rice')}
-              className="flex-1 min-w-[200px] px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-            >
-              Download Rice PDF
+              Preview Rice Receipt ({riceItems.length} items)
             </button>
           </div>
+
+          {/* Preview Section */}
+          {previewContent && (
+            <div className="mt-6 p-4 border rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">
+                  {previewType === 'rice' ? 'Rice' : 'Kirana'} Receipt Preview
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={printPreview}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Print
+                  </button>
+                  <button
+                    onClick={closePreview}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gray-100 p-4 rounded ">
+                <iframe
+                  srcDoc={previewContent}
+                  className="w-full h-96 border rounded "
+                  title="Receipt Preview"
+                />
+                <p className="text-sm text-gray-600 mt-2">
+                  Note: This is a preview. Click &quot;Print&quot; to open the print dialog.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -607,6 +535,16 @@ const Dipatchdetials = () => {
   const [selectedCenterId, setSelectedCenterId] = useState<string>('');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
 
+  // Date filter state - Initialize with current date
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  });
+
+  // Date picker ref
+  const datePickerRef = useRef<HTMLInputElement>(null);
+  const flatpickrInstanceRef = useRef<flatpickr.Instance | null>(null);
+  
   // Masters
   const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
@@ -616,12 +554,60 @@ const Dipatchdetials = () => {
 
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
+  const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
 
   // State to gate input mode and reset when filters change
   const [didSearch, setDidSearch] = useState(false);
 
   // reset search gate when any filter changes
   useEffect(() => { setDidSearch(false); }, [orderNo, selectedTruckId, selectedCenterId, selectedSchoolId]);
+
+  // Initialize Flatpickr for date picker
+  useEffect(() => {
+    if (datePickerRef.current) {
+      const flatPickr = flatpickr(datePickerRef.current, {
+        dateFormat: "Y-m-d",
+        defaultDate: selectedDate ? new Date(selectedDate) : undefined,
+        onChange: function(selectedDates, dateStr) {
+          setSelectedDate(dateStr);
+        },
+        static: true,
+        monthSelectorType: "static",
+        enableTime: false,
+        allowInput: true,
+        clickOpens: true,
+        locale: {
+          firstDayOfWeek: 1
+        }
+      });
+
+      // Store the instance in ref
+      flatpickrInstanceRef.current = flatPickr;
+  
+      return () => {
+        flatPickr.destroy();
+        flatpickrInstanceRef.current = null;
+      };
+    }
+  }, []);
+  
+
+  // Filter dispatch list based on date
+  useEffect(() => {
+    let filtered = [...dispatchList];
+  
+    // Filter by date only if a date is selected
+    if (selectedDate && selectedDate.trim() !== '') {
+      const selectedDateObj = new Date(selectedDate);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.created_at);
+        return itemDate.toDateString() === selectedDateObj.toDateString();
+      });
+    }
+  
+    setFilteredDispatchList(filtered);
+  }, [dispatchList, selectedDate]);
+  
 
   // Fetchers
   const fetchZpOrders = async () => {
@@ -774,7 +760,6 @@ const Dipatchdetials = () => {
 
   // Input-mode columns
   const inputColumns: Column<DispatchRow>[] = [
-
     { key: 'grain', label: 'Item', accessor: 'grain', render: (row) => <span>{row.grain}</span> },
     { key: 'unit', label: 'Unit', accessor: 'unit', render: (row) => <span>{row.unit}</span> },
     { key: 'totalQty', label: 'Quantity', accessor: 'totalQty', render: (row) => <span>{row.totalQty}</span> },
@@ -818,7 +803,6 @@ const Dipatchdetials = () => {
       render: (r) => (
         <div className="flex items-center justify-between">
           <span>{r.schoolname || r.schoolname}</span>
-      
         </div>
       )
     },
@@ -830,7 +814,6 @@ const Dipatchdetials = () => {
       accessor: 'schoolname',
       render: (r) => (
         <div className="flex items-center justify-between">
-          {/* <span>{r.schoolname || r.schoolname}</span> */}
           <button
             onClick={() => {
               // Get all items for this school and order
@@ -867,79 +850,105 @@ const Dipatchdetials = () => {
         </div>
       )
     },
-    // please do not comment out
-    
-    // { key: 'item_name', label: 'Item', accessor: 'item_name', render: (r) => <span>{r.item_name}</span> },
-    // { key: 'unit', label: 'Unit', accessor: 'unit', render: (r) => <span>{r.unit}</span> },
-    // { key: 'qty_dispatch', label: 'Dispatch', accessor: 'qty_dispatch', render: (r) => <span>{r.qty_dispatch}</span> },
-    // { key: 'bal_qty', label: 'Bal Qty', accessor: 'bal_qty', render: (r) => <span>{r.bal_qty}</span> },
-    // { key: 'created_at', label: 'Created', accessor: 'created_at', render: (r) => <span>{new Date(r.created_at).toLocaleString()}</span> },
   ];
 
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
 
-  const toolbar = (
-    <div className="grid grid-cols-6 gap-2 items-center">
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
-        <select
-          className="h-10  rounded-md border px-3 text-sm"
-          value={orderNo}
-          onChange={(e) => { handleOrderChange(e.target.value); }}
-        >
-          {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedTruckId}
-          onChange={(e) => setSelectedTruckId(e.target.value)}
-        >
-          {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
-        <select
-          className="h-10  rounded-md border px-3 text-sm"
-          value={selectedCenterId}
-          onChange={(e) => setSelectedCenterId(e.target.value)}
-        >
-          {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">School</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedSchoolId}
-          onChange={(e) => setSelectedSchoolId(e.target.value)}
-          disabled={!orderNo}
-        >
-          {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select School'}</option>)}
-        </select>
-      </div>
-      <button
-        type="button"
-        className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
-        onClick={() => {
-          if (!allFiltersSelected) {
-            toast.error('Select Order, Truck, Center, and School');
-            return;
-          }
-          setDidSearch(true);
-        }}
+// Update the toolbar section with the clear button
+const toolbar = (
+  <div className="grid grid-cols-7 gap-2 items-center">
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
+      <select
+        className="h-10  rounded-md border px-3 text-sm"
+        value={orderNo}
+        onChange={(e) => { handleOrderChange(e.target.value); }}
       >
-        Search
-      </button>
+        {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
+      </select>
+    </div>
 
-      <button
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
+      <select
+        className="h-10 rounded-md border px-3 text-sm"
+        value={selectedTruckId}
+        onChange={(e) => setSelectedTruckId(e.target.value)}
+      >
+        {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
+      </select>
+    </div>
+
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
+      <select
+        className="h-10  rounded-md border px-3 text-sm"
+        value={selectedCenterId}
+        onChange={(e) => setSelectedCenterId(e.target.value)}
+      >
+        {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
+      </select>
+    </div>
+
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-600 mb-1 text-left">School</span>
+      <select
+        className="h-10 rounded-md border px-3 text-sm"
+        value={selectedSchoolId}
+        onChange={(e) => setSelectedSchoolId(e.target.value)}
+        disabled={!orderNo}
+      >
+        {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select School'}</option>)}
+      </select>
+    </div>
+
+    {/* Date Picker with Clear Option */}
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+      <div className="relative">
+        <input
+          ref={datePickerRef}
+          type="text"
+          placeholder="Select Date"
+          className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
+          readOnly
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedDate(''); // Clear the date completely
+            // Clear the flatpickr instance
+            if (flatpickrInstanceRef.current) {
+              flatpickrInstanceRef.current.clear();
+            }
+          
+          }}
+          className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+          title="Clear Date Filter"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
+      onClick={() => {
+        if (!allFiltersSelected) {
+          toast.error('Select Order, Truck, Center, and School');
+          return;
+        }
+        setDidSearch(true);
+      }}
+    >
+      Search
+    </button>
+
+    <button
         type="button"
         className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
         onClick={async () => {
@@ -1031,8 +1040,8 @@ const Dipatchdetials = () => {
       >
         {loading ? 'Submitting...' : 'Submit'}
       </button>
-    </div>
-  );
+  </div>
+);
 
   return (
     <div className="">
@@ -1046,7 +1055,7 @@ const Dipatchdetials = () => {
         />
       ) : (
         <Filterdispached
-          data={dispatchList}
+          data={filteredDispatchList}
           columns={listColumns}
           filterOptions={[]}
           filterKey={undefined}

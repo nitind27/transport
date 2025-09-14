@@ -11,6 +11,7 @@ export async function GET() {
                 zod.order_no,
                 zod.no_of_days,
                 zod.period,
+                zod.financial_year,
                 sd.schoolname,
                 sd.udaisno
             FROM school_wise_order_details swo
