@@ -194,7 +194,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   
     { key: 'center', label: 'Center', accessor: 'centername', render: (row) => <span>{(row).centername || 'N/A'}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
-    { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
+    // { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{(row).udaisno || 'N/A'}</span> },
     // NEW: show extra fields
     { key: 'class_1_5', label: 'वर्ग (1-5) पटसंख्या', accessor: 'class_1_5', render: (row) => <span>{row.class_1_5 ?? '-'}</span> },
@@ -330,7 +330,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                    onChange={(e) => {
                   if (/^\d{0,10}$/.test(e.target.value)) {
                     setUdaisNo(e.target.value);
-                    if (e.target.value.length === 11) {
+                    if (e.target.value.length === 15) {
                        setUdaisNo(e.target.value);
                     }
                   }
