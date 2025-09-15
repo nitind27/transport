@@ -27,11 +27,12 @@ const page = async () => {
     ];
 
     return (
-        <div>
+        <div className="grid grid-cols-6 gap-4 md:gap-6">
+            <div className="col-span-12 space-y-6 xl:col-span-7">
+                <Breadcrumbs title="Schools" breadcrumbs={breadcrumbItems} />
+                <Schooldata district={taluka} distoption={dist} village={village} center={center} school={school} />
 
-            <Breadcrumbs title="Schools" breadcrumbs={breadcrumbItems} />
-            <Schooldata district={taluka} distoption={dist} village={village} center={center} school={school} />
-
+            </div>
         </div>
     )
 }

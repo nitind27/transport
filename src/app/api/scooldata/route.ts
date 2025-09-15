@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { schoolname, district, taluka_id, village_id, center, udaisno, status } = body;
+        const { schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status } = body;
 
         if (!schoolname || !district || !taluka_id || !village_id || !center || !udaisno) {
             return NextResponse.json(
@@ -59,8 +59,8 @@ export async function POST(req: Request) {
 
         connection = await pool.getConnection();
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [schoolname, district, taluka_id, village_id, center, udaisno, status ?? 'Active']
+            'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [schoolname, district, taluka_id, village_id, center, udaisno, class_1_5 ?? null, class_6_8 ?? null, mobile1 ?? null, mobile2 ?? null, mobile3 ?? null, status ?? 'Active']
         );
 
         return NextResponse.json({
@@ -82,14 +82,14 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { schoolid , schoolname, district, taluka_id, village_id, center, udaisno, status } = body;
+        const { schoolid , schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status } = body;
 
         if (!schoolid ) {
             return NextResponse.json({ message: 'id is required' }, { status: 400 });
         }
 
         const fieldsToUpdate: string[] = [];
-        const values: (string | number)[] = [];
+        const values: (string | number | null)[] = [];
 
         if (typeof schoolname !== 'undefined') { fieldsToUpdate.push('schoolname = ?'); values.push(schoolname); }
         if (typeof district !== 'undefined' && district !== '') { fieldsToUpdate.push('district = ?'); values.push(district); }
@@ -97,6 +97,11 @@ export async function PUT(req: Request) {
         if (typeof village_id !== 'undefined' && village_id !== '') { fieldsToUpdate.push('village_id = ?'); values.push(village_id); }
         if (typeof center !== 'undefined' && center !== '') { fieldsToUpdate.push('center = ?'); values.push(center); }
         if (typeof udaisno !== 'undefined') { fieldsToUpdate.push('udaisno = ?'); values.push(udaisno); }
+        if (typeof class_1_5 !== 'undefined') { fieldsToUpdate.push('class_1_5 = ?'); values.push(class_1_5 ?? null); }
+        if (typeof class_6_8 !== 'undefined') { fieldsToUpdate.push('class_6_8 = ?'); values.push(class_6_8 ?? null); }
+        if (typeof mobile1 !== 'undefined') { fieldsToUpdate.push('mobile1 = ?'); values.push(mobile1 ?? null); }
+        if (typeof mobile2 !== 'undefined') { fieldsToUpdate.push('mobile2 = ?'); values.push(mobile2 ?? null); }
+        if (typeof mobile3 !== 'undefined') { fieldsToUpdate.push('mobile3 = ?'); values.push(mobile3 ?? null); }
         if (typeof status !== 'undefined') { fieldsToUpdate.push('status = ?'); values.push(status); }
 
         if (fieldsToUpdate.length === 0) {

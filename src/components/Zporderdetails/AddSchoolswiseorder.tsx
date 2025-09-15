@@ -38,6 +38,7 @@ interface SchoolWiseOrder {
   id: number;
   order_id: number;
   school_id: number;
+  class_range: string;
   items_data: string;
   total_weight: number;
   order_no: string;
@@ -72,6 +73,7 @@ interface ExcelRow {
 
 type FormErrors = {
   orderNo?: string;
+  selectedClass?: string;
   file?: string;
 };
 
@@ -93,6 +95,7 @@ const AddSchoolswiseorder = () => {
   const [noOfDays, setNoOfDays] = useState<number | null>(null);
   const [period, setPeriod] = useState('');
   const [financialYear, setFinancialYear] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [excelData, setExcelData] = useState<ExcelRow[]>([]);
 
@@ -228,6 +231,7 @@ const AddSchoolswiseorder = () => {
     setNoOfDays(null);
     setPeriod('');
     setFinancialYear('');
+    setSelectedClass('');
     setSelectedFile(null);
     setExcelData([]);
     setEditId(null);
@@ -242,6 +246,7 @@ const AddSchoolswiseorder = () => {
     setisvalidation(true);
 
     if (!orderNo) newErrors.orderNo = "Order number is required";
+    if (!selectedClass) newErrors.selectedClass = "Class selection is required";
     if (!selectedFile && excelData.length === 0) newErrors.file = "Excel file is required";
 
     setErrors(newErrors);
@@ -292,6 +297,7 @@ const AddSchoolswiseorder = () => {
         const payload = {
           order_id: orderId,
           school_id: school.schoolid,
+          class_range: selectedClass,
           items_data: itemsData,
           total_weight: totalWeight
         };
@@ -385,9 +391,9 @@ const AddSchoolswiseorder = () => {
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
     { key: 'financial_year', label: 'Financial Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
+    { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
-
     { key: 'total_weight', label: 'Total Weight', accessor: 'total_weight', render: (row) => <span>{row.total_weight} kg</span> },
     // { key: 'status', label: 'Status', accessor: 'status', render: (row) => <span>{row.status}</span> },
     {
@@ -456,7 +462,7 @@ const AddSchoolswiseorder = () => {
               )}
             </div>
 
-            {/* Second row - 2 fields in flex */}
+            {/* Second row - 3 fields in flex */}
             <div className="flex flex-col sm:flex-row gap-x-6 gap-y-5">
               <div className="flex-1">
                 <Label>Financial Year</Label>
@@ -466,6 +472,19 @@ const AddSchoolswiseorder = () => {
                   disabled
                   className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-gray-100 text-gray-600 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white/70"
                 />
+              </div>
+              <div className="flex-1">
+                <Label>वर्ग (Class)</Label>
+                <select
+                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.selectedClass ? "border-red-500" : ""}`}
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                >
+                  <option value="">Select Class</option>
+                  <option value="1-5">1-5</option>
+                  <option value="6-8">6-8</option>
+                </select>
+                {error.selectedClass && <div className="text-red-500 text-sm mt-1 pl-1">{error.selectedClass}</div>}
               </div>
               <div className="flex-1">
                 <Label>Excel File</Label>
@@ -515,7 +534,7 @@ const AddSchoolswiseorder = () => {
         // ... existing code ...
         searchKey="schoolname"
         groupByKey="order_no"
-        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year']}
+        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'class_range']}
       />
 
       {/* View Details Modal */}
@@ -539,6 +558,7 @@ const AddSchoolswiseorder = () => {
               <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{viewItem.no_of_days}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{viewItem.period}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Financial Year: </span>{viewItem.financial_year}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Class: </span>{viewItem.class_range}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Total Weight: </span>{viewItem.total_weight} kg</div>
             </div>
 

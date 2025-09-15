@@ -365,7 +365,235 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    printWindow.document.write(previewContent);
+    // Create content with 4 copies
+    const fourCopiesContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>डिलीव्हरी चलन - 4 Copies</title>
+  <style>
+    @page {
+      margin: 0;
+      size: A4;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #000;
+      background: white;
+    }
+    .copy-container {
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-after: always;
+    }
+    .copy-container:last-child {
+      page-break-after: avoid;
+    }
+    .copy-header {
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 5px;
+    }
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .subtitle-small {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .info-section {
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .info-left, .info-right {
+      flex-basis: 50%;
+    }
+    .info-left {
+      text-align: left;
+    }
+    .info-right {
+      text-align: right;
+    }
+    .recipient-info {
+      margin: 12px 0;
+    }
+    .recipient-info div {
+      margin-bottom: 4px;
+    }
+    .description-text {
+      margin: 12px 0;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: justify;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11px;
+    }
+    .table th, .table td {
+      border: 1px solid #000;
+      padding: 6px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    .table td:first-child {
+      width: 40px;
+    }
+    .table td:nth-child(2) {
+      text-align: left;
+      width: 60%;
+    }
+    .table td:last-child {
+      width: 80px;
+    }
+    .footer {
+      margin-top: 25px;
+    }
+    .signature-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      font-size: 12px;
+    }
+    .signature-left {
+      text-align: left;
+      width: 50%;
+    }
+    .signature-right {
+      text-align: right;
+      width: 50%;
+    }
+    
+    /* Hide elements when printing */
+    @media print {
+      body {
+        padding: 10px;
+      }
+      @page {
+        margin: 0;
+        size: A4;
+        marks: none;
+        -webkit-print-color-adjust: exact;
+      }
+      ::after, ::before {
+        content: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${Array.from({ length: 4 }, (_, copyIndex) => `
+    <div class="copy-container">
+      <div class="copy-header">Copy ${copyIndex + 1} of 4</div>
+      <div class="container">
+        <div class="header">
+          <div class="title">डिलीव्हरी चलन</div>
+          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+          <div class="subtitle">ता. भोकरदन जि. जालना</div>
+          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+            <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+          </div>
+          <div class="info-row">
+            <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+          </div>
+        </div>
+
+        <div class="recipient-info">
+          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        </div>
+
+        <div class="description-text">
+          आपल्या मागणी प्रमाणे आपणास माहे जुन-जुलै 2025 (38) दिवस कालावधी साठी सन 2025-2026 करीता इयत्ता 1 ली ते 5 वी साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+        </div>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>अ.क्रं.</th>
+              <th>धान्याचे नाव</th>
+              <th>वजन किलो ग्रॅम</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(previewType === 'rice' ? riceItems : kiranaItems).map((item, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${item.name}</td>
+                <td>${item.qty}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div class="description-text">
+          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+        </div>
+
+        <div class="footer">
+          <div class="signature-section">
+            <div class="signature-left">
+              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरदन जि. जालना
+            </div>
+            <div class="signature-right">
+              माल ताब्यात घेणाऱ्याची सही व शिक्का
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('')}
+</body>
+</html>
+    `;
+    
+    printWindow.document.write(fourCopiesContent);
     printWindow.document.close();
     
     // Wait for content to load before printing

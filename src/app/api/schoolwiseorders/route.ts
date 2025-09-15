@@ -30,20 +30,20 @@ export async function GET() {
 // POST - Create new school-wise order detail
 export async function POST(request: Request) {
     try {
-        const { order_id, school_id, items_data, total_weight } = await request.json();
+        const { order_id, school_id, class_range, items_data, total_weight } = await request.json();
 
         // Validation
-        if (!order_id || !school_id || !items_data) {
+        if (!order_id || !school_id || !class_range || !items_data) {
             return NextResponse.json(
-                { error: 'Order ID, School ID, and Items Data are required' },
+                { error: 'Order ID, School ID, Class Range, and Items Data are required' },
                 { status: 400 }
             );
         }
 
         const [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO school_wise_order_details (order_id, school_id, items_data, total_weight, status) 
-             VALUES (?, ?, ?, ?, 'Active')`,
-            [order_id, school_id, JSON.stringify(items_data), total_weight || 0]
+            `INSERT INTO school_wise_order_details (order_id, school_id, class_range, items_data, total_weight, status) 
+             VALUES (?, ?, ?, ?, ?, 'Active')`,
+            [order_id, school_id, class_range, JSON.stringify(items_data), total_weight || 0]
         );
 
         return NextResponse.json({
@@ -62,21 +62,21 @@ export async function POST(request: Request) {
 // PUT - Update school-wise order detail
 export async function PUT(request: Request) {
     try {
-        const { id, order_id, school_id, items_data, total_weight } = await request.json();
+        const { id, order_id, school_id, class_range, items_data, total_weight } = await request.json();
 
         // Validation
-        if (!id || !order_id || !school_id || !items_data) {
+        if (!id || !order_id || !school_id || !class_range || !items_data) {
             return NextResponse.json(
-                { error: 'ID, Order ID, School ID, and Items Data are required' },
+                { error: 'ID, Order ID, School ID, Class Range, and Items Data are required' },
                 { status: 400 }
             );
         }
 
         const [result] = await pool.query<ResultSetHeader>(
             `UPDATE school_wise_order_details 
-             SET order_id = ?, school_id = ?, items_data = ?, total_weight = ?, updated_at = NOW()
+             SET order_id = ?, school_id = ?, class_range = ?, items_data = ?, total_weight = ?, updated_at = NOW()
              WHERE id = ?`,
-            [order_id, school_id, JSON.stringify(items_data), total_weight || 0, id]
+            [order_id, school_id, class_range, JSON.stringify(items_data), total_weight || 0, id]
         );
 
         if (result.affectedRows === 0) {

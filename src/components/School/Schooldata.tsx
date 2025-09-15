@@ -27,14 +27,29 @@ type FormErrors = {
   udais_no?: string;
 };
 
+type SchoolRow = Taluka & {
+  class_1_5?: number;
+  class_6_8?: number;
+  mobile1?: string;
+  mobile2?: string;
+  mobile3?: string;
+};
+
 const Schooldata = ({ district, distoption, center, school }: Props) => {
-  const [data, setData] = useState<Taluka[]>(school || []);
+  const [data, setData] = useState<SchoolRow[]>(school as SchoolRow[] || []);
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedTaluka, setSelectedTaluka] = useState('');
   // const [selectedVillage, setSelectedVillage] = useState('');
   const [selectedCenter, setSelectedCenter] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [udaisNo, setUdaisNo] = useState('');
+
+  // NEW: extra fields
+  const [class15, setClass15] = useState<string>('');
+  const [class68, setClass68] = useState<string>('');
+  const [mobile1, setMobile1] = useState<string>('');
+  const [mobile2, setMobile2] = useState<string>('');
+  const [mobile3, setMobile3] = useState<string>('');
 
   const [editId, setEditId] = useState<number | null>(null);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
@@ -46,7 +61,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     try {
       const response = await fetch('/api/scooldata');
       const result = await response.json();
-      setData(result);
+      setData(result as SchoolRow[]);
     } catch (error) {
       console.error('Error fetching schools:', error);
     } finally {
@@ -72,6 +87,11 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     setSchoolName('');
     setUdaisNo('');
     setEditId(null);
+    setClass15('');
+    setClass68('');
+    setMobile1('');
+    setMobile2('');
+    setMobile3('');
   };
 
   useEffect(() => {
@@ -112,6 +132,11 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
         center: selectedCenter,
         schoolname: schoolName,
         udaisno: udaisNo,
+        class_1_5: class15 ? Number(class15) : null,
+        class_6_8: class68 ? Number(class68) : null,
+        mobile1: mobile1 || null,
+        mobile2: mobile2 || null,
+        mobile3: mobile3 || null,
         status: "Active",
       };
 
@@ -139,7 +164,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     }
   };
 
-  const handleEdit = (item:Taluka) => {
+  const handleEdit = (item: SchoolRow) => {
     console.log("fasfasf",item)
     setIsActive(!isActive);
     setIsmodelopen(true);
@@ -151,8 +176,13 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     setSelectedCenter(String(item.center ?? ''));
     setSchoolName(item.schoolname ?? '');
     setUdaisNo(item.udaisno ?? '');
+    setClass15(String(item.class_1_5 ?? ''));
+    setClass68(String(item.class_6_8 ?? ''));
+    setMobile1(String(item.mobile1 ?? ''));
+    setMobile2(String(item.mobile2 ?? ''));
+    setMobile3(String(item.mobile3 ?? ''));
   };
-  const columns: Column<Taluka>[] = [
+  const columns: Column<SchoolRow>[] = [
 
     {
       key: 'district',
@@ -164,7 +194,14 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   
     { key: 'center', label: 'Center', accessor: 'centername', render: (row) => <span>{(row).centername || 'N/A'}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
+    { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{(row).udaisno || 'N/A'}</span> },
+    // NEW: show extra fields
+    { key: 'class_1_5', label: 'वर्ग (1-5) पटसंख्या', accessor: 'class_1_5', render: (row) => <span>{row.class_1_5 ?? '-'}</span> },
+    { key: 'class_6_8', label: 'वर्ग (6-8) पटसंख्या', accessor: 'class_6_8', render: (row) => <span>{row.class_6_8 ?? '-'}</span> },
+    { key: 'mobile1', label: 'Mobile 1', accessor: 'mobile1', render: (row) => <span>{row.mobile1 || '-'}</span> },
+    { key: 'mobile2', label: 'Mobile 2', accessor: 'mobile2', render: (row) => <span>{row.mobile2 || '-'}</span> },
+    { key: 'mobile3', label: 'Mobile 3', accessor: 'mobile3', render: (row) => <span>{row.mobile3 || '-'}</span> },
     {
       key: 'actions',
       label: 'Actions',
@@ -198,7 +235,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
         data={data}
         classname={"h-[550px] overflow-y-auto scrollbar-hide"}
         inputfiled={
-          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
             <div>
               <Label>District</Label>
               <select
@@ -245,28 +282,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
               {error.taluka && <div className="text-red-500 text-sm mt-1 pl-1">{error.taluka}</div>}
             </div>
 
-            {/* <div>
-              <Label>Village</Label>
-              <select
-                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
-                  border-gray-300 bg-white text-gray-800`}
-                value={selectedVillage}
-                onChange={(e) => {
-                  setSelectedVillage(e.target.value);
-                  setSelectedCenter('');
-                }}
-              >
-                <option value="">सर्व गावे</option>
-                {village
-                  .filter(v => (!selectedDistrict || v.dist_id == Number(selectedDistrict)) && (!selectedTaluka || v.taluka_id == Number(selectedTaluka)))
-                  .map((v) => (
-                    <option key={v.village_id} value={v.village_id}>
-                      {v.name}
-                    </option>
-                  ))}
-              </select>
-              {error.village && <div className="text-red-500 text-sm mt-1 pl-1">{error.village}</div>}
-            </div> */}
+          
 
             <div>
          
@@ -311,7 +327,6 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 placeholder="Enter UDAIS No"
                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.udais_no ? "border-red-500" : ""}`}
                 value={udaisNo}
-                // onChange={(e) => setUdaisNo(e.target.value)}
                    onChange={(e) => {
                   if (/^\d{0,10}$/.test(e.target.value)) {
                     setUdaisNo(e.target.value);
@@ -323,7 +338,61 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
               />
               {error.udais_no && <div className="text-red-500 text-sm mt-1 pl-1">{error.udais_no}</div>}
             </div>
-          </div>
+            <div>
+                <Label>वर्ग (1-5) पटसंख्या</Label>
+                <input
+                  type="number"
+                  min="0"
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  value={class15}
+                  onChange={(e) => { if (/^\d*$/.test(e.target.value)) setClass15(e.target.value) }}
+                />
+              </div>
+    
+              <div>
+                <Label>वर्ग (6-8) पटसंख्या</Label>
+                <input
+                  type="number"
+                  min="0"
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  value={class68}
+                  onChange={(e) => { if (/^\d*$/.test(e.target.value)) setClass68(e.target.value) }}
+                />
+              </div>
+
+              {/* <div className="sm:col-span-2 font-semibold text-gray-700">Mobile Numbers</div> */}
+              <div>
+                <Label>Mobile 1</Label>
+                <input
+                  type="tel"
+                  placeholder="10-digit"
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  value={mobile1}
+                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile1(e.target.value) }}
+                />
+              </div>
+              <div>
+                <Label>Mobile 2</Label>
+                <input
+                  type="tel"
+                  placeholder="10-digit"
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  value={mobile2}
+                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile2(e.target.value) }}
+                />
+              </div>
+              <div>
+                <Label>Mobile 3</Label>
+                <input
+                  type="tel"
+                  placeholder="10-digit"
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  value={mobile3}
+                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile3(e.target.value) }}
+                />
+              </div>
+            </div>
+        
         }
         columns={columns}
         title="Schools"
