@@ -328,7 +328,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.udais_no ? "border-red-500" : ""}`}
                 value={udaisNo}
                    onChange={(e) => {
-                  if (/^\d{0,10}$/.test(e.target.value)) {
+                  if (/^\d{0,15}$/.test(e.target.value)) {
                     setUdaisNo(e.target.value);
                     if (e.target.value.length === 15) {
                        setUdaisNo(e.target.value);
