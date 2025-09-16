@@ -4,7 +4,7 @@ import pool from '@/lib/db';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 interface ScoolRow {
-    schoolid : number;
+    schoolid: number;
     name: string;
     dist: number;
     taluka: number;
@@ -48,19 +48,18 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status } = body;
-
+        const { schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status } = body;
         if (!schoolname || !district || !taluka_id || !village_id || !center || !udaisno) {
-            return NextResponse.json(
-                { message: 'schoolname, district, taluka_id, village_id, center, udais_no are required' },
-                { status: 400 }
-            );
+          return NextResponse.json(
+            { message: 'schoolname, district, taluka_id, village_id, center, udais_no are required' },
+            { status: 400 }
+          );
         }
-
+        
         connection = await pool.getConnection();
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [schoolname, district, taluka_id, village_id, center, udaisno, class_1_5 ?? null, class_6_8 ?? null, mobile1 ?? null, mobile2 ?? null, mobile3 ?? null, status ?? 'Active']
+          'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [schoolname, district, taluka_id, village_id, center, udaisno, mobile1 ?? null, mobile2 ?? null, mobile3 ?? null, status ?? 'Active']
         );
 
         return NextResponse.json({
@@ -82,9 +81,9 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { schoolid , schoolname, district, taluka_id, village_id, center, udaisno, class_1_5, class_6_8, mobile1, mobile2, mobile3, status } = body;
+        const { schoolid, schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status } = body;
 
-        if (!schoolid ) {
+        if (!schoolid) {
             return NextResponse.json({ message: 'id is required' }, { status: 400 });
         }
 
@@ -97,8 +96,8 @@ export async function PUT(req: Request) {
         if (typeof village_id !== 'undefined' && village_id !== '') { fieldsToUpdate.push('village_id = ?'); values.push(village_id); }
         if (typeof center !== 'undefined' && center !== '') { fieldsToUpdate.push('center = ?'); values.push(center); }
         if (typeof udaisno !== 'undefined') { fieldsToUpdate.push('udaisno = ?'); values.push(udaisno); }
-        if (typeof class_1_5 !== 'undefined') { fieldsToUpdate.push('class_1_5 = ?'); values.push(class_1_5 ?? null); }
-        if (typeof class_6_8 !== 'undefined') { fieldsToUpdate.push('class_6_8 = ?'); values.push(class_6_8 ?? null); }
+        // if (typeof class_1_5 !== 'undefined') { fieldsToUpdate.push('class_1_5 = ?'); values.push(class_1_5 ?? null); }
+        // if (typeof class_6_8 !== 'undefined') { fieldsToUpdate.push('class_6_8 = ?'); values.push(class_6_8 ?? null); }
         if (typeof mobile1 !== 'undefined') { fieldsToUpdate.push('mobile1 = ?'); values.push(mobile1 ?? null); }
         if (typeof mobile2 !== 'undefined') { fieldsToUpdate.push('mobile2 = ?'); values.push(mobile2 ?? null); }
         if (typeof mobile3 !== 'undefined') { fieldsToUpdate.push('mobile3 = ?'); values.push(mobile3 ?? null); }
@@ -108,7 +107,7 @@ export async function PUT(req: Request) {
             return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
         }
 
-        values.push(schoolid );
+        values.push(schoolid);
 
         connection = await pool.getConnection();
         const query = `UPDATE schooldata SET ${fieldsToUpdate.join(', ')} WHERE schoolid  = ?`;

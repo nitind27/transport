@@ -9,6 +9,8 @@ import { useToggleContext } from '@/context/ToggleContext';
 import { Taluka } from '../Taluka/Taluka';
 import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
+import { utils, writeFile } from 'xlsx';
+import { useRef } from 'react';
 
 type Props = {
   district: Taluka[];
@@ -28,8 +30,8 @@ type FormErrors = {
 };
 
 type SchoolRow = Taluka & {
-  class_1_5?: number;
-  class_6_8?: number;
+  // class_1_5?: number;
+  // class_6_8?: number;
   mobile1?: string;
   mobile2?: string;
   mobile3?: string;
@@ -45,8 +47,8 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   const [udaisNo, setUdaisNo] = useState('');
 
   // NEW: extra fields
-  const [class15, setClass15] = useState<string>('');
-  const [class68, setClass68] = useState<string>('');
+  // const [class15, setClass15] = useState<string>('');
+  // const [class68, setClass68] = useState<string>('');
   const [mobile1, setMobile1] = useState<string>('');
   const [mobile2, setMobile2] = useState<string>('');
   const [mobile3, setMobile3] = useState<string>('');
@@ -87,8 +89,8 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     setSchoolName('');
     setUdaisNo('');
     setEditId(null);
-    setClass15('');
-    setClass68('');
+    // setClass15('');
+    // setClass68('');
     setMobile1('');
     setMobile2('');
     setMobile3('');
@@ -125,15 +127,15 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     try {
       const requestBody = {
         // keep field names consistent for both create and update
-        ...(isEditMode ? {schoolid: editId } : {}),
+        ...(isEditMode ? { schoolid: editId } : {}),
         district: selectedDistrict,
         taluka_id: selectedTaluka,
         village_id: 1,
         center: selectedCenter,
         schoolname: schoolName,
         udaisno: udaisNo,
-        class_1_5: class15 ? Number(class15) : null,
-        class_6_8: class68 ? Number(class68) : null,
+        // class_1_5: class15 ? Number(class15) : null,
+        // class_6_8: class68 ? Number(class68) : null,
         mobile1: mobile1 || null,
         mobile2: mobile2 || null,
         mobile3: mobile3 || null,
@@ -165,7 +167,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
   };
 
   const handleEdit = (item: SchoolRow) => {
-    console.log("fasfasf",item)
+    console.log("fasfasf", item)
     setIsActive(!isActive);
     setIsmodelopen(true);
     setIsEditmode(true);
@@ -176,8 +178,8 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     setSelectedCenter(String(item.center ?? ''));
     setSchoolName(item.schoolname ?? '');
     setUdaisNo(item.udaisno ?? '');
-    setClass15(String(item.class_1_5 ?? ''));
-    setClass68(String(item.class_6_8 ?? ''));
+    // setClass15(String(item.class_1_5 ?? ''));
+    // setClass68(String(item.class_6_8 ?? ''));
     setMobile1(String(item.mobile1 ?? ''));
     setMobile2(String(item.mobile2 ?? ''));
     setMobile3(String(item.mobile3 ?? ''));
@@ -191,14 +193,14 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
       render: (data) => <span>{(data).districtname}</span>
     },
     { key: 'taluka', label: 'Taluka', accessor: 'talukaname', render: (row) => <span>{(row).talukaname || 'N/A'}</span> },
-  
+
     { key: 'center', label: 'Center', accessor: 'centername', render: (row) => <span>{(row).centername || 'N/A'}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
     // { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{(row).schoolname || 'N/A'}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{(row).udaisno || 'N/A'}</span> },
     // NEW: show extra fields
-    { key: 'class_1_5', label: 'वर्ग (1-5) पटसंख्या', accessor: 'class_1_5', render: (row) => <span>{row.class_1_5 ?? '-'}</span> },
-    { key: 'class_6_8', label: 'वर्ग (6-8) पटसंख्या', accessor: 'class_6_8', render: (row) => <span>{row.class_6_8 ?? '-'}</span> },
+    // { key: 'class_1_5', label: 'वर्ग (1-5) पटसंख्या', accessor: 'class_1_5', render: (row) => <span>{row.class_1_5 ?? '-'}</span> },
+    // { key: 'class_6_8', label: 'वर्ग (6-8) पटसंख्या', accessor: 'class_6_8', render: (row) => <span>{row.class_6_8 ?? '-'}</span> },
     { key: 'mobile1', label: 'Mobile 1', accessor: 'mobile1', render: (row) => <span>{row.mobile1 || '-'}</span> },
     { key: 'mobile2', label: 'Mobile 2', accessor: 'mobile2', render: (row) => <span>{row.mobile2 || '-'}</span> },
     { key: 'mobile3', label: 'Mobile 3', accessor: 'mobile3', render: (row) => <span>{row.mobile3 || '-'}</span> },
@@ -223,11 +225,56 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
               newstatus={(row).status || 'Active'}
             />
           </span>
-        
+
         </div>
       )
     }
   ];
+
+  // Excel template download
+  const templateHeaders = ['जिल्हा', 'तालुका', 'केंद्र', 'विद्यालय नाव', 'यूडीएआयएस', 'मोबाइल 1', 'मोबाइल 2', 'मोबाइल 3'];
+  const handleDownloadTemplate = () => {
+    const ws = utils.aoa_to_sheet([templateHeaders]);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Schools');
+    writeFile(wb, 'school_import_template.xlsx');
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/schooldataecelimport', {
+        method: 'POST',
+        body: form,
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(out?.message || 'Import failed');
+      } else {
+        const inserted = out?.inserted ?? 0;
+        const updated = out?.updated ?? 0;
+        const errors = out?.errors ?? [];
+        toast.success(`Import done. Inserted: ${inserted}, Updated: ${updated}`);
+        if (errors.length) {
+          console.warn('Import row errors:', errors);
+          toast.warn(`Skipped rows: ${errors.length}. Check console for details.`);
+        }
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Import error:', err);
+      toast.error('Import failed');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="mt-5">
@@ -269,7 +316,7 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                   // setSelectedVillage('');
                   setSelectedCenter('');
                 }}
-              >   
+              >
                 <option value="">सर्व तालुका</option>
                 {district
                   .filter(t => !selectedDistrict || t.dist_id == Number(selectedDistrict))
@@ -282,10 +329,10 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
               {error.taluka && <div className="text-red-500 text-sm mt-1 pl-1">{error.taluka}</div>}
             </div>
 
-          
+
 
             <div>
-         
+
               <Label>Center</Label>
               <select
                 className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
@@ -327,72 +374,52 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
                 placeholder="Enter UDAIS No"
                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.udais_no ? "border-red-500" : ""}`}
                 value={udaisNo}
-                   onChange={(e) => {
+                onChange={(e) => {
                   if (/^\d{0,15}$/.test(e.target.value)) {
                     setUdaisNo(e.target.value);
                     if (e.target.value.length === 15) {
-                       setUdaisNo(e.target.value);
+                      setUdaisNo(e.target.value);
                     }
                   }
                 }}
               />
               {error.udais_no && <div className="text-red-500 text-sm mt-1 pl-1">{error.udais_no}</div>}
             </div>
-            <div>
-                <Label>वर्ग (1-5) पटसंख्या</Label>
-                <input
-                  type="number"
-                  min="0"
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  value={class15}
-                  onChange={(e) => { if (/^\d*$/.test(e.target.value)) setClass15(e.target.value) }}
-                />
-              </div>
-    
-              <div>
-                <Label>वर्ग (6-8) पटसंख्या</Label>
-                <input
-                  type="number"
-                  min="0"
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  value={class68}
-                  onChange={(e) => { if (/^\d*$/.test(e.target.value)) setClass68(e.target.value) }}
-                />
-              </div>
 
-              {/* <div className="sm:col-span-2 font-semibold text-gray-700">Mobile Numbers</div> */}
-              <div>
-                <Label>Mobile 1</Label>
-                <input
-                  type="tel"
-                  placeholder="10-digit"
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  value={mobile1}
-                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile1(e.target.value) }}
-                />
-              </div>
-              <div>
-                <Label>Mobile 2</Label>
-                <input
-                  type="tel"
-                  placeholder="10-digit"
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  value={mobile2}
-                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile2(e.target.value) }}
-                />
-              </div>
-              <div>
-                <Label>Mobile 3</Label>
-                <input
-                  type="tel"
-                  placeholder="10-digit"
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                  value={mobile3}
-                  onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile3(e.target.value) }}
-                />
-              </div>
+
+            {/* <div className="sm:col-span-2 font-semibold text-gray-700">Mobile Numbers</div> */}
+            <div>
+              <Label>Mobile 1</Label>
+              <input
+                type="tel"
+                placeholder="10-digit"
+                className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                value={mobile1}
+                onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile1(e.target.value) }}
+              />
             </div>
-        
+            <div>
+              <Label>Mobile 2</Label>
+              <input
+                type="tel"
+                placeholder="10-digit"
+                className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                value={mobile2}
+                onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile2(e.target.value) }}
+              />
+            </div>
+            <div>
+              <Label>Mobile 3</Label>
+              <input
+                type="tel"
+                placeholder="10-digit"
+                className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                value={mobile3}
+                onChange={(e) => { if (/^\d{0,10}$/.test(e.target.value)) setMobile3(e.target.value) }}
+              />
+            </div>
+          </div>
+
         }
         columns={columns}
         title="Schools"
@@ -408,6 +435,38 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
           </button>
         }
         searchKey="name"
+        actionsRight={
+          <>
+
+            <span>
+
+
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="bg-emerald-600 text-white px-3 py-2 rounded hover:bg-emerald-700 ml-2"
+                disabled={loading}
+              >
+                Excel Template Download
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-indigo-600 text-white px-3 py-2 rounded hover:bg-indigo-700 ml-2"
+                disabled={loading}
+              >
+                Excel Import
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </span>
+          </>
+        }
       />
     </div>
   );

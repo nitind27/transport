@@ -916,7 +916,7 @@ const Dipatchdetials = () => {
 
   const centerOptions = useMemo(() => [
     { value: '', label: 'Select Center' },
-    ...centerList.map(c => ({ value: String(c.center_id), label: c.name || c.marathi_name || String(c.center_id) }))
+    ...centerList.map(c => ({ value: String(c.center_id), label: c.marathi_name || c.marathi_name || String(c.center_id) }))
   ], [centerList]);
 
   const schoolOptions = useMemo(() => {

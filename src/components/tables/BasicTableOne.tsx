@@ -15,6 +15,7 @@ type Props<T> = {
   title?: string;
   searchKey?: string;
   classname?: string;
+   actionsRight?: React.ReactNode;
 };
 
 export function ReusableTable<T extends object>({
@@ -26,6 +27,7 @@ export function ReusableTable<T extends object>({
   title,
   submitbutton,
   inputfiled,
+  actionsRight,
 }: Props<T>) {
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -101,12 +103,15 @@ export function ReusableTable<T extends object>({
       </div>
 
       <div className="w-full md:w-auto">
+      {/* {actionsRight} */}
+      
         <FormInModal
           inputfiled={inputfiled}
           title={title}
           submitbutton={submitbutton}
           classname={classname}
         />
+        {actionsRight}
       </div>
     </div>
   );

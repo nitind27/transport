@@ -25,13 +25,14 @@ interface ZPOrderDetail {
 }
 
 interface School {
-
   id: number;
   schoolid: number;
   name: string;
   schoolname: string;
   udaisno: string;
   status: string;
+  center?: number;
+  centername?: string;
 }
 
 interface SchoolWiseOrder {
@@ -51,25 +52,6 @@ interface SchoolWiseOrder {
   created_at: string;
 }
 
-interface ExcelRow {
-  'School Name': string;
-  'तांदुळ': number;
-  'मुंगदाळ': number;
-  'मसूरदाळ': number;
-  'तूरदाल': number;
-  'हरभरा': number;
-  'चवळी': number;
-  'मटकी': number;
-  'मुंग': number;
-  'वाटाणा': number;
-  'सोया वडी': number;
-  'मसाला': number;
-  'सोया तेल': number;
-  'हळद': number;
-  'मीठ': number;
-  'मोहरी': number;
-  'एकूण वजन': number;
-}
 
 type FormErrors = {
   orderNo?: string;
@@ -84,6 +66,21 @@ type ExtendedSWO = SchoolWiseOrder & {
 };
 
 
+
+interface ParsedExcelRow {
+  _schoolName: string;
+  _udise: string;
+  _centerName: string;
+  _classRange: string;
+  _patSankhya: number;
+  _totalWeight: number;
+  _items: Record<string, number>;
+}
+
+interface ItemsData {
+  [key: string]: number;
+}
+
 const AddSchoolswiseorder = () => {
   const { isEditMode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
@@ -97,7 +94,7 @@ const AddSchoolswiseorder = () => {
   const [financialYear, setFinancialYear] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [excelData, setExcelData] = useState<ExcelRow[]>([]);
+  const [excelData, setExcelData] = useState<ParsedExcelRow[]>([]);
 
   // Data states
   const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
@@ -112,7 +109,7 @@ const AddSchoolswiseorder = () => {
     setViewItem(row);
     setViewOpen(true);
   };
-  console.log("fastchecj", schools)
+
   // Fetch ZP Orders
   const fetchZpOrders = async () => {
     try {
@@ -131,7 +128,6 @@ const AddSchoolswiseorder = () => {
       const response = await fetch('/api/scooldata');
       const data = await response.json();
       setSchools(data);
-
     } catch (error) {
       console.error('Error fetching schools:', error);
       toast.error('Failed to fetch school data');
@@ -210,10 +206,66 @@ const AddSchoolswiseorder = () => {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet) as ExcelRow[];
 
-        setExcelData(jsonData);
-        toast.success(`Excel file loaded successfully. Found ${jsonData.length} rows.`);
+        const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
+
+        const norm = (s: unknown) => String(s ?? "").trim();
+        const num = (v: unknown) => {
+          const n = Number(String(v ?? "").toString().replace(/[, ]+/g, ''));
+          return isNaN(n) ? 0 : n;
+        };
+        const pick = (row: Record<string, unknown>, keys: string[]) => {
+          for (const k of keys) {
+            const v = row[k];
+            if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+          }
+          return undefined;
+        };
+
+        const normalized: ParsedExcelRow[] = raw.map((r): ParsedExcelRow => {
+          const schoolName = pick(r, ['School Name', 'शाळा', 'विद्यालय नाव']);
+          const udise = pick(r, ['UDISE Code', 'यूडीएआयएस', 'UDISE', 'UDISE No', 'UDAIS']);
+          const centerName = pick(r, ['केंद्र', 'Center']);
+          const classRange = pick(r, ['वर्ग', 'Class']);
+          const patSankhya = pick(r, ['पट संख्या', 'पटसंख्या', 'पट. संख्या']);
+
+          const items: Record<string, number> = {
+            'तांदुळ': num(pick(r, ['तांदुळ'])),
+            'मुंगदाळ': num(pick(r, ['मुंगदाळ'])),
+            'मसूरदाळ': num(pick(r, ['मसूरदाळ'])),
+            'तूरदाळ': num(pick(r, ['तूरदाळ', 'तूरदाल'])),
+            'हरभरा': num(pick(r, ['हरभरा'])),
+            'चवळी': num(pick(r, ['चवळी'])),
+            'मटकी': num(pick(r, ['मटकी'])),
+            'मुंग': num(pick(r, ['मुंग', 'मुग'])),
+            'वाटाणा': num(pick(r, ['वाटाणा', 'वाटणा'])),
+            'सोया वडी': num(pick(r, ['सोया वडी'])),
+            'मसाला': num(pick(r, ['मसाला'])),
+            'सोया तेल': num(pick(r, ['सोया तेल'])),
+            'हळद': num(pick(r, ['हळद'])),
+            'मीठ': num(pick(r, ['मीठ'])),
+            'मोहरी': num(pick(r, ['मोहरी'])),
+            'चना': num(pick(r, ['चना'])),
+            'जीरा': num(pick(r, ['जीरा'])),
+          };
+
+          const providedTotal = num(pick(r, ['एकूण वजन', 'एकुण वजन']));
+          const computedTotal = Object.values(items).reduce((sum, v) => sum + (Number(v) || 0), 0);
+          const total_weight = providedTotal > 0 ? providedTotal : computedTotal;
+
+          return {
+            _schoolName: norm(schoolName),
+            _udise: norm(udise),
+            _centerName: norm(centerName),
+            _classRange: norm(classRange),
+            _patSankhya: num(patSankhya),
+            _totalWeight: total_weight,
+            _items: items,
+          };
+        });
+
+        setExcelData(normalized);
+        toast.success(`Excel file loaded successfully. Found ${normalized.length} rows.`);
       } catch (error) {
         console.error('Error parsing Excel file:', error);
         toast.error('Error parsing Excel file. Please check the format.');
@@ -244,11 +296,12 @@ const AddSchoolswiseorder = () => {
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
-
+  
     if (!orderNo) newErrors.orderNo = "Order number is required";
-    if (!selectedClass) newErrors.selectedClass = "Class selection is required";
+    const hasClassInExcel = excelData.some((r) => r._classRange);
+    if (!selectedClass && !hasClassInExcel) newErrors.selectedClass = "Class selection is required (in dropdown or Excel)";
     if (!selectedFile && excelData.length === 0) newErrors.file = "Excel file is required";
-
+  
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -260,60 +313,54 @@ const AddSchoolswiseorder = () => {
     try {
       const orderId = parseInt(orderNo);
 
-      // Process each row from Excel data
       for (const row of excelData) {
-        // Find school by name
-        const school = schools.find(s =>
-          s.schoolname.toLowerCase().trim() === row['School Name'].toLowerCase().trim()
-        );
+        const udise = row._udise.trim();
+        const rowSchoolName = row._schoolName.trim();
+        const rowCenterName = row._centerName.trim();
+        const rowClass = row._classRange.trim();
+
+        let school = udise
+          ? schools.find(s => String(s.udaisno || '').trim() === udise)
+          : undefined;
+
+        if (!school && rowSchoolName) {
+          school = schools.find(s => {
+            const byName = String(s.schoolname || '').trim().toLowerCase() === rowSchoolName.toLowerCase();
+            if (!byName) return false;
+            if (rowCenterName && s.centername) {
+              return String(s.centername).trim() === rowCenterName;
+            }
+            return true;
+          });
+        }
 
         if (!school) {
-          toast.warning(`School "${row['School Name']}" not found in database`);
+          toast.warning(`School not found: ${udise ? `UDISE ${udise}` : rowSchoolName || '(no name)'}`);
           continue;
         }
 
-        // Prepare items data in JSON format
-        const itemsData = {
-          'तांदुळ': row['तांदुळ'] || 0,
-          'मुंगदाळ': row['मुंगदाळ'] || 0,
-          'मसूरदाळ': row['मसूरदाळ'] || 0,
-          'तूरदाल': row['तूरदाल'] || 0,
-          'हरभरा': row['हरभरा'] || 0,
-          'चवळी': row['चवळी'] || 0,
-          'मटकी': row['मटकी'] || 0,
-          'मुंग': row['मुंग'] || 0,
-          'वाटाणा': row['वाटाणा'] || 0,
-          'सोया वडी': row['सोया वडी'] || 0,
-          'मसाला': row['मसाला'] || 0,
-          'सोया तेल': row['सोया तेल'] || 0,
-          'हळद': row['हळद'] || 0,
-          'मीठ': row['मीठ'] || 0,
-          'मोहरी': row['मोहरी'] || 0,
+        const itemsData: ItemsData = {
+          ...row._items,
+          'पट संख्या': row._patSankhya || 0,
         };
 
-        const totalWeight = row['एकूण वजन'] || 0;
+        const totalWeight = row._totalWeight || 0;
 
-        // Create or update school-wise order
         const payload = {
           order_id: orderId,
           school_id: school.schoolid,
-          class_range: selectedClass,
+          class_range: rowClass || selectedClass,
           items_data: itemsData,
-          total_weight: totalWeight
+          total_weight: totalWeight,
+          ...(editId && { id: editId })
         };
 
-        const url = editId ? '/api/schoolwiseorders' : '/api/schoolwiseorders';
+        const url = '/api/schoolwiseorders';
         const method = editId ? 'PUT' : 'POST';
-
-        if (editId) {
-          payload.order_id = editId;
-        }
 
         const response = await fetch(url, {
           method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
 
@@ -325,7 +372,7 @@ const AddSchoolswiseorder = () => {
       toast.success(editId ? 'Order updated successfully!' : 'Orders created successfully!');
       reset();
       setEditId(null);
-      fetchSchoolWiseOrders(); // Refresh the data
+      fetchSchoolWiseOrders();
     } catch (error) {
       console.error('Error saving orders:', error);
       toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
@@ -370,7 +417,8 @@ const AddSchoolswiseorder = () => {
       key: 'order_no',
       label: 'Actions',
       render: (row) => {
-        const isFirst = (row as ExtendedSWO)._isFirstInGroup === true;
+        const extendedRow = row as ExtendedSWO;
+        const isFirst = extendedRow._isFirstInGroup === true;
         return (
           <div className="flex gap-2 whitespace-nowrap w-full items-center">
             {isFirst && (
@@ -382,7 +430,6 @@ const AddSchoolswiseorder = () => {
                 <MdDelete className="inline-block align-middle text-lg" />
               </span>
             )}
-
           </div>
         );
       }
@@ -395,15 +442,12 @@ const AddSchoolswiseorder = () => {
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
     { key: 'total_weight', label: 'Total Weight', accessor: 'total_weight', render: (row) => <span>{row.total_weight} kg</span> },
-    // { key: 'status', label: 'Status', accessor: 'status', render: (row) => <span>{row.status}</span> },
     {
       key: 'actions',
       label: 'Actions',
       render: (row) => {
-
         return (
           <div className="flex gap-2 whitespace-nowrap w-full items-center">
-
             <span className='cursor-pointer' onClick={() => handleView(row)} title="View">
               <IoEyeSharp size={20} color='blue' />
             </span>
@@ -509,7 +553,6 @@ const AddSchoolswiseorder = () => {
         filterOptions={[]}
         submitbutton={
           <div className="flex gap-3 items-center">
-
             <button
               type='button'
               onClick={handleSave}
@@ -530,8 +573,6 @@ const AddSchoolswiseorder = () => {
             </a>
           </div>
         }
-
-        // ... existing code ...
         searchKey="schoolname"
         groupByKey="order_no"
         colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'class_range']}
@@ -554,7 +595,6 @@ const AddSchoolswiseorder = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 text-sm">
               <div><span className="font-medium text-gray-600 dark:text-white/70">Order No: </span>{viewItem.order_no}</div>
-
               <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{viewItem.no_of_days}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{viewItem.period}</div>
               <div><span className="font-medium text-gray-600 dark:text-white/70">Financial Year: </span>{viewItem.financial_year}</div>
@@ -576,31 +616,21 @@ const AddSchoolswiseorder = () => {
                   <tbody>
                     {Object.entries(
                       typeof viewItem.items_data === 'string'
-                        ? JSON.parse(viewItem.items_data as unknown as string)
-                        : (viewItem.items_data || {})
+                        ? JSON.parse(viewItem.items_data) as ItemsData
+                        : (viewItem.items_data as unknown as ItemsData || {})
                     )
                       .filter(([, val]) => Number(val) > 0)
                       .map(([key, val], index) => (
                         <tr key={key} className="border-t border-gray-200 dark:border-gray-700">
                           <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{index + 1}</td>
                           <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{key}</td>
-                          <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{val as number}</td>
+                          <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{val}</td>
                         </tr>
                       ))}
                   </tbody>
                 </table>
               </div>
             </div>
-
-            {/* 
-            <div className="flex justify-end">
-              <button
-                onClick={() => setViewOpen(false)}
-                className="bg-gray-600 text-white py-2 px-4 rounded"
-              >
-                Close
-              </button>
-            </div> */}
           </div>
         )}
       </Modal>
