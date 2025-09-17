@@ -90,14 +90,15 @@ export function Schoolwisetable<T extends object>({
   }, [groupedData, groupByKey, groupByKeys]);
 
   // Serial number per group (class-wise when multi-key: order_no + class_range)
+  // Serial number per group (reset within parent group when multi-key)
   const groupSerialMap = useMemo(() => {
     const map = new Map<string, number>();
     const hasMulti = Array.isArray(groupByKeys) && groupByKeys.length > 1;
     if (hasMulti) {
-      const parentCounts = new Map<string, number>(); // counts per order_no
+      const parentCounts = new Map<string, number>(); // counts per parent group (all parts except last)
       groupedData.forEach((group) => {
         const parts = group.groupKey.split("|");
-        const parent = parts[0] ?? "";
+        const parent = parts.slice(0, parts.length - 1).join("|"); // e.g., order_no|class_range
         const next = (parentCounts.get(parent) || 0) + 1;
         parentCounts.set(parent, next);
         map.set(group.groupKey, next);

@@ -127,10 +127,13 @@ const AddSchoolswiseorder = () => {
 
   const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
     const key = row._groupKey || `${row.order_no}|${row.class_range}`;
-    const [order_no, class_range] = key.split("|");
-    const rows = schoolWiseOrders.filter(
-      r => r.order_no === (order_no || row.order_no) && r.class_range === (class_range || row.class_range)
-    );
+    const [order_no, class_range, taluka] = key.split("|");
+    const rows = schoolWiseOrders.filter(r => {
+      const basicMatch = r.order_no === (order_no || row.order_no) && r.class_range === (class_range || row.class_range);
+      if (!taluka) return basicMatch;
+      const s = schools.find(sc => sc.schoolid === r.school_id);
+      return basicMatch && (s?.talukaname || '-') === taluka;
+    });
     setGroupRows(rows);
     setGroupMeta({
       order_no: order_no || row.order_no,
@@ -152,6 +155,16 @@ const AddSchoolswiseorder = () => {
       toast.error('Failed to fetch order details');
     }
   };
+
+  type SWOWithTaluka = SchoolWiseOrder & { taluka: string };
+
+  const dataWithTaluka: SWOWithTaluka[] = useMemo(() => {
+    if (!schoolWiseOrders.length) return [];
+    return schoolWiseOrders.map(r => {
+      const s = schools.find(sc => sc.schoolid === r.school_id);
+      return { ...r, taluka: s?.talukaname || '-' };
+    });
+  }, [schoolWiseOrders, schools]);
 
   // Fetch Schools
   const fetchSchools = async () => {
@@ -460,33 +473,12 @@ const AddSchoolswiseorder = () => {
     }
   };
 
-  const columns: Column<SchoolWiseOrder>[] = [
+  const columns: Column<SWOWithTaluka>[] = [
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
     { key: 'financial_year', label: 'Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
-    {
-      key: 'taluka',
-      label: 'Taluka',
-      render: (row) => {
-        const r = row as ExtendedSWO;
-        if (!r._isFirstInGroup) return null;
-        const key = r._groupKey || `${r.order_no}|${r.class_range}`;
-        const [order_no, class_range] = key.split("|");
-        const rowsInGroup = schoolWiseOrders.filter(
-          x => x.order_no === (order_no || r.order_no) && x.class_range === (class_range || r.class_range)
-        );
-        const talukas = Array.from(
-          new Set(
-            rowsInGroup.map(x => {
-              const s = schools.find(sc => sc.schoolid === x.school_id);
-              return s?.talukaname || '-';
-            })
-          )
-        ).filter(Boolean);
-        return <span>{talukas.length ? talukas.join(', ') : '-'}</span>;
-      }
-    },
+    { key: 'taluka', label: 'Taluka', accessor: 'taluka', render: (row) => <span>{(row as SWOWithTaluka).taluka}</span> },
     { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
     {
       key: 'total_schools',
@@ -517,9 +509,10 @@ const AddSchoolswiseorder = () => {
   ];
 
   return (
-    <div className="">
+  
+        <div className="">
       <Schoolwisetable
-        data={schoolWiseOrders}
+        data={dataWithTaluka}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="space-y-6">
@@ -634,7 +627,7 @@ const AddSchoolswiseorder = () => {
         }
 
         searchKey="schoolname"
-        groupByKeys={['order_no', 'class_range']}
+        groupByKeys={['order_no', 'class_range', 'taluka']}
         colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools', 'actions']}
       />
 
