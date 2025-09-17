@@ -48,6 +48,7 @@ interface SchoolWiseOrder {
   financial_year: string;
   schoolname: string;
   udaisno: string;
+  patsankhya?: number; // added
   status: string;
   created_at: string;
 }
@@ -341,7 +342,7 @@ const AddSchoolswiseorder = () => {
 
         const itemsData: ItemsData = {
           ...row._items,
-          'पट संख्या': row._patSankhya || 0,
+          // removed 'पट संख्या' from items JSON
         };
 
         const totalWeight = row._totalWeight || 0;
@@ -352,6 +353,7 @@ const AddSchoolswiseorder = () => {
           class_range: rowClass || selectedClass,
           items_data: itemsData,
           total_weight: totalWeight,
+          patsankhya: row._patSankhya || 0,
           ...(editId && { id: editId })
         };
 
@@ -441,6 +443,7 @@ const AddSchoolswiseorder = () => {
     { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
     { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
     { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
+    { key: 'patsankhya', label: 'पट संख्या', accessor: 'patsankhya', render: (row) => <span>{(row).patsankhya}</span> },
     { key: 'total_weight', label: 'Total Weight', accessor: 'total_weight', render: (row) => <span>{row.total_weight} kg</span> },
     {
       key: 'actions',

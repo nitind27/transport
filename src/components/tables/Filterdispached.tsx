@@ -354,7 +354,7 @@ export function Filterdispached<T extends Record<string, unknown>>({
     <div className="bg-white rounded-2xl shadow-md border p-4">
       <DataTable
         columns={reactColumns}
-        data={paginatedData}
+        data={filteredData}
         pagination
         paginationPerPage={perPage}
         paginationDefaultPage={currentPage}

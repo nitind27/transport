@@ -1089,6 +1089,7 @@ const Dipatchdetials = () => {
   }, [dispatchList, orderNo, selectedSchoolId]);
 
   // Build input-mode rows with remaining qty (planned - already dispatched)
+  // Build input-mode rows with remaining qty (planned - already dispatched)
   const dispatchRows = useMemo<DispatchRow[]>(() => {
     if (!selectedOrderSchool) return [];
     const items = typeof selectedOrderSchool.items_data === 'string'
@@ -1097,7 +1098,7 @@ const Dipatchdetials = () => {
     const rows: DispatchRow[] = [];
 
     Object.entries(items)
-      .filter(([, v]) => Number(v) > 0)
+      // .filter(([, v]) => Number(v) > 0) // removed to include 0 values as well
       .forEach(([k, v]) => {
         const master = itemGrains.find(g => g.name.trim() === k.trim());
         const planned = Number(v) || 0;
