@@ -296,12 +296,12 @@ const AddSchoolswiseorder = () => {
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
-  
+
     if (!orderNo) newErrors.orderNo = "Order number is required";
     const hasClassInExcel = excelData.some((r) => r._classRange);
     if (!selectedClass && !hasClassInExcel) newErrors.selectedClass = "Class selection is required (in dropdown or Excel)";
     if (!selectedFile && excelData.length === 0) newErrors.file = "Excel file is required";
-  
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -573,8 +573,9 @@ const AddSchoolswiseorder = () => {
             </a>
           </div>
         }
+
         searchKey="schoolname"
-        groupByKey="order_no"
+        groupByKeys={['order_no', 'class_range']}
         colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'class_range']}
       />
 

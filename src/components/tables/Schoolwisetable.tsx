@@ -15,8 +15,9 @@ type Props<T> = {
   title?: string;
   searchKey?: string;
   classname?: string;
-  groupByKey?: keyof T; // New prop for grouping
-  colspanKeys?: (keyof T)[]; // Keys that should use colspan
+  groupByKey?: keyof T;
+  groupByKeys?: (keyof T)[]; // allow multiple keys
+  colspanKeys?: (keyof T)[];
 };
 
 type GroupedData<T> = {
@@ -30,7 +31,6 @@ type ExtendedData<T> = T & {
   _groupCount?: number;
   _groupKey?: string;
 };
-
 export function Schoolwisetable<T extends object>({
   data,
   columns,
@@ -41,6 +41,7 @@ export function Schoolwisetable<T extends object>({
   submitbutton,
   inputfiled,
   groupByKey,
+  groupByKeys, // <-- add this
   colspanKeys = [],
 }: Props<T>) {
   const [filter, setFilter] = useState("");
@@ -48,15 +49,21 @@ export function Schoolwisetable<T extends object>({
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
+  // const isGrouped = !!groupByKey || false;
+
+  // Group data if grouping is provided
   // Group data if groupByKey is provided
+  // Group data if grouping is provided
   const groupedData = useMemo((): GroupedData<T>[] => {
-    if (!groupByKey) return [];
+    const hasMulti = Array.isArray(groupByKeys) && groupByKeys.length > 0;
+    const hasSingle = !!groupByKey;
+    if (!hasMulti && !hasSingle) return [];
 
     const grouped = data.reduce((acc, item) => {
-      const key = String(item[groupByKey]);
-      if (!acc[key]) {
-        acc[key] = [];
-      }
+      const key = hasMulti
+        ? groupByKeys!.map(k => String((item)[k] ?? "")).join("|")
+        : String((item)[groupByKey as keyof T] ?? "");
+      if (!acc[key]) acc[key] = [];
       acc[key].push(item);
       return acc;
     }, {} as Record<string, T[]>);
@@ -66,13 +73,13 @@ export function Schoolwisetable<T extends object>({
       items,
       count: items.length
     }));
-  }, [data, groupByKey]);
+  }, [data, groupByKey, groupByKeys]);
 
-  // Flatten grouped data for display
   const displayData = useMemo((): ExtendedData<T>[] => {
-    if (!groupByKey) return data as ExtendedData<T>[];
-    
-    return groupedData.flatMap((group: GroupedData<T>) => 
+    const isGrouped = (groupByKey) || (groupByKeys && groupByKeys.length);
+    if (!isGrouped) return data as ExtendedData<T>[];
+
+    return groupedData.flatMap((group: GroupedData<T>) =>
       group.items.map((item: T, index: number): ExtendedData<T> => ({
         ...item,
         _isFirstInGroup: index === 0,
@@ -80,7 +87,26 @@ export function Schoolwisetable<T extends object>({
         _groupKey: group.groupKey
       }))
     );
-  }, [groupedData, groupByKey]);
+  }, [groupedData, groupByKey, groupByKeys]);
+
+  // Serial number per group (class-wise when multi-key: order_no + class_range)
+  const groupSerialMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const hasMulti = Array.isArray(groupByKeys) && groupByKeys.length > 1;
+    if (hasMulti) {
+      const parentCounts = new Map<string, number>(); // counts per order_no
+      groupedData.forEach((group) => {
+        const parts = group.groupKey.split("|");
+        const parent = parts[0] ?? "";
+        const next = (parentCounts.get(parent) || 0) + 1;
+        parentCounts.set(parent, next);
+        map.set(group.groupKey, next);
+      });
+    } else {
+      groupedData.forEach((group, idx) => map.set(group.groupKey, idx + 1));
+    }
+    return map;
+  }, [groupedData, groupByKeys]);
 
   // Make sure to include perPage and currentPage in the dependency array!
   const reactColumns = useMemo(() => {
@@ -88,8 +114,11 @@ export function Schoolwisetable<T extends object>({
       {
         name: "SR No.",
         cell: (row: ExtendedData<T>, index: number) => {
-          if (groupByKey && !row._isFirstInGroup) return null;
-          return (perPage * (currentPage - 1)) + index + 1;
+          const isGrouped = (groupByKey) || (groupByKeys && groupByKeys.length);
+
+          if (!isGrouped) return (perPage * (currentPage - 1)) + index + 1;
+          if (!row._isFirstInGroup) return null;
+          return groupSerialMap.get(row._groupKey || "") ?? 0;
         },
         width: "80px",
         ignoreRowClick: true,
@@ -98,17 +127,16 @@ export function Schoolwisetable<T extends object>({
 
     const mappedColumns = columns.map((col) => {
       const isColspanKey = colspanKeys.includes(col.key as keyof T);
-      
+
       return {
         name: col.label,
         selector: (row: T) =>
           col.accessor ? String(row[col.accessor] ?? "") : "",
         cell: (row: ExtendedData<T>) => {
-          // For colspan keys, only show on first row of group
-          if (groupByKey && isColspanKey && !row._isFirstInGroup) {
+          const isGrouped = (groupByKey) || (groupByKeys && groupByKeys.length);
+          if (isGrouped && isColspanKey && !row._isFirstInGroup) {
             return null;
           }
-          
           return col.render
             ? col.render?.(row)
             : (col.accessor ? String(row[col.accessor]) : "");
@@ -119,19 +147,18 @@ export function Schoolwisetable<T extends object>({
     });
 
     return [...baseColumns, ...mappedColumns];
-  }, [columns, perPage, currentPage, groupByKey, colspanKeys]);
+
+  }, [columns, perPage, currentPage, groupByKey, groupByKeys, colspanKeys]);
 
   const filteredData = useMemo((): ExtendedData<T>[] => {
     let tempData = [...displayData];
 
-    // Filter by dropdown value
     if (filter && filterKey) {
       tempData = tempData.filter(
         (row) => String(row[filterKey]) === String(filter)
       );
     }
 
-    // Global search across all keys
     if (search) {
       tempData = tempData.filter((row) =>
         Object.values(row).some((value) =>
@@ -180,12 +207,12 @@ export function Schoolwisetable<T extends object>({
     </div>
   );
 
-  // Custom table component for colspan support
-  if (groupByKey) {
+
+  if ((groupByKey) || (groupByKeys && groupByKeys.length)) {
     return (
       <div className="bg-white rounded-2xl shadow-md border p-4">
         {SubHeaderComponent}
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-200 dark:border-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
@@ -203,31 +230,29 @@ export function Schoolwisetable<T extends object>({
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredData.map((row: ExtendedData<T>, index: number) => (
                 <tr key={index} className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}>
-                  {/* Sr No */}
                   {row._isFirstInGroup ? (
-                    <td 
-                      rowSpan={row._groupCount} 
+                    <td
+                      rowSpan={row._groupCount}
                       className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
                       style={{ verticalAlign: 'top' }}
                     >
-                      {(perPage * (currentPage - 1)) + index + 1}
+                      {groupSerialMap.get(row._groupKey || "") ?? 0}
                     </td>
                   ) : null}
-                  
-                  {/* Other columns */}
+
                   {columns.map((col) => {
                     const isColspanKey = colspanKeys.includes(col.key as keyof T);
                     const cellValue = col.render ? col.render(row) : (col.accessor ? String(row[col.accessor]) : "");
-                    
+
                     if (isColspanKey && !row._isFirstInGroup) {
                       return null;
                     }
-                    
+
                     if (isColspanKey && row._isFirstInGroup) {
                       return (
-                        <td 
+                        <td
                           key={String(col.key)}
-                          rowSpan={row._groupCount} 
+                          rowSpan={row._groupCount}
                           className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
                           style={{ verticalAlign: 'top' }}
                         >
@@ -235,7 +260,7 @@ export function Schoolwisetable<T extends object>({
                         </td>
                       );
                     }
-                    
+
                     return (
                       <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
                         {cellValue}
@@ -277,25 +302,25 @@ export function Schoolwisetable<T extends object>({
               minHeight: "48px",
             },
           },
-         headCells: {
-        style: {
-          fontWeight: "600",
-          // fontSize: "14px",
-          border: "1px solid #ddd",
-          // borderTop: "white",
-          // borderLeft: "white",
-          // borderRight: "white",
-        },
-      },
-      cells: {
-        style: {
-          border: "1px solid #ddd",
-          // borderTop: "white",
-          // borderLeft: "white",
-          // borderRight: "white",
-        },
-      },
-    }}
+          headCells: {
+            style: {
+              fontWeight: "600",
+              // fontSize: "14px",
+              border: "1px solid #ddd",
+              // borderTop: "white",
+              // borderLeft: "white",
+              // borderRight: "white",
+            },
+          },
+          cells: {
+            style: {
+              border: "1px solid #ddd",
+              // borderTop: "white",
+              // borderLeft: "white",
+              // borderRight: "white",
+            },
+          },
+        }}
       />
     </div>
   );

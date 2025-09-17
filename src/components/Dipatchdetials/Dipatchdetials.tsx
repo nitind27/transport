@@ -14,7 +14,6 @@ interface ZPOrderDetail {
   period: string;
   status: string;
 }
-
 interface SchoolWiseOrder {
   id: number;
   order_id: number;
@@ -24,19 +23,19 @@ interface SchoolWiseOrder {
   order_no: string;
   no_of_days: number;
   period: string;
-  schoolname: string;
-  udaisno: string;
+  schoolname: string;  // from JOIN
+  udaisno: string;     // from JOIN
   status: string;
   created_at: string;
+  class_range?: string; // ensure present
 }
-
 // Add proper type declarations for flatpickr
 declare module 'flatpickr' {
   interface Instance {
     destroy(): void;
     clear(): void;
   }
-  
+
   interface BaseOptions {
     dateFormat?: string;
     defaultDate?: Date | string | number | Date[] | string[] | number[];
@@ -62,6 +61,7 @@ interface CenterRow {
   name: string;
   marathi_name?: string;
   status?: string;
+  taluka_id?: number; // ensure we can filter centers by taluka
 }
 interface ItemGrain {
   id: number;
@@ -116,11 +116,19 @@ interface PrintModalProps {
     }>;
   };
 }
+interface TalukaRow {
+  taluka_id: number;
+  name: string;
+  name_en?: string;
+  dist_id?: number;
+  status?: string;
+}
+
 
 const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }) => {
   const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
-  
+
   // Separate rice items from other items - तांदुळ is rice
   const riceItems = dispatchData.items.filter(item => {
     const itemName = item.name.toLowerCase();
@@ -361,10 +369,10 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 
   const printPreview = () => {
     if (!previewContent) return;
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    
+
     // Create content with 4 copies
     const fourCopiesContent = `
 <!DOCTYPE html>
@@ -592,14 +600,14 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 </body>
 </html>
     `;
-    
+
     printWindow.document.write(fourCopiesContent);
     printWindow.document.close();
-    
+
     // Wait for content to load before printing
     printWindow.onload = () => {
       printWindow.focus();
-      
+
       // Add a small delay to ensure all content is rendered
       setTimeout(() => {
         printWindow.print();
@@ -641,7 +649,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                 <div><strong>Truck No:</strong> {dispatchData.truckNo}</div>
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
                 <thead>
@@ -663,11 +671,10 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                         <td className="border border-gray-300 px-4 py-2 text-center">{item.qty}</td>
                         <td className="border border-gray-300 px-4 py-2 text-center">{item.unit}</td>
                         <td className="border border-gray-300 px-4 py-2 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            isRice 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${isRice
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-blue-100 text-blue-800'
-                          }`}>
+                            }`}>
                             {isRice ? 'Rice' : 'Kirana'}
                           </span>
                         </td>
@@ -720,7 +727,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                   </button>
                 </div>
               </div>
-              
+
               <div className="bg-gray-100 p-4 rounded ">
                 <iframe
                   srcDoc={previewContent}
@@ -760,9 +767,33 @@ const Dipatchdetials = () => {
   // Filters
   const [orderNo, setOrderNo] = useState('');
   const [selectedTruckId, setSelectedTruckId] = useState<string>('');
+  const [selectedTalukaId, setSelectedTalukaId] = useState<string>('');
   const [selectedCenterId, setSelectedCenterId] = useState<string>('');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+  const [selectedClassRange, setSelectedClassRange] = useState<string>('');
 
+  // Masters
+  const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
+  const [centerList, setCenterList] = useState<CenterRow[]>([]);
+  const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
+
+  // Map school_id → center, taluka, schoolname, udaisno (from /api/scooldata)
+  interface SchoolDataRow {
+    schoolid: number;
+    center: number;
+    taluka_id: number;
+    schoolname: string;
+    udaisno: string;
+  }
+  // Shape of rows returned from `/api/scooldata`
+  type SchoolDataApiRow = {
+    schoolid: number | string;
+    center: number | string | null;
+    taluka_id: number | string | null;
+    schoolname?: string | null;
+    udaisno?: string | null;
+  };
+  const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
   // Date filter state - Initialize with current date
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
@@ -772,13 +803,12 @@ const Dipatchdetials = () => {
   // Date picker ref
   const datePickerRef = useRef<HTMLInputElement>(null);
   const flatpickrInstanceRef = useRef<flatpickr.Instance | null>(null);
-  
+
   // Masters
   const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
   const [truckList, setTruckList] = useState<TruckRow[]>([]);
-  const [centerList, setCenterList] = useState<CenterRow[]>([]);
-  const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
+  // const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
 
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
@@ -788,7 +818,9 @@ const Dipatchdetials = () => {
   const [didSearch, setDidSearch] = useState(false);
 
   // reset search gate when any filter changes
-  useEffect(() => { setDidSearch(false); }, [orderNo, selectedTruckId, selectedCenterId, selectedSchoolId]);
+  useEffect(() => { setDidSearch(false); }, [
+    orderNo, selectedTruckId, selectedTalukaId, selectedCenterId, selectedSchoolId, selectedClassRange
+  ]);
 
   // Initialize Flatpickr for date picker
   useEffect(() => {
@@ -796,7 +828,7 @@ const Dipatchdetials = () => {
       const flatPickr = flatpickr(datePickerRef.current, {
         dateFormat: "Y-m-d",
         defaultDate: selectedDate ? new Date(selectedDate) : undefined,
-        onChange: function(selectedDates, dateStr) {
+        onChange: function (selectedDates, dateStr) {
           setSelectedDate(dateStr);
         },
         static: true,
@@ -811,19 +843,19 @@ const Dipatchdetials = () => {
 
       // Store the instance in ref
       flatpickrInstanceRef.current = flatPickr;
-  
+
       return () => {
         flatPickr.destroy();
         flatpickrInstanceRef.current = null;
       };
     }
   }, []);
-  
+
 
   // Filter dispatch list based on date
   useEffect(() => {
     let filtered = [...dispatchList];
-  
+
     // Filter by date only if a date is selected
     if (selectedDate && selectedDate.trim() !== '') {
       const selectedDateObj = new Date(selectedDate);
@@ -832,10 +864,10 @@ const Dipatchdetials = () => {
         return itemDate.toDateString() === selectedDateObj.toDateString();
       });
     }
-  
+
     setFilteredDispatchList(filtered);
   }, [dispatchList, selectedDate]);
-  
+
 
   // Fetchers
   const fetchZpOrders = async () => {
@@ -894,13 +926,48 @@ const Dipatchdetials = () => {
     }
   };
 
+  const fetchTalukas = async () => {
+    try {
+      const res = await fetch('/api/taluka');
+      if (res.ok) setTalukaList(await res.json());
+    } catch {
+      toast.error('Failed to load taluka');
+    }
+  };
+
+  const fetchSchoolDataMap = async () => {
+    try {
+      const res = await fetch('/api/scooldata');
+      if (!res.ok) return;
+      const rows: SchoolDataApiRow[] = await res.json();
+      const map = new Map<number, SchoolDataRow>();
+      rows.forEach(r => {
+        // API fields: schoolid, center (id), taluka_id, schoolname, udaisno
+        if (r?.schoolid) {
+          map.set(Number(r.schoolid), {
+            schoolid: Number(r.schoolid),
+            center: Number(r.center),
+            taluka_id: Number(r.taluka_id),
+            schoolname: String(r.schoolname || ''),
+            udaisno: String(r.udaisno || ''),
+          });
+        }
+      });
+      setSchoolDataById(map);
+    } catch {
+      // silent
+    }
+  };
+
   useEffect(() => {
     fetchZpOrders();
     fetchSchoolWiseOrders();
     fetchTrucks();
+    fetchTalukas();         // NEW
     fetchCenters();
     fetchItemMaster();
     fetchDispatchList();
+    fetchSchoolDataMap();   // NEW
   }, []);
 
   // Options
@@ -914,34 +981,99 @@ const Dipatchdetials = () => {
     ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
   ], [truckList]);
 
+  const talukaOptions = useMemo(() => [
+    { value: '', label: 'Select Taluka' },
+    ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
+  ], [talukaList]);
+
   const centerOptions = useMemo(() => [
     { value: '', label: 'Select Center' },
-    ...centerList.map(c => ({ value: String(c.center_id), label: c.marathi_name || c.marathi_name || String(c.center_id) }))
-  ], [centerList]);
+    ...centerList
+      .filter(c => !selectedTalukaId || String(c.taluka_id || '') === String(selectedTalukaId))
+      .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
+  ], [centerList, selectedTalukaId]);
+
+  const classRangeOptions = useMemo(() => {
+    if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
+    const uniq = new Set<string>();
+    schoolWiseOrders
+      .filter(s => String(s.order_id) === orderNo && String(s.school_id) === String(selectedSchoolId))
+      .forEach(s => { if (s.class_range) uniq.add(String(s.class_range)); });
+    const arr = Array.from(uniq.values()).sort();
+    return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
+  }, [orderNo, selectedSchoolId, schoolWiseOrders]);
 
   const schoolOptions = useMemo(() => {
     if (!orderNo) return [{ value: '', label: 'Select School' }];
-    const uniq = new Map<number, { value: string; label: string }>();
-    schoolWiseOrders
-      .filter(s => String(s.order_id) === orderNo)
-      .forEach(s => {
-        uniq.set(s.school_id, { value: String(s.school_id), label: s.schoolname });
-      });
-    return [{ value: '', label: 'Select School' }, ...Array.from(uniq.values())];
-  }, [orderNo, schoolWiseOrders]);
 
+    let filtered = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
+
+    if (selectedCenterId) {
+      filtered = filtered.filter(s => {
+        const sd = schoolDataById.get(Number(s.school_id));
+        return sd && String(sd.center) === String(selectedCenterId);
+      });
+    } else if (selectedTalukaId) {
+      filtered = filtered.filter(s => {
+        const sd = schoolDataById.get(Number(s.school_id));
+        return sd && String(sd.taluka_id) === String(selectedTalukaId);
+      });
+    }
+
+    // De-dup by school_id
+    const seen = new Set<number>();
+    const dedup = filtered.filter(s => {
+      if (seen.has(s.school_id)) return false;
+      seen.add(s.school_id);
+      return true;
+    });
+
+    // Stable sort
+    dedup.sort((a, b) => {
+      const an = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
+      const bn = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
+      return an.localeCompare(bn);
+    });
+
+    // Label: SR) Name (UDISE) with fallback from schooldata if missing in API
+    return [
+      { value: '', label: 'Select School' },
+      ...dedup.map((s, idx) => {
+        const fallback = schoolDataById.get(Number(s.school_id));
+        const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
+        const ud = s.udaisno || fallback?.udaisno || 'NA';
+        return {
+          value: String(s.school_id),
+          label: `${idx + 1}) ${name} (${ud})`,
+        };
+      })
+    ];
+  }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById]);
   const handleOrderChange = (orderId: string) => {
     setOrderNo(orderId);
+    setSelectedClassRange('');
     setSelectedSchoolId('');
+  };
+
+  const handleTalukaChange = (talukaId: string) => {
+    setSelectedTalukaId(talukaId);
+    setSelectedCenterId('');
+    setSelectedSchoolId('');
+    setSelectedClassRange('');
   };
 
   // Selected target (order + school)
   const selectedOrderSchool = useMemo(() => {
     if (!orderNo || !selectedSchoolId) return null;
-    return schoolWiseOrders.find(
+    const all = schoolWiseOrders.filter(
       s => String(s.order_id) === orderNo && String(s.school_id) === selectedSchoolId
-    ) || null;
-  }, [orderNo, selectedSchoolId, schoolWiseOrders]);
+    );
+    if (all.length === 0) return null;
+    if (selectedClassRange) {
+      return all.find(s => String(s.class_range || '') === String(selectedClassRange)) || all[0];
+    }
+    return all[0];
+  }, [orderNo, selectedSchoolId, selectedClassRange, schoolWiseOrders]);
 
   // Sum already dispatched per item for selected order + school
   const dispatchedByItem = useMemo<Record<string, number>>(() => {
@@ -1053,11 +1185,13 @@ const Dipatchdetials = () => {
                   unit: d.unit
                 }));
 
+              const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
+              const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
               const dispatchData = {
                 dispatch_code: r.dispatch_code,
                 schoolname: r.schoolname || '',
                 udaisno: schoolWiseOrders.find(s => s.schoolname === r.schoolname)?.udaisno || '',
-                taluka: 'शहादा', // You can make this dynamic
+                taluka: talukaName,
                 center_name: r.center_name || '',
                 truckNo: r.truckNo || '',
                 date: new Date(r.created_at).toLocaleDateString('en-GB'),
@@ -1082,101 +1216,157 @@ const Dipatchdetials = () => {
 
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
+  // Initialize Flatpickr for date picker (re-init when mode changes so toolbar remounts)
+  useEffect(() => {
+    if (!datePickerRef.current) return;
 
-// Update the toolbar section with the clear button
-const toolbar = (
-  <div className="grid grid-cols-7 gap-2 items-center">
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
-      <select
-        className="h-10  rounded-md border px-3 text-sm"
-        value={orderNo}
-        onChange={(e) => { handleOrderChange(e.target.value); }}
-      >
-        {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
-      </select>
-    </div>
+    // Destroy any existing instance before re-initializing
+    if (flatpickrInstanceRef.current) {
+      try { flatpickrInstanceRef.current.destroy(); } catch { }
+      flatpickrInstanceRef.current = null;
+    }
 
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
-      <select
-        className="h-10 rounded-md border px-3 text-sm"
-        value={selectedTruckId}
-        onChange={(e) => setSelectedTruckId(e.target.value)}
-      >
-        {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-      </select>
-    </div>
+    const instance = flatpickr(datePickerRef.current, {
+      dateFormat: "Y-m-d",
+      defaultDate: selectedDate ? new Date(selectedDate) : undefined,
+      onChange: function (selectedDates, dateStr) {
+        setSelectedDate(dateStr);
+      },
+      static: true,
+      monthSelectorType: "static",
+      enableTime: false,
+      allowInput: true,
+      clickOpens: true,
+      locale: { firstDayOfWeek: 1 }
+    });
 
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
-      <select
-        className="h-10  rounded-md border px-3 text-sm"
-        value={selectedCenterId}
-        onChange={(e) => setSelectedCenterId(e.target.value)}
-      >
-        {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
-      </select>
-    </div>
+    flatpickrInstanceRef.current = instance;
 
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-600 mb-1 text-left">School</span>
-      <select
-        className="h-10 rounded-md border px-3 text-sm"
-        value={selectedSchoolId}
-        onChange={(e) => setSelectedSchoolId(e.target.value)}
-        disabled={!orderNo}
-      >
-        {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select School'}</option>)}
-      </select>
-    </div>
-
-    {/* Date Picker with Clear Option */}
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
-      <div className="relative">
-        <input
-          ref={datePickerRef}
-          type="text"
-          placeholder="Select Date"
-          className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
-          readOnly
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedDate(''); // Clear the date completely
-            // Clear the flatpickr instance
-            if (flatpickrInstanceRef.current) {
-              flatpickrInstanceRef.current.clear();
-            }
-          
-          }}
-          className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
-          title="Clear Date Filter"
+    return () => {
+      try { instance.destroy(); } catch { }
+      if (flatpickrInstanceRef.current === instance) {
+        flatpickrInstanceRef.current = null;
+      }
+    };
+  }, [showInputMode, selectedDate]);
+  // Update the toolbar section with the clear button
+  const toolbar = (
+    <div className="grid grid-cols-9 gap-2 items-center">
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
+        <select
+          className="h-10  rounded-md border px-3 text-sm"
+          value={orderNo}
+          onChange={(e) => { handleOrderChange(e.target.value); }}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+          {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
+        </select>
       </div>
-    </div>
 
-    <button
-      type="button"
-      className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
-      onClick={() => {
-        if (!allFiltersSelected) {
-          toast.error('Select Order, Truck, Center, and School');
-          return;
-        }
-        setDidSearch(true);
-      }}
-    >
-      Search
-    </button>
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedTruckId}
+          onChange={(e) => setSelectedTruckId(e.target.value)}
+        >
+          {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
+        </select>
+      </div>
 
-    <button
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Taluka</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedTalukaId}
+          onChange={(e) => handleTalukaChange(e.target.value)}
+        >
+          {talukaOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Taluka'}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
+        <select
+          className="h-10  rounded-md border px-3 text-sm"
+          value={selectedCenterId}
+          onChange={(e) => { setSelectedCenterId(e.target.value); setSelectedSchoolId(''); }}
+          disabled={!selectedTalukaId}
+        >
+          {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">School</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedSchoolId}
+          onChange={(e) => { setSelectedSchoolId(e.target.value); setSelectedClassRange(''); }}
+          disabled={!orderNo || !selectedCenterId}
+        >
+          {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Class Varg</span>
+        <select
+          className="h-10 rounded-md border px-3 text-sm"
+          value={selectedClassRange}
+          onChange={(e) => { setSelectedClassRange(e.target.value); }}
+          disabled={!orderNo || !selectedSchoolId}
+        >
+          {classRangeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+
+      {/* Date Filter with Clear Option */}
+      <div className="flex flex-col">
+        <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+        <div className="relative">
+          <input
+            ref={datePickerRef}
+            type="text"
+            placeholder="Select Date"
+            className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
+            readOnly
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedDate(''); // Clear the date completely
+              // Clear the flatpickr instance
+              if (flatpickrInstanceRef.current) {
+                flatpickrInstanceRef.current.clear();
+              }
+
+            }}
+            className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+            title="Clear Date Filter"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
+        onClick={() => {
+          if (!allFiltersSelected) {
+            toast.error('Select Order, Truck, Center, and School');
+            return;
+          }
+          setDidSearch(true);
+        }}
+      >
+        Search
+      </button>
+
+      <button
         type="button"
         className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
         onClick={async () => {
@@ -1189,7 +1379,7 @@ const toolbar = (
               toast.error('No items to dispatch');
               return;
             }
-            
+
             // Fix: Define lines variable here
             const lines = dispatchRows
               .map(r => ({
@@ -1199,12 +1389,12 @@ const toolbar = (
                 qtyDispatch: Number(dispatchInputs[r.grain] ?? 0),
               }))
               .filter(l => l.qtyDispatch > 0);
-              
+
             if (lines.length === 0) {
               toast.error('Enter at least one dispatch quantity');
               return;
             }
-            
+
             setLoading(true);
             const resp = await fetch('/api/dispatchdetails', {
               method: 'POST',
@@ -1268,8 +1458,8 @@ const toolbar = (
       >
         {loading ? 'Submitting...' : 'Submit'}
       </button>
-  </div>
-);
+    </div>
+  );
 
   return (
     <div className="">
