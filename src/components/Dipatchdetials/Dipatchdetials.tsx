@@ -372,7 +372,12 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
+    const copyHeadings = [
+      'हेड मास्टर',
+      'बी.आर. सी ऑफीस (तालुका ऑफीस)',
+      'जिल्हा परिषद ऑफीस',
+      'O .C'
+    ];
     // Create content with 4 copies
     const fourCopiesContent = `
 <!DOCTYPE html>
@@ -529,9 +534,9 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
   </style>
 </head>
 <body>
-  ${Array.from({ length: 4 }, (_, copyIndex) => `
+ ${Array.from({ length: 4 }, (_, copyIndex) => `
     <div class="copy-container">
-      <div class="copy-header">Copy ${copyIndex + 1} of 4</div>
+      <div class="copy-header">${copyHeadings[copyIndex]}</div>
       <div class="container">
         <div class="header">
           <div class="title">डिलीव्हरी चलन</div>
@@ -672,8 +677,8 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                         <td className="border border-gray-300 px-4 py-2 text-center">{item.unit}</td>
                         <td className="border border-gray-300 px-4 py-2 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${isRice
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
                             }`}>
                             {isRice ? 'Rice' : 'Kirana'}
                           </span>
@@ -1088,6 +1093,25 @@ const Dipatchdetials = () => {
     return map;
   }, [dispatchList, orderNo, selectedSchoolId]);
 
+  // Latest inserted row per item for this order+school (to prefill + update)
+  const latestDispatchByItem = useMemo<Record<string, { id: number; qty: number; total: number }>>(() => {
+    if (!orderNo || !selectedSchoolId) return {};
+    const map: Record<string, { id: number; qty: number; total: number; created: string | number }> = {};
+    dispatchList
+      .filter(d => String(d.order_id) === orderNo && String(d.school_id) === selectedSchoolId)
+      .forEach(d => {
+        const key = d.item_name.trim();
+        const prev = map[key];
+        const created = d.created_at || d.id; // fallback to id ordering
+        if (!prev || String(created) > String(prev.created)) {
+          map[key] = { id: d.id, qty: Number(d.qty_dispatch || 0), total: Number(d.total_qty || 0), created };
+        }
+      });
+    const out: Record<string, { id: number; qty: number; total: number }> = {};
+    Object.entries(map).forEach(([k, v]) => { out[k] = { id: v.id, qty: v.qty, total: v.total }; });
+    return out;
+  }, [dispatchList, orderNo, selectedSchoolId]);
+
   // Build input-mode rows with remaining qty (planned - already dispatched)
   // Build input-mode rows with remaining qty (planned - already dispatched)
   const dispatchRows = useMemo<DispatchRow[]>(() => {
@@ -1115,9 +1139,40 @@ const Dipatchdetials = () => {
     return rows;
   }, [selectedOrderSchool, itemGrains, dispatchedByItem]);
 
-  // Inputs map for qty dispatch
-  const [dispatchInputs, setDispatchInputs] = useState<Record<string, number>>({});
-  useEffect(() => { setDispatchInputs({}); }, [selectedOrderSchool?.id]);
+  // Inputs map for qty dispatch (persist per order+school) + prefill from latest inserted
+  const storageKey = useMemo(
+    () => (orderNo && selectedSchoolId ? `dispatchInputs:${orderNo}:${selectedSchoolId}` : ''),
+    [orderNo, selectedSchoolId]
+  );
+  const [dispatchInputs, setDispatchInputs] = useState<Record<string, number | undefined>>({});
+  useEffect(() => {
+    if (!storageKey) { setDispatchInputs({}); return; }
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setDispatchInputs(raw ? (JSON.parse(raw) || {}) : {});
+    } catch { setDispatchInputs({}); }
+  }, [storageKey]);
+
+  // Prefill inputs from latest inserted rows only for fields that are still undefined
+  useEffect(() => {
+    if (!storageKey) return;
+    setDispatchInputs(prev => {
+      const next = { ...prev };
+      dispatchRows.forEach(row => {
+        if (typeof next[row.grain] === 'undefined') {
+          const ex = latestDispatchByItem[row.grain]?.qty;
+          if (typeof ex !== 'undefined') next[row.grain] = ex;
+        }
+      });
+      return next;
+    });
+  }, [storageKey, dispatchRows, latestDispatchByItem]);
+
+  // Persist on change
+  useEffect(() => {
+    if (!storageKey) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
+  }, [dispatchInputs, storageKey]);
 
   // Input-mode columns
   const inputColumns: Column<DispatchRow>[] = [
@@ -1127,29 +1182,45 @@ const Dipatchdetials = () => {
     {
       key: 'qtyDispatch',
       label: 'Qty Dispatch',
-      render: (row) => (
-        <input
-          type="number"
-          min={0}
-          max={row.totalQty}
-          className="h-9 w-28 rounded border px-2 text-sm"
-          value={dispatchInputs[row.grain] ?? ''}
-          onChange={(e) => {
-            const val = e.target.value === '' ? 0 : Number(e.target.value);
-            // cap to remaining qty
-            const capped = Math.min(Math.max(0, val), Number(row.totalQty));
-            setDispatchInputs(prev => ({ ...prev, [row.grain]: capped }));
-          }}
-        />
-      )
+      render: (row) => {
+        const existing = latestDispatchByItem[row.grain]?.qty ?? 0;
+        const maxAllowed = Math.max(Number(row.totalQty), existing);
+        return (
+          <input
+            type="number"
+            min={0}
+            // do not set max attribute to allow typing; we enforce in JS using maxAllowed
+            className="h-9 w-28 rounded border px-2 text-sm"
+            value={dispatchInputs[row.grain] ?? ''}
+            onChange={(e) => {
+              if (e.target.value === '') {
+                setDispatchInputs(prev => ({ ...prev, [row.grain]: undefined }));
+                return;
+              }
+              const raw = Number(e.target.value);
+              const val = Number.isFinite(raw) ? raw : 0;
+              if (val > maxAllowed) {
+                toast.error(`Entered quantity exceeds available. Max allowed: ${maxAllowed}`);
+              }
+              const capped = Math.min(Math.max(0, val), maxAllowed);
+              setDispatchInputs(prev => ({ ...prev, [row.grain]: capped }));
+            }}
+          />
+        );
+      }
     },
     {
       key: 'balQty',
       label: 'Bal Qtsy',
       render: (row) => {
-        const qd = dispatchInputs[row.grain] ?? 0;
-        const bal = Math.max(0, Number(row.totalQty) - Number(qd));
-        return <span>{bal}</span>;
+        const hasInput = dispatchInputs[row.grain] !== undefined;
+        const qd = Number(dispatchInputs[row.grain] ?? 0);
+        const bal = Math.max(0, Number(row.totalQty) - qd);
+        const color =
+          bal === 0 ? 'text-red-600 font-semibold'
+            : hasInput ? 'text-green-600 font-semibold'
+              : '';
+        return <span className={color}>{bal}</span>;
       }
     },
   ];
@@ -1252,215 +1323,255 @@ const Dipatchdetials = () => {
   }, [showInputMode, selectedDate]);
   // Update the toolbar section with the clear button
   const toolbar = (
-    <div className="grid grid-cols-9 gap-2 items-center">
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
-        <select
-          className="h-10  rounded-md border px-3 text-sm"
-          value={orderNo}
-          onChange={(e) => { handleOrderChange(e.target.value); }}
-        >
-          {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedTruckId}
-          onChange={(e) => setSelectedTruckId(e.target.value)}
-        >
-          {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Taluka</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedTalukaId}
-          onChange={(e) => handleTalukaChange(e.target.value)}
-        >
-          {talukaOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Taluka'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
-        <select
-          className="h-10  rounded-md border px-3 text-sm"
-          value={selectedCenterId}
-          onChange={(e) => { setSelectedCenterId(e.target.value); setSelectedSchoolId(''); }}
-          disabled={!selectedTalukaId}
-        >
-          {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">School</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedSchoolId}
-          onChange={(e) => { setSelectedSchoolId(e.target.value); setSelectedClassRange(''); }}
-          disabled={!orderNo || !selectedCenterId}
-        >
-          {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Class Varg</span>
-        <select
-          className="h-10 rounded-md border px-3 text-sm"
-          value={selectedClassRange}
-          onChange={(e) => { setSelectedClassRange(e.target.value); }}
-          disabled={!orderNo || !selectedSchoolId}
-        >
-          {classRangeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      {/* Date Filter with Clear Option */}
-      <div className="flex flex-col">
-        <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
-        <div className="relative">
-          <input
-            ref={datePickerRef}
-            type="text"
-            placeholder="Select Date"
-            className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
-            readOnly
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedDate(''); // Clear the date completely
-              // Clear the flatpickr instance
-              if (flatpickrInstanceRef.current) {
-                flatpickrInstanceRef.current.clear();
-              }
-
-            }}
-            className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
-            title="Clear Date Filter"
+    <div className="space-y-4">
+      {/* First Row: 5 fields inline */}
+      <div className="grid grid-cols-5 gap-2 items-center">
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={orderNo}
+            onChange={(e) => handleOrderChange(e.target.value)}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={selectedTruckId}
+            onChange={(e) => setSelectedTruckId(e.target.value)}
+          >
+            {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Taluka</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={selectedTalukaId}
+            onChange={(e) => handleTalukaChange(e.target.value)}
+          >
+            {talukaOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Taluka'}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={selectedCenterId}
+            onChange={(e) => {
+              setSelectedCenterId(e.target.value);
+              setSelectedSchoolId('');
+            }}
+            disabled={!selectedTalukaId}
+          >
+            {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">School</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={selectedSchoolId}
+            onChange={(e) => {
+              setSelectedSchoolId(e.target.value);
+              setSelectedClassRange('');
+            }}
+            disabled={!orderNo || !selectedCenterId}
+          >
+            {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
       </div>
 
-      <button
-        type="button"
-        className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
-        onClick={() => {
-          if (!allFiltersSelected) {
-            toast.error('Select Order, Truck, Center, and School');
-            return;
-          }
-          setDidSearch(true);
-        }}
-      >
-        Search
-      </button>
+      {/* Second Row: 4 fields inline */}
+      <div className="grid grid-cols-4 gap-2 items-center">
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Class Varg</span>
+          <select
+            className="h-10 rounded-md border px-3 text-sm"
+            value={selectedClassRange}
+            onChange={(e) => setSelectedClassRange(e.target.value)}
+            disabled={!orderNo || !selectedSchoolId}
+          >
+            {classRangeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
 
-      <button
-        type="button"
-        className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
-        onClick={async () => {
-          try {
-            if (!orderNo || !selectedTruckId || !selectedCenterId || !selectedSchoolId) {
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+          <div className="relative">
+            <input
+              ref={datePickerRef}
+              type="text"
+              placeholder="Select Date"
+              className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDate('');
+                if (flatpickrInstanceRef.current) {
+                  flatpickrInstanceRef.current.clear();
+                }
+              }}
+              className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+              title="Clear Date Filter"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
+          onClick={() => {
+            if (!allFiltersSelected) {
               toast.error('Select Order, Truck, Center, and School');
               return;
             }
-            if (dispatchRows.length === 0) {
-              toast.error('No items to dispatch');
-              return;
-            }
+            setDidSearch(true);
+          }}
+        >
+          Search
+        </button>
 
-            // Fix: Define lines variable here
-            const lines = dispatchRows
-              .map(r => ({
-                grain: r.grain,
-                unit: r.unit,
-                totalQty: r.totalQty,
-                qtyDispatch: Number(dispatchInputs[r.grain] ?? 0),
-              }))
-              .filter(l => l.qtyDispatch > 0);
-
-            if (lines.length === 0) {
-              toast.error('Enter at least one dispatch quantity');
-              return;
-            }
-
-            setLoading(true);
-            const resp = await fetch('/api/dispatchdetails', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                order_id: Number(orderNo),
-                school_id: Number(selectedSchoolId),
-                center_id: Number(selectedCenterId),
-                truck_id: Number(selectedTruckId),
-                lines
-              }),
-            });
-            if (!resp.ok) {
-              const er = await resp.json().catch(() => ({}));
-              throw new Error(er.message || 'Failed to save dispatch');
-            }
-            const ok = await resp.json();
-            toast.success(`Dispatch saved (Code: ${ok.dispatch_code})`);
-
-            // Prepare dispatch data for print modal
-            const dispatchItems = lines.map(line => ({
-              name: line.grain,
-              qty: line.qtyDispatch,
-              unit: line.unit
-            }));
-
-            const selectedTruck = truckList.find(t => String(t.id) === selectedTruckId);
-            const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
-            const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
-
-            const dispatchData = {
-              dispatch_code: ok.dispatch_code,
-              schoolname: selectedSchool?.schoolname || '',
-              udaisno: selectedSchool?.udaisno || '',
-              taluka: 'शहादा', // You can make this dynamic
-              center_name: selectedCenter?.name || selectedCenter?.marathi_name || '',
-              truckNo: selectedTruck?.truckNo || '',
-              date: new Date().toLocaleDateString('en-GB'),
-              items: dispatchItems
-            };
-
-            setLastDispatchData(dispatchData);
-            setShowPrintModal(true);
-
-            setDispatchInputs({});
-            // clear filters after successful submit
-            setOrderNo('');
-            setSelectedTruckId('');
-            setSelectedCenterId('');
-            setSelectedSchoolId('');
-            setDidSearch(false);
-            await fetchDispatchList(); // refresh list
-          } catch {
-            toast.error('Failed to save');
-          } finally {
-            setLoading(false);
-            setDidSearch(false);
-          }
-        }}
-        disabled={loading || !showInputMode}
-      >
-        {loading ? 'Submitting...' : 'Submit'}
-      </button>
+        <button
+          type="button"
+          className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
+            onClick={async () => {
+                      try {
+                        if (!orderNo || !selectedTruckId || !selectedCenterId || !selectedSchoolId) {
+                          toast.error('Select Order, Truck, Center, and School');
+                          return;
+                        }
+                        if (dispatchRows.length === 0) {
+                          toast.error('No items to dispatch');
+                          return;
+                        }
+                        // Build updates (PUT) and inserts (POST)
+                        const updates: Array<{ id: number; qty_dispatch: number }> = [];
+                        const inserts = dispatchRows
+                          .map(r => {
+                            const qty = Number(dispatchInputs[r.grain] ?? 0);
+                            const latest = latestDispatchByItem[r.grain];
+                            if (latest) {
+                              // Update existing row (allow zero to correct)
+                              updates.push({ id: latest.id, qty_dispatch: qty });
+                              return null;
+                            }
+                            return {
+                              grain: r.grain,
+                              unit: r.unit,
+                              totalQty: r.totalQty,
+                              qtyDispatch: qty,
+                            };
+                          })
+                          .filter((l): l is { grain: string; unit: string; totalQty: number; qtyDispatch: number } => !!l && l.qtyDispatch > 0);
+                        if (updates.length === 0 && inserts.length === 0) {
+                          toast.error('Enter at least one dispatch quantity');
+                          return;
+                        }
+                        setLoading(true);
+                        // Perform updates first
+                        if (updates.length > 0) {
+                          await Promise.all(
+                            updates.map(u =>
+                              fetch('/api/dispatchdetails', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: u.id, qty_dispatch: u.qty_dispatch }),
+                              }).then(async (res) => {
+                                if (!res.ok) {
+                                  const er = await res.json().catch(() => ({}));
+                                  throw new Error(er.message || 'Failed to update dispatch');
+                                }
+                              })
+                            )
+                          );
+                        }
+                        // Then perform inserts (single POST with all new lines)
+                        let newCode: string | undefined;
+                        if (inserts.length > 0) {
+                          const resp = await fetch('/api/dispatchdetails', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              order_id: Number(orderNo),
+                              school_id: Number(selectedSchoolId),
+                              center_id: Number(selectedCenterId),
+                              truck_id: Number(selectedTruckId),
+                              lines: inserts,
+                            }),
+                          });
+                          if (!resp.ok) {
+                            const er = await resp.json().catch(() => ({}));
+                            throw new Error(er.message || 'Failed to save dispatch');
+                          }
+                          const ok = await resp.json();
+                          newCode = ok.dispatch_code;
+                        }
+                        toast.success(newCode ? `Saved (Code: ${newCode})` : 'Updated successfully');
+                        // Prepare print data from input values (both updates and inserts)
+                        const dispatchItems = dispatchRows
+                          .map(r => ({
+                            name: r.grain,
+                            qty: Number(dispatchInputs[r.grain] ?? 0),
+                            unit: r.unit
+                          }))
+                          .filter(i => i.qty > 0);
+                        const selectedTruck = truckList.find(t => String(t.id) === selectedTruckId);
+                        const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
+                        const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
+                        const dispatchData = {
+                          dispatch_code: newCode || (latestDispatchByItem[dispatchItems[0]?.name || ''] ? 'UPDATED' : ''),
+                          schoolname: selectedSchool?.schoolname || '',
+                          udaisno: selectedSchool?.udaisno || '',
+                          taluka: 'शहादा',
+                          center_name: selectedCenter?.name || selectedCenter?.marathi_name || '',
+                          truckNo: selectedTruck?.truckNo || '',
+                          date: new Date().toLocaleDateString('en-GB'),
+                          items: dispatchItems
+                        };
+                        setLastDispatchData(dispatchData);
+                        setShowPrintModal(true);
+                        // clear inputs (state + persisted)
+                        setDispatchInputs({});
+                        if (storageKey) {
+                          try { localStorage.removeItem(storageKey); } catch {}
+                        }
+                        // clear filters after successful submit
+                        setOrderNo('');
+                        setSelectedTruckId('');
+                        setSelectedCenterId('');
+                        setSelectedSchoolId('');
+                        setDidSearch(false);
+                        await fetchDispatchList(); // refresh list
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to save');
+                      } finally {
+                        setLoading(false);
+                        setDidSearch(false);
+                      }
+                    }}
+                    disabled={loading || !showInputMode}
+                  >
+                    {loading ? 'Submitting...' : 'Submit'}
+                  </button>
+      </div>
     </div>
   );
+
 
   return (
     <div className="">
