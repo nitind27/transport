@@ -9,10 +9,10 @@ import { Column } from "../tables/tabletype";
 
 import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
-import { IoEyeSharp } from 'react-icons/io5';
+// import { IoEyeSharp } from 'react-icons/io5';
 import { Modal } from '../ui/modal';
 import { Schoolwisetable } from '../tables/Schoolwisetable';
-import { MdDelete } from 'react-icons/md';
+// import { MdDelete } from 'react-icons/md';
 
 // Types
 interface ZPOrderDetail {
@@ -33,6 +33,7 @@ interface School {
   status: string;
   center?: number;
   centername?: string;
+  talukaname?: string; // add
 }
 
 interface SchoolWiseOrder {
@@ -106,11 +107,40 @@ const AddSchoolswiseorder = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewItem, setViewItem] = useState<SchoolWiseOrder | null>(null);
 
-  const handleView = (row: SchoolWiseOrder) => {
-    setViewItem(row);
-    setViewOpen(true);
-  };
+  // Group modal state
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupRows, setGroupRows] = useState<SchoolWiseOrder[]>([]);
+  const [groupMeta, setGroupMeta] = useState<{
+    order_no: string;
+    class_range: string;
+    no_of_days: number;
+    period: string;
+    financial_year: string;
+  } | null>(null);
 
+  const [reopenGroupOnItemsClose, setReopenGroupOnItemsClose] = useState<boolean>(false);
+
+  // const handleView = (row: SchoolWiseOrder) => {
+  //   setViewItem(row);
+  //   setViewOpen(true);
+  // };
+
+  const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
+    const key = row._groupKey || `${row.order_no}|${row.class_range}`;
+    const [order_no, class_range] = key.split("|");
+    const rows = schoolWiseOrders.filter(
+      r => r.order_no === (order_no || row.order_no) && r.class_range === (class_range || row.class_range)
+    );
+    setGroupRows(rows);
+    setGroupMeta({
+      order_no: order_no || row.order_no,
+      class_range: class_range || row.class_range,
+      no_of_days: row.no_of_days,
+      period: row.period,
+      financial_year: row.financial_year,
+    });
+    setGroupOpen(true);
+  };
   // Fetch ZP Orders
   const fetchZpOrders = async () => {
     try {
@@ -164,7 +194,13 @@ const AddSchoolswiseorder = () => {
     });
     return options;
   }, [zpOrders]);
-
+  const handleItemsClose = () => {
+    setViewOpen(false);
+    if (reopenGroupOnItemsClose) {
+      setGroupOpen(true);
+      setReopenGroupOnItemsClose(false);
+    }
+  };
   // Handle order number selection
   const handleOrderChange = (orderId: string) => {
     setOrderNo(orderId);
@@ -210,6 +246,16 @@ const AddSchoolswiseorder = () => {
 
         const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
 
+        // Normalize header keys: remove only trailing spaces from each key
+        const rowsNormalized = raw.map((r) => {
+          const out: Record<string, unknown> = {};
+          Object.entries(r).forEach(([k, v]) => {
+            const trimmedKey = String(k).replace(/\s+$/, ""); // trim end only
+            out[trimmedKey] = v;
+          });
+          return out;
+        });
+        
         const norm = (s: unknown) => String(s ?? "").trim();
         const num = (v: unknown) => {
           const n = Number(String(v ?? "").toString().replace(/[, ]+/g, ''));
@@ -223,7 +269,7 @@ const AddSchoolswiseorder = () => {
           return undefined;
         };
 
-        const normalized: ParsedExcelRow[] = raw.map((r): ParsedExcelRow => {
+        const normalized: ParsedExcelRow[] = rowsNormalized.map((r): ParsedExcelRow => {
           const schoolName = pick(r, ['School Name', 'शाळा', 'विद्यालय नाव']);
           const udise = pick(r, ['UDISE Code', 'यूडीएआयएस', 'UDISE', 'UDISE No', 'UDAIS']);
           const centerName = pick(r, ['केंद्र', 'Center']);
@@ -387,10 +433,10 @@ const AddSchoolswiseorder = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingOrderNo, setPendingOrderNo] = useState<string | null>(null);
 
-  const openBulkDelete = (orderNo: string) => {
-    setPendingOrderNo(orderNo);
-    setConfirmOpen(true);
-  };
+  // const openBulkDelete = (orderNo: string) => {
+  //   setPendingOrderNo(orderNo);
+  //   setConfirmOpen(true);
+  // };
 
   const confirmBulkDelete = async () => {
     if (!pendingOrderNo) return;
@@ -415,46 +461,56 @@ const AddSchoolswiseorder = () => {
   };
 
   const columns: Column<SchoolWiseOrder>[] = [
-    {
-      key: 'order_no',
-      label: 'Actions',
-      render: (row) => {
-        const extendedRow = row as ExtendedSWO;
-        const isFirst = extendedRow._isFirstInGroup === true;
-        return (
-          <div className="flex gap-2 whitespace-nowrap w-full items-center">
-            {isFirst && (
-              <span
-                onClick={() => openBulkDelete(row.order_no)}
-                className="cursor-pointer text-red-600 hover:text-red-800 transition-colors duration-200"
-                title="Delete all rows for this order"
-              >
-                <MdDelete className="inline-block align-middle text-lg" />
-              </span>
-            )}
-          </div>
-        );
-      }
-    },
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
-    { key: 'financial_year', label: 'Financial Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
+    { key: 'financial_year', label: 'Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
+    {
+      key: 'taluka',
+      label: 'Taluka',
+      render: (row) => {
+        const r = row as ExtendedSWO;
+        if (!r._isFirstInGroup) return null;
+        const key = r._groupKey || `${r.order_no}|${r.class_range}`;
+        const [order_no, class_range] = key.split("|");
+        const rowsInGroup = schoolWiseOrders.filter(
+          x => x.order_no === (order_no || r.order_no) && x.class_range === (class_range || r.class_range)
+        );
+        const talukas = Array.from(
+          new Set(
+            rowsInGroup.map(x => {
+              const s = schools.find(sc => sc.schoolid === x.school_id);
+              return s?.talukaname || '-';
+            })
+          )
+        ).filter(Boolean);
+        return <span>{talukas.length ? talukas.join(', ') : '-'}</span>;
+      }
+    },
     { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
-    { key: 'schoolname', label: 'School Name', accessor: 'schoolname', render: (row) => <span>{row.schoolname}</span> },
-    { key: 'udaisno', label: 'UDAIS No', accessor: 'udaisno', render: (row) => <span>{row.udaisno}</span> },
-    { key: 'patsankhya', label: 'पट संख्या', accessor: 'patsankhya', render: (row) => <span>{(row).patsankhya}</span> },
-    { key: 'total_weight', label: 'Total Weight', accessor: 'total_weight', render: (row) => <span>{row.total_weight} kg</span> },
+    {
+      key: 'total_schools',
+      label: 'Total Number of Schools',
+      render: (row) => {
+        const r = row as ExtendedSWO;
+        if (!r._isFirstInGroup) return null;
+        return <span>{r._groupCount || 0}</span>;
+      }
+    },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Action',
       render: (row) => {
+        const r = row as ExtendedSWO;
+        if (!r._isFirstInGroup) return null;
         return (
-          <div className="flex gap-2 whitespace-nowrap w-full items-center">
-            <span className='cursor-pointer' onClick={() => handleView(row)} title="View">
-              <IoEyeSharp size={20} color='blue' />
-            </span>
-          </div>
+          <button
+            type="button"
+            className="text-blue-600 hover:text-blue-800 underline"
+            onClick={() => openGroup(r)}
+          >
+            View Schools
+          </button>
         );
       }
     }
@@ -579,17 +635,17 @@ const AddSchoolswiseorder = () => {
 
         searchKey="schoolname"
         groupByKeys={['order_no', 'class_range']}
-        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'class_range']}
+        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools', 'actions']}
       />
 
       {/* View Details Modal */}
       <Modal
         isOpen={viewOpen}
-        onClose={() => setViewOpen(false)}
+        onClose={handleItemsClose}
         className="max-w-[550px] p-6"
       >
         {viewItem && (
-          <div className="space-y-3 h-[550px] overflow-scroll">
+          <div className="space-y-3 h-[550px] overflow-scroll z-99999">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
               {viewItem.schoolname}
               <span className="ml-2 text-sm font-normal text-gray-500 dark:text-white/60">
@@ -664,6 +720,62 @@ const AddSchoolswiseorder = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={groupOpen}
+        onClose={() => setGroupOpen(false)}
+        className="max-w-[800px] p-6"
+      >
+        {groupMeta && (
+          <div className="space-y-4 h-96 overflow-scroll">
+            <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+              Order {groupMeta.order_no} • Class {groupMeta.class_range}
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+              <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{groupMeta.no_of_days}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{groupMeta.period}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Year: </span>{groupMeta.financial_year}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Total Schools: </span>{groupRows.length}</div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 border-collapse">
+                <thead className="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 w-10">Sr</th>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">School Name</th>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">UDAIS No</th>
+                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Patsankhya</th>
+                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Total Weight</th>
+                    <th className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupRows.map((r, idx) => (
+                    <tr key={r.id}>
+                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{idx + 1}</td>
+                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.schoolname}</td>
+                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.udaisno}</td>
+                      <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.patsankhya ?? '-'}</td>
+                      <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.total_weight} kg</td>
+                      <td className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">
+                        <button
+                          type="button"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                          onClick={() => { setReopenGroupOnItemsClose(true); setGroupOpen(false); setViewItem(r); setViewOpen(true) }}
+                        >
+                          View Items
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

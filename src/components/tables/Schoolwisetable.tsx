@@ -17,7 +17,7 @@ type Props<T> = {
   classname?: string;
   groupByKey?: keyof T;
   groupByKeys?: (keyof T)[]; // allow multiple keys
-  colspanKeys?: (keyof T)[];
+  colspanKeys?: (keyof T | string)[];
 };
 
 type GroupedData<T> = {
@@ -126,7 +126,7 @@ export function Schoolwisetable<T extends object>({
     ];
 
     const mappedColumns = columns.map((col) => {
-      const isColspanKey = colspanKeys.includes(col.key as keyof T);
+      const isColspanKey = colspanKeys.map(String).includes(String(col.key));
 
       return {
         name: col.label,
@@ -240,8 +240,8 @@ export function Schoolwisetable<T extends object>({
                     </td>
                   ) : null}
 
-                  {columns.map((col) => {
-                    const isColspanKey = colspanKeys.includes(col.key as keyof T);
+{columns.map((col) => {
+                    const isColspanKey = colspanKeys.map(String).includes(String(col.key));
                     const cellValue = col.render ? col.render(row) : (col.accessor ? String(row[col.accessor]) : "");
 
                     if (isColspanKey && !row._isFirstInGroup) {
