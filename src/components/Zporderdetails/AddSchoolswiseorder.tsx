@@ -180,7 +180,7 @@ const AddSchoolswiseorder = () => {
   };
 
   type SWOWithTaluka = SchoolWiseOrder & { taluka: string; _groupKey?: string };
-  
+
   const dataWithTaluka: SWOWithTaluka[] = useMemo(() => {
     if (!schoolWiseOrders.length) return [];
     return schoolWiseOrders.map(r => {
@@ -395,6 +395,18 @@ const AddSchoolswiseorder = () => {
     if (!isEditMode) reset();
   }, [isEditMode]);
 
+  // const validateInputs = () => {
+  //   const newErrors: FormErrors = {};
+  //   setisvalidation(true);
+
+  //   if (!orderNo) newErrors.orderNo = "Order number is required";
+  //   const hasClassInExcel = excelData.some((r) => r._classRange);
+  //   if (!selectedClass && !hasClassInExcel) newErrors.selectedClass = "Class selection is required (in dropdown or Excel)";
+  //   if (!selectedFile && excelData.length === 0) newErrors.file = "Excel file is required";
+
+  //   setErrors(newErrors);
+  //   return Object.keys(newErrors).length === 0;
+  // };
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
@@ -408,6 +420,40 @@ const AddSchoolswiseorder = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Download failed rows as Excel with reason
+  const downloadFailedRows = (failed: Array<{
+    _schoolName: string;
+    _udise: string;
+    _centerName: string;
+    _classRange: string;
+    _patSankhya: number;
+    _totalWeight: number;
+    _items: Record<string, number>;
+    reason: string;
+  }>) => {
+    if (!failed.length) return;
+    const rows = failed.map(r => ({
+      'School Name': r._schoolName || '',
+      'UDISE': r._udise || '',
+      'Center': r._centerName || '',
+      'Class': r._classRange || '',
+      'Patsankhya': r._patSankhya || 0,
+      'Total Weight': r._totalWeight || 0,
+      'Reason': r.reason || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Failed Rows');
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `failed_schoolwise_rows_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
@@ -416,12 +462,22 @@ const AddSchoolswiseorder = () => {
     try {
       const orderId = parseInt(orderNo);
 
+      const failedRows: Array<ParsedExcelRow & { reason: string }> = [];
+      let successCount = 0;
+
       for (const row of excelData) {
         const udise = row._udise.trim();
         const rowSchoolName = row._schoolName.trim();
         const rowCenterName = row._centerName.trim();
-        const rowClass = row._classRange.trim();
+        const rowClass = (row._classRange || selectedClass || '').trim();
 
+        // Validate class present
+        if (!rowClass) {
+          failedRows.push({ ...row, reason: 'Class missing (neither in Excel nor selected)' });
+          continue;
+        }
+
+        // Try to locate school by UDISE or Name(+Center)
         let school = udise
           ? schools.find(s => String(s.udaisno || '').trim() === udise)
           : undefined;
@@ -438,44 +494,65 @@ const AddSchoolswiseorder = () => {
         }
 
         if (!school) {
-          toast.warning(`School not found: ${udise ? `UDISE ${udise}` : rowSchoolName || '(no name)'}`);
+          failedRows.push({ ...row, reason: udise ? `School not found for UDISE ${udise}` : 'School not found by name/center' });
           continue;
         }
 
-        const itemsData: ItemsData = {
-          ...row._items,
-        };
-
+        const itemsData: ItemsData = { ...row._items };
         const totalWeight = row._totalWeight || 0;
 
         const payload = {
           order_id: orderId,
           school_id: school.schoolid,
-          class_range: rowClass || selectedClass,
+          class_range: rowClass,
           items_data: itemsData,
           total_weight: totalWeight,
           patsankhya: row._patSankhya || 0,
-          uniq_id: uniqId || null,   // <-- use uniq_id
+          uniq_id: uniqId || null,
           ...(editId && { id: editId })
         };
         const url = '/api/schoolwiseorders';
         const method = editId ? 'PUT' : 'POST';
 
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        try {
+          const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
 
-        if (!response.ok) {
-          throw new Error(`Failed to ${editId ? 'update' : 'create'} order for school ${school.schoolname}`);
+          if (!response.ok) {
+            let reason = `API ${method} failed (${response.status})`;
+            try {
+              const j = await response.json();
+              if (j?.error) reason = j.error;
+              if (j?.message) reason = j.message;
+            } catch { }
+            failedRows.push({ ...row, reason });
+            continue;
+          }
+
+          successCount += 1;
+        } catch (e) {
+          // failedRows.push('Network/Server error');
+          console.log(e);
+          continue;
         }
       }
 
-      toast.success(editId ? 'Order updated successfully!' : 'Orders created successfully!');
-      reset();
-      setEditId(null);
-      fetchSchoolWiseOrders();
+      if (successCount > 0) {
+        toast.success(`${successCount} row(s) saved successfully.`);
+      }
+      if (failedRows.length > 0) {
+        toast.warn(`${failedRows.length} row(s) failed. Downloading failure report...`);
+        downloadFailedRows(failedRows);
+      }
+
+      if (successCount > 0) {
+        reset();
+        setEditId(null);
+        fetchSchoolWiseOrders();
+      }
     } catch (error) {
       console.error('Error saving orders:', error);
       toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
@@ -485,6 +562,83 @@ const AddSchoolswiseorder = () => {
       setIsmodelopen(false);
     }
   };
+  // const handleSave = async () => {
+  //   if (!validateInputs()) return;
+  //   setLoading(true);
+  //   setUiBusy(true); // <-- start overlay
+
+  //   try {
+  //     const orderId = parseInt(orderNo);
+
+  //     for (const row of excelData) {
+  //       const udise = row._udise.trim();
+  //       const rowSchoolName = row._schoolName.trim();
+  //       const rowCenterName = row._centerName.trim();
+  //       const rowClass = row._classRange.trim();
+
+  //       let school = udise
+  //         ? schools.find(s => String(s.udaisno || '').trim() === udise)
+  //         : undefined;
+
+  //       if (!school && rowSchoolName) {
+  //         school = schools.find(s => {
+  //           const byName = String(s.schoolname || '').trim().toLowerCase() === rowSchoolName.toLowerCase();
+  //           if (!byName) return false;
+  //           if (rowCenterName && s.centername) {
+  //             return String(s.centername).trim() === rowCenterName;
+  //           }
+  //           return true;
+  //         });
+  //       }
+
+  //       if (!school) {
+  //         toast.warning(`School not found: ${udise ? `UDISE ${udise}` : rowSchoolName || '(no name)'}`);
+  //         continue;
+  //       }
+
+  //       const itemsData: ItemsData = {
+  //         ...row._items,
+  //       };
+
+  //       const totalWeight = row._totalWeight || 0;
+
+  //       const payload = {
+  //         order_id: orderId,
+  //         school_id: school.schoolid,
+  //         class_range: rowClass || selectedClass,
+  //         items_data: itemsData,
+  //         total_weight: totalWeight,
+  //         patsankhya: row._patSankhya || 0,
+  //         uniq_id: uniqId || null,   // <-- use uniq_id
+  //         ...(editId && { id: editId })
+  //       };
+  //       const url = '/api/schoolwiseorders';
+  //       const method = editId ? 'PUT' : 'POST';
+
+  //       const response = await fetch(url, {
+  //         method,
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify(payload),
+  //       });
+
+  //       if (!response.ok) {
+  //         throw new Error(`Failed to ${editId ? 'update' : 'create'} order for school ${school.schoolname}`);
+  //       }
+  //     }
+
+  //     toast.success(editId ? 'Order updated successfully!' : 'Orders created successfully!');
+  //     reset();
+  //     setEditId(null);
+  //     fetchSchoolWiseOrders();
+  //   } catch (error) {
+  //     console.error('Error saving orders:', error);
+  //     toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
+  //   } finally {
+  //     setLoading(false);
+  //     setUiBusy(false);
+  //     setIsmodelopen(false);
+  //   }
+  // };
 
 
   // New: group delete confirm
@@ -529,7 +683,7 @@ const AddSchoolswiseorder = () => {
               if (uid) {
                 setPendingGroupId(uid as string);
                 setConfirmGroupOpen(true);
-              } 
+              }
             }}
           >
             <FaTrash />
@@ -537,14 +691,7 @@ const AddSchoolswiseorder = () => {
         );
       }
     },
-    // {
-    //   key: 'uniq_id',
-    //   label: 'Group ID',
-    //   render: (row) => {
-    //     const uid = (row as any).uniq_id || '-';
-    //     return <span className="font-mono">{uid}</span>;
-    //   }
-    // },
+
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },

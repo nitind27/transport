@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { Filterdispached } from "../tables/Filterdispached";
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
+import { Modal } from '../ui/modal';
 
 interface ZPOrderDetail {
   id: number;
@@ -89,6 +90,7 @@ type DispatchListRow = {
   center_name?: string;
   truckNo?: string;
   class_range?: string;
+  taluka?: string; // add this
 };
 
 type DispatchRow = {
@@ -111,6 +113,7 @@ interface PrintModalProps {
     center_name: string;
     truckNo: string;
     date: string;
+    class_range?: string; // add
     items: Array<{
       name: string;
       qty: number;
@@ -130,7 +133,7 @@ interface TalukaRow {
 const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }) => {
   const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
-
+  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
   // Separate rice items from other items - तांदुळ is rice
   const riceItems = dispatchData.items.filter(item => {
     const itemName = item.name.toLowerCase();
@@ -364,7 +367,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 </body>
 </html>
     `;
-
+    setIsPreviewOpen(true);
     setPreviewType(type);
     setPreviewContent(content);
   };
@@ -622,10 +625,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     };
   };
 
-  const closePreview = () => {
-    setPreviewType(null);
-    setPreviewContent('');
-  };
+
 
   if (!isOpen) return null;
 
@@ -652,8 +652,9 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                 <div><strong>Date:</strong> {dispatchData.date}</div>
                 <div><strong>School:</strong> {dispatchData.schoolname}</div>
                 <div><strong>Udise No:</strong> {dispatchData.udaisno}</div>
+                <div><strong>Taluka:</strong> {dispatchData.taluka}</div>
                 <div><strong>Center:</strong> {dispatchData.center_name}</div>
-                <div><strong>Truck No:</strong> {dispatchData.truckNo}</div>
+                <div><strong>Class:</strong> {dispatchData.class_range || '-'}</div>
               </div>
             </div>
 
@@ -694,6 +695,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
           </div>
 
           {/* Action Buttons */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={() => generatePreview('kirana')}
@@ -712,8 +714,53 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
             </button>
           </div>
 
+          {/* New Preview Modal */}
+          <Modal
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            className="max-w-[950px] p-6  h-[550px] overflow-scroll"
+          >
+            <div className="flex items-start justify-between mb-4 ">
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {previewType === 'rice' ? 'Rice' : 'Kirana'} Receipt Preview
+                </h3>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  <div><strong>Tp No:</strong> {dispatchData.dispatch_code}</div>
+                  <div><strong>Date:</strong> {dispatchData.date}</div>
+                  <div><strong>School:</strong> {dispatchData.schoolname}</div>
+                  <div><strong>Udise No:</strong> {dispatchData.udaisno}</div>
+                  <div><strong>Taluka:</strong> {dispatchData.taluka}</div>
+                  <div><strong>Center:</strong> {dispatchData.center_name}</div>
+                  <div><strong>Class:</strong> {dispatchData.class_range || '-'}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 mr-14">
+                <button
+                  onClick={printPreview}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Print
+                </button>
+                {/* <button
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                >
+                  Close
+                </button> */}
+              </div>
+            </div>
+
+            <div className="bg-gray-100 p-3 rounded border">
+              <iframe
+                srcDoc={previewContent}
+                className="w-full h-[70vh] border rounded bg-white"
+                title="Receipt Preview"
+              />
+            </div>
+          </Modal>
           {/* Preview Section */}
-          {previewContent && (
+          {/* {previewContent && (
             <div className="mt-6 p-4 border rounded-lg">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">
@@ -746,7 +793,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                 </p>
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>
@@ -1193,77 +1240,16 @@ const Dipatchdetials = () => {
   }, [dispatchInputs, storageKey]);
 
   // Input-mode columns
-  const inputColumns: Column<DispatchRow>[] = [
-    { key: 'grain', label: 'Item', accessor: 'grain', render: (row) => <span>{row.grain}</span> },
-    { key: 'unit', label: 'Unit', accessor: 'unit', render: (row) => <span>{row.unit}</span> },
-    { key: 'totalQty', label: 'Quantity', accessor: 'totalQty', render: (row) => <span>{row.totalQty}</span> },
-    {
-      key: 'qtyDispatch',
-      label: 'Qty Dispatch',
-      render: (row) => {
-        const total = Number(row.totalQty);
-        const dbQty = Number(latestDispatchByItem[row.grain]?.qty ?? NaN);
-        const defaultValue = Number.isNaN(dbQty) ? total : (dbQty >= total ? 0 : dbQty);
-        const currentValue = dispatchInputs[row.grain] !== undefined
-          ? Number(dispatchInputs[row.grain])
-          : defaultValue;
+  // Input-mode columns
 
-        return (
-          <input
-            type="number"
-            min={0}
-            max={total}
-            className="h-9 w-28 rounded border px-2 text-sm"
-            value={currentValue}
-            onChange={(e) => {
-              if (e.target.value === '') {
-                setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
-                return;
-              }
-              const raw = Number(e.target.value);
-              const val = Number.isFinite(raw) ? raw : 0;
-              if (val > total) {
-                toast.error(`Entered quantity exceeds total. Max allowed: ${total}`);
-                return;
-              }
-              const capped = Math.min(Math.max(0, val), total);
-              setDispatchInputs(prev => ({ ...prev, [row.grain]: capped }));
-            }}
-            onBlur={(e) => {
-              if (e.target.value === '') {
-                setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
-              }
-            }}
-          />
-        );
-      }
-    },
-    {
-      key: 'balQty',
-      label: 'Bal Qtsy',
-      render: (row) => {
-        const total = Number(row.totalQty) || 0;
+  // Read-only list columns (default view) with eye icon for print
+  // Read-only list columns (default view) with eye icon for print
+  useEffect(() => {
+    if (!storageKey) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
+  }, [dispatchInputs, storageKey]);
 
-        // DB-dispatched qty for this item (if any)
-        const dbQtyRaw = (latestDispatchByItem[row.grain]?.qty);
-        const dbQty = typeof dbQtyRaw === 'number' ? dbQtyRaw : NaN;
-
-        // Current input value (falls back to total if not set yet)
-        const inputQty = dispatchInputs[row.grain] !== undefined
-          ? Number(dispatchInputs[row.grain])
-          : total;
-
-        // Use DB value if present, else use the input value
-        const dispatched = Number.isNaN(dbQty) ? inputQty : dbQty;
-
-        // If Quantity === Qty Dispatch → show 0
-        const bal = (total === dispatched) ? 0 : Math.max(0, total - dispatched);
-
-        const color = bal === 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
-        return <span className={color}>{bal}</span>;
-      }
-    },
-  ];
+  // Read-only list columns (default view) with eye icon for print
   // Read-only list columns (default view) with eye icon for print
   const listColumns: Column<DispatchListRow>[] = [
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
@@ -1277,7 +1263,34 @@ const Dipatchdetials = () => {
         </div>
       )
     },
-    { key: 'center_name', label: 'Center', accessor: 'center_name', render: (r) => <span>{r.center_name || r.center_id}</span> },
+    // Taluka (Marathi) resolved via schoolDataById + talukaList
+    {
+      key: 'taluka',
+      label: 'Taluka',
+      render: (r) => {
+        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
+        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+        return <span>{talukaName}</span>;
+      }
+    },
+    // Class Range
+    {
+      key: 'class_range',
+      label: 'Class',
+      accessor: 'class_range',
+      render: (r) => <span>{r.class_range || ''}</span>
+    },
+    // Center (prefer Marathi name)
+    {
+      key: 'center_name',
+      label: 'Center',
+      accessor: 'center_name',
+      render: (r) => {
+        const c = centerList.find(cn => String(cn.center_id) === String(r.center_id));
+        const name = c?.marathi_name || c?.name || r.center_name || r.center_id;
+        return <span>{name}</span>;
+      }
+    },
     { key: 'truckNo', label: 'Truck', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
     {
       key: 'schoolname',
@@ -1287,9 +1300,13 @@ const Dipatchdetials = () => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => {
-              // Get all items for this school and order
+              // Filter only this school's, order's, and class's items
               const schoolDispatchItems = dispatchList
-                .filter(d => d.schoolname === r.schoolname && d.order_no === r.order_no)
+                .filter(d =>
+                  d.schoolname === r.schoolname &&
+                  d.order_no === r.order_no &&
+                  String(d.class_range || '') === String(r.class_range || '')
+                )
                 .map(d => ({
                   name: d.item_name,
                   qty: d.qty_dispatch,
@@ -1303,9 +1320,10 @@ const Dipatchdetials = () => {
                 schoolname: r.schoolname || '',
                 udaisno: schoolWiseOrders.find(s => s.schoolname === r.schoolname)?.udaisno || '',
                 taluka: talukaName,
-                center_name: r.center_name || '',
+                center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
                 truckNo: r.truckNo || '',
                 date: new Date(r.created_at).toLocaleDateString('en-GB'),
+                class_range: r.class_range || '', // pass class
                 items: schoolDispatchItems
               };
 
@@ -1324,7 +1342,6 @@ const Dipatchdetials = () => {
       )
     },
   ];
-
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
   // Initialize Flatpickr for date picker (re-init when mode changes so toolbar remounts)
@@ -1614,14 +1631,18 @@ const Dipatchdetials = () => {
               const selectedTruck = truckList.find(t => String(t.id) === selectedTruckId);
               const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
               const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
+              const sdSel = schoolDataById.get(Number(selectedSchoolId));
+              const talukaName = sdSel ? (talukaList.find(t => t.taluka_id === sdSel.taluka_id)?.name || '') : '';
+
               const dispatchData = {
                 dispatch_code: newCode || (latestDispatchByItem[dispatchItems[0]?.name || ''] ? 'UPDATED' : ''),
                 schoolname: selectedSchool?.schoolname || '',
                 udaisno: selectedSchool?.udaisno || '',
-                taluka: 'शहादा',
-                center_name: selectedCenter?.name || selectedCenter?.marathi_name || '',
+                taluka: talukaName,
+                center_name: (selectedCenter?.marathi_name || selectedCenter?.name || ''),
                 truckNo: selectedTruck?.truckNo || '',
                 date: new Date().toLocaleDateString('en-GB'),
+                class_range: selectedOrderSchool?.class_range || selectedClassRange || '', // add
                 items: dispatchItems
               };
               setLastDispatchData(dispatchData);
@@ -1631,8 +1652,27 @@ const Dipatchdetials = () => {
               toast.error(err instanceof Error ? err.message : 'Failed to save');
             } finally {
               setLoading(false);
+              // Clear input cache for this selection
+              if (storageKey) {
+                try { localStorage.removeItem(storageKey); } catch { }
+              }
+              setDispatchInputs({});
+              // Reset all filters and return to default (read-only) view
+              setOrderNo('');
+              setSelectedTruckId('');
+              setSelectedTalukaId('');
+              setSelectedCenterId('');
+              setSelectedSchoolId('');
+              setSelectedClassRange('');
+              setDidSearch(false);
+              // Clear date filter and picker UI
+              setSelectedDate('');
+              if (flatpickrInstanceRef.current) {
+                try { flatpickrInstanceRef.current.clear(); } catch { }
+              }
             }
-          }}
+          }
+          }
           disabled={loading || !showInputMode}
         >
           {loading ? 'Submitting...' : 'Submit'}
@@ -1645,13 +1685,79 @@ const Dipatchdetials = () => {
   return (
     <div className="">
       {showInputMode ? (
-        <Filterdispached
-          data={dispatchRows}
-          columns={inputColumns}
-          filterOptions={[]}
-          filterKey={undefined}
-          toolbar={toolbar}
-        />
+        <div className="bg-white rounded-2xl shadow-md border p-4">
+          <div className="mb-4">{toolbar}</div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Sr No</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Item</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Unit</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Quantity</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Qty Dispatch</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Bal Qtsy</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                {dispatchRows.map((row, index) => {
+                  const total = Number(row.totalQty);
+                  const dbQty = Number(latestDispatchByItem[row.grain]?.qty ?? NaN);
+                  const defaultValue = Number.isNaN(dbQty) ? total : (dbQty >= total ? 0 : dbQty);
+                  const currentValue = dispatchInputs[row.grain] !== undefined
+                    ? Number(dispatchInputs[row.grain])
+                    : defaultValue;
+
+                  const bal = (() => {
+                    const dbQtyRaw = (latestDispatchByItem[row.grain]?.qty);
+                    const dbNum = typeof dbQtyRaw === 'number' ? dbQtyRaw : NaN;
+                    const inputQty = dispatchInputs[row.grain] !== undefined ? Number(dispatchInputs[row.grain]) : total;
+                    const dispatched = Number.isNaN(dbNum) ? inputQty : dbNum;
+                    return (total === dispatched) ? 0 : Math.max(0, total - dispatched);
+                  })();
+
+                  return (
+                    <tr key={row.grain}>
+                      <td className="px-4 py-3 border">{index + 1}</td>
+                      <td className="px-4 py-3 border">{row.grain}</td>
+                      <td className="px-4 py-3 border">{row.unit}</td>
+                      <td className="px-4 py-3 border">{row.totalQty}</td>
+                      <td className="px-4 py-3 border">
+                        <input
+                          type="number"
+                          min={0}
+                          max={total}
+                          className="h-9 w-28 rounded border px-2 text-sm"
+                          value={currentValue}
+                          onChange={(e) => {
+                            if (e.target.value === '') {
+                              setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
+                              return;
+                            }
+                            const raw = Number(e.target.value);
+                            const val = Number.isFinite(raw) ? raw : 0;
+                            if (val > total) {
+                              toast.error(`Entered quantity exceeds total. Max allowed: ${total}`);
+                              return;
+                            }
+                            const capped = Math.min(Math.max(0, val), total);
+                            setDispatchInputs(prev => ({ ...prev, [row.grain]: capped }));
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '') {
+                              setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
+                            }
+                          }}
+                        />
+                      </td>
+                      <td className={`px-4 py-3 border ${bal === 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}`}>{bal}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <Filterdispached
           data={filteredDispatchList}
@@ -1659,8 +1765,8 @@ const Dipatchdetials = () => {
           filterOptions={[]}
           filterKey={undefined}
           toolbar={toolbar}
-          groupByKey="schoolname"
-          colspanKeys={["order_no", "schoolname", "center_name", "truckNo"]}
+          groupByKey="class_range"
+          colspanKeys={["order_no", "taluka", "class_range", "schoolname", "center_name", "truckNo"]}
         />
       )}
 
