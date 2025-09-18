@@ -4,15 +4,16 @@ import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 import Label from "../form/Label";
-
 import { Column } from "../tables/tabletype";
-
 import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
-// import { IoEyeSharp } from 'react-icons/io5';
 import { Modal } from '../ui/modal';
 import { Schoolwisetable } from '../tables/Schoolwisetable';
-// import { MdDelete } from 'react-icons/md';
+import Loader from '../../common/Loader'; // <-- add
+
+import { FaTrash } from 'react-icons/fa';
+
+// Types
 
 // Types
 interface ZPOrderDetail {
@@ -52,8 +53,8 @@ interface SchoolWiseOrder {
   patsankhya?: number; // added
   status: string;
   created_at: string;
+  uniq_id?: string; // <-- added
 }
-
 
 type FormErrors = {
   orderNo?: string;
@@ -89,6 +90,8 @@ const AddSchoolswiseorder = () => {
   const [error, setErrors] = useState<FormErrors>({});
   const [editId, setEditId] = useState<number | null>(null);
 
+  // Global UI busy (overlay loader)
+  const [uiBusy, setUiBusy] = useState(false); // <-- add
   // Form fields
   const [orderNo, setOrderNo] = useState('');
   const [noOfDays, setNoOfDays] = useState<number | null>(null);
@@ -106,7 +109,7 @@ const AddSchoolswiseorder = () => {
   // View modal state
   const [viewOpen, setViewOpen] = useState(false);
   const [viewItem, setViewItem] = useState<SchoolWiseOrder | null>(null);
-
+  const [uniqId, setUniqId] = useState<string | null>(null);
   // Group modal state
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupRows, setGroupRows] = useState<SchoolWiseOrder[]>([]);
@@ -126,8 +129,28 @@ const AddSchoolswiseorder = () => {
   // };
 
   const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
-    const key = row._groupKey || `${row.order_no}|${row.class_range}`;
-    const [order_no, class_range, taluka] = key.split("|");
+    const key = row._groupKey;
+
+    // If grouped by uniq_id, _groupKey is the uniq_id
+    if (key && key.length > 0) {
+      const rows = schoolWiseOrders.filter(r => (r).uniq_id === key);
+      setGroupRows(rows);
+
+      const metaSource = rows[0] || row;
+      setGroupMeta({
+        order_no: metaSource.order_no,
+        class_range: metaSource.class_range,
+        no_of_days: metaSource.no_of_days,
+        period: metaSource.period,
+        financial_year: metaSource.financial_year,
+      });
+      setGroupOpen(true);
+      return;
+    }
+
+    // Fallback: old key format order_no|class_range|taluka
+    const fallbackKey = `${row.order_no}|${row.class_range}`;
+    const [order_no, class_range, taluka] = (row._groupKey || fallbackKey).split("|");
     const rows = schoolWiseOrders.filter(r => {
       const basicMatch = r.order_no === (order_no || row.order_no) && r.class_range === (class_range || row.class_range);
       if (!taluka) return basicMatch;
@@ -156,8 +179,8 @@ const AddSchoolswiseorder = () => {
     }
   };
 
-  type SWOWithTaluka = SchoolWiseOrder & { taluka: string };
-
+  type SWOWithTaluka = SchoolWiseOrder & { taluka: string; _groupKey?: string };
+  
   const dataWithTaluka: SWOWithTaluka[] = useMemo(() => {
     if (!schoolWiseOrders.length) return [];
     return schoolWiseOrders.map(r => {
@@ -248,7 +271,10 @@ const AddSchoolswiseorder = () => {
   };
 
   // Parse Excel file
+  // Parse Excel file
+  // Parse Excel file
   const parseExcelFile = (file: File) => {
+    setUiBusy(true); // <-- start overlay
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -268,7 +294,7 @@ const AddSchoolswiseorder = () => {
           });
           return out;
         });
-        
+
         const norm = (s: unknown) => String(s ?? "").trim();
         const num = (v: unknown) => {
           const n = Number(String(v ?? "").toString().replace(/[, ]+/g, ''));
@@ -325,15 +351,30 @@ const AddSchoolswiseorder = () => {
         });
 
         setExcelData(normalized);
+
+        // Generate and store a group uniq ID for this Excel import
+        const newGroupId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+        setUniqId(newGroupId);
+        fetch('/api/uniqid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            group_id: newGroupId,
+            meta: { sheetName, rows: normalized.length }
+          }),
+        }).catch(() => { });
+
         toast.success(`Excel file loaded successfully. Found ${normalized.length} rows.`);
       } catch (error) {
         console.error('Error parsing Excel file:', error);
         toast.error('Error parsing Excel file. Please check the format.');
+      } finally {
+        setUiBusy(false); // <-- stop overlay
       }
     };
+    reader.onerror = () => setUiBusy(false); // <-- ensure stop on error
     reader.readAsArrayBuffer(file);
   };
-
   useEffect(() => {
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
@@ -347,6 +388,7 @@ const AddSchoolswiseorder = () => {
     setSelectedFile(null);
     setExcelData([]);
     setEditId(null);
+    setUniqId(null); // <-- added
   };
 
   useEffect(() => {
@@ -369,6 +411,7 @@ const AddSchoolswiseorder = () => {
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
+    setUiBusy(true); // <-- start overlay
 
     try {
       const orderId = parseInt(orderNo);
@@ -401,7 +444,6 @@ const AddSchoolswiseorder = () => {
 
         const itemsData: ItemsData = {
           ...row._items,
-          // removed 'पट संख्या' from items JSON
         };
 
         const totalWeight = row._totalWeight || 0;
@@ -413,9 +455,9 @@ const AddSchoolswiseorder = () => {
           items_data: itemsData,
           total_weight: totalWeight,
           patsankhya: row._patSankhya || 0,
+          uniq_id: uniqId || null,   // <-- use uniq_id
           ...(editId && { id: editId })
         };
-
         const url = '/api/schoolwiseorders';
         const method = editId ? 'PUT' : 'POST';
 
@@ -439,41 +481,70 @@ const AddSchoolswiseorder = () => {
       toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
     } finally {
       setLoading(false);
+      setUiBusy(false);
       setIsmodelopen(false);
     }
   };
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingOrderNo, setPendingOrderNo] = useState<string | null>(null);
 
-  // const openBulkDelete = (orderNo: string) => {
-  //   setPendingOrderNo(orderNo);
-  //   setConfirmOpen(true);
-  // };
+  // New: group delete confirm
+  const [confirmGroupOpen, setConfirmGroupOpen] = useState(false);
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
-  const confirmBulkDelete = async () => {
-    if (!pendingOrderNo) return;
+  const confirmGroupDelete = async () => {
+    if (!pendingGroupId) return;
     try {
-      const targets = schoolWiseOrders.filter(r => r.order_no === pendingOrderNo);
-      for (const t of targets) {
-        await fetch('/api/schoolwiseorders', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: t.id, status: 'Inactive' }),
-        });
-      }
-      toast.success('Deleted all rows for the order');
+      const res = await fetch('/api/schoolwiseorders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uniq_id: pendingGroupId, status: 'Inactive' }), // <-- uniq_id
+      });
+      if (!res.ok) throw new Error('Failed to delete group');
+      toast.success('Group deleted (soft) successfully');
       await fetchSchoolWiseOrders();
     } catch (e) {
       console.error(e);
-      toast.error('Failed to delete rows for the order');
+      toast.error('Failed to delete group');
     } finally {
-      setConfirmOpen(false);
-      setPendingOrderNo(null);
+      setConfirmGroupOpen(false);
+      setPendingGroupId(null);
     }
   };
 
   const columns: Column<SWOWithTaluka>[] = [
+    {
+      key: 'delete',
+      label: 'Action',
+      render: (row) => {
+        const r = row as ExtendedSWO;
+        if (!r._isFirstInGroup) return null;
+        const gkey = r._groupKey || (row).uniq_id || '';
+        const first = dataWithTaluka.find(d => ((d._groupKey || d.uniq_id || '') === gkey)) as SchoolWiseOrder | undefined;
+        const uid = (first && (first).uniq_id) || (row).uniq_id || null;
+        return (
+          <button
+            type="button"
+            className="text-red-600 hover:text-red-800 underline"
+            onClick={() => {
+              if (uid) {
+                setPendingGroupId(uid as string);
+                setConfirmGroupOpen(true);
+              } 
+            }}
+          >
+            <FaTrash />
+          </button>
+        );
+      }
+    },
+    // {
+    //   key: 'uniq_id',
+    //   label: 'Group ID',
+    //   render: (row) => {
+    //     const uid = (row as any).uniq_id || '-';
+    //     return <span className="font-mono">{uid}</span>;
+    //   }
+    // },
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
@@ -486,31 +557,33 @@ const AddSchoolswiseorder = () => {
       render: (row) => {
         const r = row as ExtendedSWO;
         if (!r._isFirstInGroup) return null;
-        return <span>{r._groupCount || 0}</span>;
+        return <span className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+          onClick={() => openGroup(r)}>{r._groupCount || 0}</span>;
       }
     },
-    {
-      key: 'actions',
-      label: 'Action',
-      render: (row) => {
-        const r = row as ExtendedSWO;
-        if (!r._isFirstInGroup) return null;
-        return (
-          <button
-            type="button"
-            className="text-blue-600 hover:text-blue-800 underline"
-            onClick={() => openGroup(r)}
-          >
-            View Schools
-          </button>
-        );
-      }
-    }
+    // {
+    //   key: 'actions',
+    //   label: 'Action',
+    //   render: (row) => {
+    //     const r = row as ExtendedSWO;
+    //     if (!r._isFirstInGroup) return null;
+    //     return (
+    //       <button
+    //         type="button"
+    //         className="text-blue-600 hover:text-blue-800 underline"
+    //         onClick={() => openGroup(r)}
+    //       >
+    //         View Schools
+    //       </button>
+    //     );
+    //   }
+    // }
   ];
-
   return (
-  
-        <div className="">
+
+    <div className="">
+      {uiBusy && <Loader />} {/* <-- add overlay */}
+
       <Schoolwisetable
         data={dataWithTaluka}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
@@ -627,8 +700,8 @@ const AddSchoolswiseorder = () => {
         }
 
         searchKey="schoolname"
-        groupByKeys={['order_no', 'class_range', 'taluka']}
-        colspanKeys={['order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools', 'actions']}
+        groupByKeys={['uniq_id']}
+        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools', 'actions']}
       />
 
       {/* View Details Modal */}
@@ -688,25 +761,27 @@ const AddSchoolswiseorder = () => {
         )}
       </Modal>
 
+
+
       <Modal
-        isOpen={confirmOpen}
-        onClose={() => { setConfirmOpen(false); setPendingOrderNo(null); }}
+        isOpen={confirmGroupOpen}
+        onClose={() => { setConfirmGroupOpen(false); setPendingGroupId(null); }}
         className="max-w-[480px] p-6"
       >
         <div className="space-y-4">
           <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">Confirmation</h4>
           <p className="text-sm text-gray-600 dark:text-white/70">
-            Delete all rows for order no: <span className="font-semibold">{pendingOrderNo}</span>?
+            Delete all rows for this group?
           </p>
           <div className="flex justify-end gap-3">
             <button
-              onClick={() => { setConfirmOpen(false); setPendingOrderNo(null); }}
+              onClick={() => { setConfirmGroupOpen(false); setPendingGroupId(null); }}
               className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded"
             >
               Cancel
             </button>
             <button
-              onClick={confirmBulkDelete}
+              onClick={confirmGroupDelete}
               className="bg-red-600 text-white px-4 py-2 rounded"
             >
               Confirm
@@ -714,7 +789,6 @@ const AddSchoolswiseorder = () => {
           </div>
         </div>
       </Modal>
-
       <Modal
         isOpen={groupOpen}
         onClose={() => setGroupOpen(false)}

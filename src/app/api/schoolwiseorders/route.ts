@@ -28,9 +28,10 @@ export async function GET() {
 }
 
 // POST - Create new school-wise order detail
+// POST - Create new school-wise order detail
 export async function POST(request: Request) {
     try {
-        const { order_id, school_id, class_range, items_data, total_weight, patsankhya } = await request.json();
+        const { order_id, school_id, class_range, items_data, total_weight, patsankhya, uniq_id } = await request.json();
 
         if (!order_id || !school_id || !class_range || !items_data) {
             return NextResponse.json(
@@ -40,22 +41,18 @@ export async function POST(request: Request) {
         }
 
         const [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO school_wise_order_details (order_id, school_id, class_range, patsankhya, items_data, total_weight, status) 
-             VALUES (?, ?, ?, ?, ?, ?, 'Active')`,
-            [order_id, school_id, class_range, Number(patsankhya) || 0, JSON.stringify(items_data), total_weight || 0]
+            `INSERT INTO school_wise_order_details (order_id, school_id, class_range, patsankhya, items_data, total_weight, uniq_id, status) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')`,
+            [order_id, school_id, class_range, Number(patsankhya) || 0, JSON.stringify(items_data), total_weight || 0, uniq_id || null]
         );
 
-        return NextResponse.json({
-            message: 'School-wise order detail created successfully',
-            id: result.insertId
-        });
+        return NextResponse.json({ message: 'School-wise order detail created successfully', id: result.insertId });
     } catch (error) {
         console.error('Creation error:', error);
-        return NextResponse.json(
-            { error: 'Failed to create school-wise order detail' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to create school-wise order detail' }, { status: 500 });
     }
+
+
 }
 
 // PUT - Update school-wise order detail
@@ -96,16 +93,24 @@ export async function PUT(request: Request) {
     }
 }
 
-// PATCH - Toggle status (soft delete)
+// PATCH - Toggle status (soft delete) - supports single id OR group_id bulk
+// PATCH - Toggle status (soft delete) - supports single id OR uniq_id bulk
 export async function PATCH(request: Request) {
     try {
-        const { id, status } = await request.json();
+        const { id, status, uniq_id } = await request.json();
 
-        if (!id || !status) {
-            return NextResponse.json(
-                { error: 'ID and status are required' },
-                { status: 400 }
+        if ((!id && !uniq_id) || !status) {
+            return NextResponse.json({ error: 'ID or uniq_id and status are required' }, { status: 400 });
+        }
+
+        if (uniq_id) {
+            const [result] = await pool.query<ResultSetHeader>(
+                `UPDATE school_wise_order_details 
+                 SET status = ?, updated_at = NOW()
+                 WHERE uniq_id = ?`,
+                [status, uniq_id]
             );
+            return NextResponse.json({ message: 'Status updated for group successfully', affected: result.affectedRows });
         }
 
         const [result] = await pool.query<ResultSetHeader>(
@@ -116,24 +121,15 @@ export async function PATCH(request: Request) {
         );
 
         if (result.affectedRows === 0) {
-            return NextResponse.json(
-                { error: 'School-wise order detail not found' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'School-wise order detail not found' }, { status: 404 });
         }
 
-        return NextResponse.json({
-            message: 'Status updated successfully'
-        });
+        return NextResponse.json({ message: 'Status updated successfully' });
     } catch (error) {
         console.error('Status update error:', error);
-        return NextResponse.json(
-            { error: 'Failed to update status' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });
     }
 }
-
 // DELETE - Hard delete (optional)
 export async function DELETE(request: Request) {
     try {

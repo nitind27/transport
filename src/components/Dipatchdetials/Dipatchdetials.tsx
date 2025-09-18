@@ -88,12 +88,14 @@ type DispatchListRow = {
   schoolname?: string;
   center_name?: string;
   truckNo?: string;
+  class_range?: string;
 };
 
 type DispatchRow = {
   schoolname: string;
   grain: string;
-  totalQty: number; // remaining qty (planned - already dispatched)
+  totalQty: number; // Original planned quantity
+  remainingQty: number; // Remaining quantity after dispatch
   unit: string;
 };
 
@@ -1080,29 +1082,40 @@ const Dipatchdetials = () => {
     return all[0];
   }, [orderNo, selectedSchoolId, selectedClassRange, schoolWiseOrders]);
 
-  // Sum already dispatched per item for selected order + school
+  // Sum already dispatched per item for selected order + school (+ class)
+  // Sum already dispatched per item for selected order + school (+ class)
   const dispatchedByItem = useMemo<Record<string, number>>(() => {
     if (!orderNo || !selectedSchoolId) return {};
+    const selectedClass = selectedClassRange || selectedOrderSchool?.class_range || '';
     const map: Record<string, number> = {};
     dispatchList
-      .filter(d => String(d.order_id) === orderNo && String(d.school_id) === selectedSchoolId)
+      .filter(d =>
+        String(d.order_id) === orderNo &&
+        String(d.school_id) === selectedSchoolId &&
+        (!selectedClass || String(d.class_range || '') === String(selectedClass))
+      )
       .forEach(d => {
         const key = d.item_name.trim();
         map[key] = (map[key] || 0) + Number(d.qty_dispatch || 0);
       });
     return map;
-  }, [dispatchList, orderNo, selectedSchoolId]);
+  }, [dispatchList, orderNo, selectedSchoolId, selectedClassRange, selectedOrderSchool?.class_range]);
 
-  // Latest inserted row per item for this order+school (to prefill + update)
+  // Latest inserted row per item for this order+school(+class)
   const latestDispatchByItem = useMemo<Record<string, { id: number; qty: number; total: number }>>(() => {
     if (!orderNo || !selectedSchoolId) return {};
+    const selectedClass = selectedClassRange || selectedOrderSchool?.class_range || '';
     const map: Record<string, { id: number; qty: number; total: number; created: string | number }> = {};
     dispatchList
-      .filter(d => String(d.order_id) === orderNo && String(d.school_id) === selectedSchoolId)
+      .filter(d =>
+        String(d.order_id) === orderNo &&
+        String(d.school_id) === selectedSchoolId &&
+        (!selectedClass || String(d.class_range || '') === String(selectedClass))
+      )
       .forEach(d => {
         const key = d.item_name.trim();
         const prev = map[key];
-        const created = d.created_at || d.id; // fallback to id ordering
+        const created = d.created_at || d.id;
         if (!prev || String(created) > String(prev.created)) {
           map[key] = { id: d.id, qty: Number(d.qty_dispatch || 0), total: Number(d.total_qty || 0), created };
         }
@@ -1110,9 +1123,7 @@ const Dipatchdetials = () => {
     const out: Record<string, { id: number; qty: number; total: number }> = {};
     Object.entries(map).forEach(([k, v]) => { out[k] = { id: v.id, qty: v.qty, total: v.total }; });
     return out;
-  }, [dispatchList, orderNo, selectedSchoolId]);
-
-  // Build input-mode rows with remaining qty (planned - already dispatched)
+  }, [dispatchList, orderNo, selectedSchoolId, selectedClassRange, selectedOrderSchool?.class_range]);
   // Build input-mode rows with remaining qty (planned - already dispatched)
   const dispatchRows = useMemo<DispatchRow[]>(() => {
     if (!selectedOrderSchool) return [];
@@ -1122,7 +1133,6 @@ const Dipatchdetials = () => {
     const rows: DispatchRow[] = [];
 
     Object.entries(items)
-      // .filter(([, v]) => Number(v) > 0) // removed to include 0 values as well
       .forEach(([k, v]) => {
         const master = itemGrains.find(g => g.name.trim() === k.trim());
         const planned = Number(v) || 0;
@@ -1131,7 +1141,8 @@ const Dipatchdetials = () => {
         rows.push({
           schoolname: selectedOrderSchool.schoolname,
           grain: k,
-          totalQty: remaining,
+          totalQty: planned, // Show original planned quantity, not remaining
+          remainingQty: remaining, // Keep remaining for balance calculation
           unit: master?.Unit || 'kg',
         });
       });
@@ -1139,10 +1150,14 @@ const Dipatchdetials = () => {
     return rows;
   }, [selectedOrderSchool, itemGrains, dispatchedByItem]);
 
-  // Inputs map for qty dispatch (persist per order+school) + prefill from latest inserted
+  // Inputs map for qty dispatch (persist per order+school+class)
   const storageKey = useMemo(
-    () => (orderNo && selectedSchoolId ? `dispatchInputs:${orderNo}:${selectedSchoolId}` : ''),
-    [orderNo, selectedSchoolId]
+    () => {
+      if (!orderNo || !selectedSchoolId) return '';
+      const cls = selectedClassRange || selectedOrderSchool?.class_range || '';
+      return `dispatchInputs:${orderNo}:${selectedSchoolId}:${cls}`;
+    },
+    [orderNo, selectedSchoolId, selectedClassRange, selectedOrderSchool?.class_range]
   );
   const [dispatchInputs, setDispatchInputs] = useState<Record<string, number | undefined>>({});
   useEffect(() => {
@@ -1153,21 +1168,24 @@ const Dipatchdetials = () => {
     } catch { setDispatchInputs({}); }
   }, [storageKey]);
 
-  // Prefill inputs from latest inserted rows only for fields that are still undefined
+  // Prefill inputs: if no DB row -> Quantity; if DB qty == Quantity -> 0; else -> DB qty
+  // Re-seed inputs whenever DB latest changes (after insert/update refresh)
   useEffect(() => {
     if (!storageKey) return;
-    setDispatchInputs(prev => {
-      const next = { ...prev };
+    setDispatchInputs(() => {
+      const next: Record<string, number> = {};
       dispatchRows.forEach(row => {
-        if (typeof next[row.grain] === 'undefined') {
-          const ex = latestDispatchByItem[row.grain]?.qty;
-          if (typeof ex !== 'undefined') next[row.grain] = ex;
+        const total = Number(row.totalQty);
+        const dbQty = Number(latestDispatchByItem[row.grain]?.qty ?? NaN);
+        if (Number.isNaN(dbQty)) {
+          next[row.grain] = total;              // no DB row → show Quantity
+        } else {
+          next[row.grain] = dbQty >= total ? 0 : dbQty; // fully dispatched → 0 else DB qty
         }
       });
       return next;
     });
-  }, [storageKey, dispatchRows, latestDispatchByItem]);
-
+  }, [storageKey]);
   // Persist on change
   useEffect(() => {
     if (!storageKey) return;
@@ -1183,27 +1201,38 @@ const Dipatchdetials = () => {
       key: 'qtyDispatch',
       label: 'Qty Dispatch',
       render: (row) => {
-        const existing = latestDispatchByItem[row.grain]?.qty ?? 0;
-        const maxAllowed = Math.max(Number(row.totalQty), existing);
+        const total = Number(row.totalQty);
+        const dbQty = Number(latestDispatchByItem[row.grain]?.qty ?? NaN);
+        const defaultValue = Number.isNaN(dbQty) ? total : (dbQty >= total ? 0 : dbQty);
+        const currentValue = dispatchInputs[row.grain] !== undefined
+          ? Number(dispatchInputs[row.grain])
+          : defaultValue;
+
         return (
           <input
             type="number"
             min={0}
-            // do not set max attribute to allow typing; we enforce in JS using maxAllowed
+            max={total}
             className="h-9 w-28 rounded border px-2 text-sm"
-            value={dispatchInputs[row.grain] ?? ''}
+            value={currentValue}
             onChange={(e) => {
               if (e.target.value === '') {
-                setDispatchInputs(prev => ({ ...prev, [row.grain]: undefined }));
+                setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
                 return;
               }
               const raw = Number(e.target.value);
               const val = Number.isFinite(raw) ? raw : 0;
-              if (val > maxAllowed) {
-                toast.error(`Entered quantity exceeds available. Max allowed: ${maxAllowed}`);
+              if (val > total) {
+                toast.error(`Entered quantity exceeds total. Max allowed: ${total}`);
+                return;
               }
-              const capped = Math.min(Math.max(0, val), maxAllowed);
+              const capped = Math.min(Math.max(0, val), total);
               setDispatchInputs(prev => ({ ...prev, [row.grain]: capped }));
+            }}
+            onBlur={(e) => {
+              if (e.target.value === '') {
+                setDispatchInputs(prev => ({ ...prev, [row.grain]: defaultValue }));
+              }
             }}
           />
         );
@@ -1213,18 +1242,28 @@ const Dipatchdetials = () => {
       key: 'balQty',
       label: 'Bal Qtsy',
       render: (row) => {
-        const hasInput = dispatchInputs[row.grain] !== undefined;
-        const qd = Number(dispatchInputs[row.grain] ?? 0);
-        const bal = Math.max(0, Number(row.totalQty) - qd);
-        const color =
-          bal === 0 ? 'text-red-600 font-semibold'
-            : hasInput ? 'text-green-600 font-semibold'
-              : '';
+        const total = Number(row.totalQty) || 0;
+
+        // DB-dispatched qty for this item (if any)
+        const dbQtyRaw = (latestDispatchByItem[row.grain]?.qty);
+        const dbQty = typeof dbQtyRaw === 'number' ? dbQtyRaw : NaN;
+
+        // Current input value (falls back to total if not set yet)
+        const inputQty = dispatchInputs[row.grain] !== undefined
+          ? Number(dispatchInputs[row.grain])
+          : total;
+
+        // Use DB value if present, else use the input value
+        const dispatched = Number.isNaN(dbQty) ? inputQty : dbQty;
+
+        // If Quantity === Qty Dispatch → show 0
+        const bal = (total === dispatched) ? 0 : Math.max(0, total - dispatched);
+
+        const color = bal === 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
         return <span className={color}>{bal}</span>;
       }
     },
   ];
-
   // Read-only list columns (default view) with eye icon for print
   const listColumns: Column<DispatchListRow>[] = [
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
@@ -1449,125 +1488,155 @@ const Dipatchdetials = () => {
         <button
           type="button"
           className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium mt-5"
-            onClick={async () => {
-                      try {
-                        if (!orderNo || !selectedTruckId || !selectedCenterId || !selectedSchoolId) {
-                          toast.error('Select Order, Truck, Center, and School');
-                          return;
-                        }
-                        if (dispatchRows.length === 0) {
-                          toast.error('No items to dispatch');
-                          return;
-                        }
-                        // Build updates (PUT) and inserts (POST)
-                        const updates: Array<{ id: number; qty_dispatch: number }> = [];
-                        const inserts = dispatchRows
-                          .map(r => {
-                            const qty = Number(dispatchInputs[r.grain] ?? 0);
-                            const latest = latestDispatchByItem[r.grain];
-                            if (latest) {
-                              // Update existing row (allow zero to correct)
-                              updates.push({ id: latest.id, qty_dispatch: qty });
-                              return null;
-                            }
-                            return {
-                              grain: r.grain,
-                              unit: r.unit,
-                              totalQty: r.totalQty,
-                              qtyDispatch: qty,
-                            };
-                          })
-                          .filter((l): l is { grain: string; unit: string; totalQty: number; qtyDispatch: number } => !!l && l.qtyDispatch > 0);
-                        if (updates.length === 0 && inserts.length === 0) {
-                          toast.error('Enter at least one dispatch quantity');
-                          return;
-                        }
-                        setLoading(true);
-                        // Perform updates first
-                        if (updates.length > 0) {
-                          await Promise.all(
-                            updates.map(u =>
-                              fetch('/api/dispatchdetails', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: u.id, qty_dispatch: u.qty_dispatch }),
-                              }).then(async (res) => {
-                                if (!res.ok) {
-                                  const er = await res.json().catch(() => ({}));
-                                  throw new Error(er.message || 'Failed to update dispatch');
-                                }
-                              })
-                            )
-                          );
-                        }
-                        // Then perform inserts (single POST with all new lines)
-                        let newCode: string | undefined;
-                        if (inserts.length > 0) {
-                          const resp = await fetch('/api/dispatchdetails', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              order_id: Number(orderNo),
-                              school_id: Number(selectedSchoolId),
-                              center_id: Number(selectedCenterId),
-                              truck_id: Number(selectedTruckId),
-                              lines: inserts,
-                            }),
-                          });
-                          if (!resp.ok) {
-                            const er = await resp.json().catch(() => ({}));
-                            throw new Error(er.message || 'Failed to save dispatch');
-                          }
-                          const ok = await resp.json();
-                          newCode = ok.dispatch_code;
-                        }
-                        toast.success(newCode ? `Saved (Code: ${newCode})` : 'Updated successfully');
-                        // Prepare print data from input values (both updates and inserts)
-                        const dispatchItems = dispatchRows
-                          .map(r => ({
-                            name: r.grain,
-                            qty: Number(dispatchInputs[r.grain] ?? 0),
-                            unit: r.unit
-                          }))
-                          .filter(i => i.qty > 0);
-                        const selectedTruck = truckList.find(t => String(t.id) === selectedTruckId);
-                        const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
-                        const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
-                        const dispatchData = {
-                          dispatch_code: newCode || (latestDispatchByItem[dispatchItems[0]?.name || ''] ? 'UPDATED' : ''),
-                          schoolname: selectedSchool?.schoolname || '',
-                          udaisno: selectedSchool?.udaisno || '',
-                          taluka: 'शहादा',
-                          center_name: selectedCenter?.name || selectedCenter?.marathi_name || '',
-                          truckNo: selectedTruck?.truckNo || '',
-                          date: new Date().toLocaleDateString('en-GB'),
-                          items: dispatchItems
-                        };
-                        setLastDispatchData(dispatchData);
-                        setShowPrintModal(true);
-                        // clear inputs (state + persisted)
-                        setDispatchInputs({});
-                        if (storageKey) {
-                          try { localStorage.removeItem(storageKey); } catch {}
-                        }
-                        // clear filters after successful submit
-                        setOrderNo('');
-                        setSelectedTruckId('');
-                        setSelectedCenterId('');
-                        setSelectedSchoolId('');
-                        setDidSearch(false);
-                        await fetchDispatchList(); // refresh list
-                      } catch (err) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to save');
-                      } finally {
-                        setLoading(false);
-                        setDidSearch(false);
-                      }
-                    }}
-                    disabled={loading || !showInputMode}
-                  >
-                    {loading ? 'Submitting...' : 'Submit'}
-                  </button>
+          onClick={async () => {
+            try {
+              if (!orderNo || !selectedTruckId || !selectedCenterId || !selectedSchoolId) {
+                toast.error('Select Order, Truck, Center, and School');
+                return;
+              }
+              if (dispatchRows.length === 0) {
+                toast.error('No items to dispatch');
+                return;
+              }
+
+              // Build row context
+              const rowsToProcess = dispatchRows.map(r => {
+                const total = Number(r.totalQty);
+                const dbLatest = latestDispatchByItem[r.grain];
+                const dbQty = typeof dbLatest?.qty === 'number' ? dbLatest.qty : NaN;
+                const defaultValue = Number.isNaN(dbQty) ? total : (dbQty >= total ? 0 : dbQty);
+                const inputQty = Number(dispatchInputs[r.grain] ?? defaultValue);
+                return { r, total, dbLatest, dbQty, defaultValue, inputQty };
+              });
+
+              // First time: no DB rows exist → insert ALL items
+              const isFirstSubmission = rowsToProcess.every(x => !x.dbLatest);
+
+              let updates: Array<{ id: number; qty_dispatch: number }> = [];
+              let inserts: Array<{ grain: string; unit: string; totalQty: number; qtyDispatch: number }> = [];
+
+              if (isFirstSubmission) {
+                inserts = rowsToProcess.map(x => ({
+                  grain: x.r.grain,
+                  unit: x.r.unit,
+                  totalQty: x.total,
+                  qtyDispatch: x.inputQty,
+                }));
+              } else {
+                // Later runs: only changed rows
+                updates = rowsToProcess
+                  .filter(x => x.dbLatest && x.inputQty !== x.defaultValue)
+                  .map(x => ({ id: x.dbLatest!.id, qty_dispatch: x.inputQty }));
+
+                inserts = rowsToProcess
+                  .filter(x => !x.dbLatest && x.inputQty !== x.defaultValue)
+                  .map(x => ({
+                    grain: x.r.grain,
+                    unit: x.r.unit,
+                    totalQty: x.total,
+                    qtyDispatch: x.inputQty,
+                  }));
+              }
+
+              if (updates.length === 0 && inserts.length === 0) {
+                toast.error('Enter at least one dispatch quantity (can be 0 to reset)');
+                return;
+              }
+
+              setLoading(true);
+
+              if (updates.length > 0) {
+                await Promise.all(
+                  updates.map(u =>
+                    fetch('/api/dispatchdetails', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: u.id, qty_dispatch: u.qty_dispatch }),
+                    }).then(async (res) => {
+                      if (!res.ok) {
+                        const er = await res.json().catch(() => ({}));
+                        throw new Error(er.message || 'Failed to update dispatch');
+                      }
+                    })
+                  )
+                );
+              }
+
+              let newCode: string | undefined;
+              if (inserts.length > 0) {
+                const resp = await fetch('/api/dispatchdetails', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    order_id: Number(orderNo),
+                    school_id: Number(selectedSchoolId),
+                    center_id: Number(selectedCenterId),
+                    truck_id: Number(selectedTruckId),
+                    class_range: selectedOrderSchool?.class_range || selectedClassRange || '',
+                    lines: inserts,
+                  }),
+                });
+                if (!resp.ok) {
+                  const er = await resp.json().catch(() => ({}));
+                  throw new Error(er.message || 'Failed to save dispatch');
+                }
+                const ok = await resp.json();
+                newCode = ok.dispatch_code;
+              }
+
+              toast.success(newCode ? `Saved (Code: ${newCode})` : 'Updated successfully');
+
+              // Refresh from DB and auto-apply latest values into inputs
+              // After successful save, refresh DB and re-seed inputs from DB (0 if fully dispatched)
+              await fetchDispatchList();
+
+              setDispatchInputs(() => {
+                const next: Record<string, number> = {};
+                dispatchRows.forEach(row => {
+                  const latest = latestDispatchByItem[row.grain];
+                  const dbQty = Number(latest?.qty ?? NaN);
+                  if (Number.isNaN(dbQty)) {
+                    next[row.grain] = Number(row.totalQty);           // still no DB row -> show Quantity
+                  } else {
+                    next[row.grain] = dbQty >= Number(row.totalQty) ? 0 : dbQty;  // equal => 0, else DB qty
+                  }
+                });
+                return next;
+              });
+              // Keep filters as-is; show print modal as before if needed
+              const dispatchItems = dispatchRows
+                .map(r => ({
+                  name: r.grain,
+                  qty: Number(dispatchInputs[r.grain] ?? 0),
+                  unit: r.unit
+                }))
+                .filter(i => i.qty >= 0);
+              const selectedTruck = truckList.find(t => String(t.id) === selectedTruckId);
+              const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
+              const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
+              const dispatchData = {
+                dispatch_code: newCode || (latestDispatchByItem[dispatchItems[0]?.name || ''] ? 'UPDATED' : ''),
+                schoolname: selectedSchool?.schoolname || '',
+                udaisno: selectedSchool?.udaisno || '',
+                taluka: 'शहादा',
+                center_name: selectedCenter?.name || selectedCenter?.marathi_name || '',
+                truckNo: selectedTruck?.truckNo || '',
+                date: new Date().toLocaleDateString('en-GB'),
+                items: dispatchItems
+              };
+              setLastDispatchData(dispatchData);
+              setShowPrintModal(true);
+
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'Failed to save');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          disabled={loading || !showInputMode}
+        >
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
       </div>
     </div>
   );

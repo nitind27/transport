@@ -33,11 +33,12 @@ export async function POST(req: Request) {
   const conn = await pool.getConnection();
   try {
     const body = await req.json();
-    const { order_id, school_id, center_id, truck_id, lines } = body as {
+    const { order_id, school_id, center_id, truck_id, class_range, lines } = body as {
       order_id: number;
       school_id: number;
       center_id: number;
       truck_id: number;
+      class_range?: string;
       lines: Array<{ grain: string; unit: string; totalQty: number; qtyDispatch: number }>;
     };
 
@@ -52,9 +53,9 @@ export async function POST(req: Request) {
       const bal = Math.max(0, Number(l.totalQty) - Number(l.qtyDispatch || 0));
       await conn.query<ResultSetHeader>(
         `INSERT INTO dispatch_details
-         (dispatch_code, order_id, school_id, center_id, truck_id, item_name, unit, total_qty, qty_dispatch, bal_qty, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
-        [code, order_id, school_id, center_id, truck_id, l.grain, l.unit || '', Number(l.totalQty) || 0, Number(l.qtyDispatch) || 0, bal]
+         (dispatch_code, order_id, school_id, center_id, truck_id, class_range, item_name, unit, total_qty, qty_dispatch, bal_qty, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+        [code, order_id, school_id, center_id, truck_id, class_range || null, l.grain, l.unit || '', Number(l.totalQty) || 0, Number(l.qtyDispatch) || 0, bal]
       );
     }
 
