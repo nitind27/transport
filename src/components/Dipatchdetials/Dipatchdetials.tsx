@@ -909,7 +909,6 @@ const Dipatchdetials = () => {
   // Filter dispatch list based on date
   useEffect(() => {
     let filtered = [...dispatchList];
-
     // Filter by date only if a date is selected
     if (selectedDate && selectedDate.trim() !== '') {
       const selectedDateObj = new Date(selectedDate);
@@ -1239,19 +1238,14 @@ const Dipatchdetials = () => {
     try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
   }, [dispatchInputs, storageKey]);
 
-  // Input-mode columns
-  // Input-mode columns
-
-  // Read-only list columns (default view) with eye icon for print
-  // Read-only list columns (default view) with eye icon for print
   useEffect(() => {
     if (!storageKey) return;
     try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
   }, [dispatchInputs, storageKey]);
 
-  // Read-only list columns (default view) with eye icon for print
-  // Read-only list columns (default view) with eye icon for print
+
   const listColumns: Column<DispatchListRow>[] = [
+    // { key: 'dispatch_code', label: 'Dispatch Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     {
       key: 'schoolname',
@@ -1765,7 +1759,7 @@ const Dipatchdetials = () => {
           filterOptions={[]}
           filterKey={undefined}
           toolbar={toolbar}
-          groupByKey="class_range"
+          groupByKey="dispatch_code"
           colspanKeys={["order_no", "taluka", "class_range", "schoolname", "center_name", "truckNo"]}
         />
       )}
