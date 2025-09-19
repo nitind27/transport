@@ -8,7 +8,7 @@ const page = async () => {
 
     const breadcrumbItems = [
         { label: 'Home', href: '/' },
-        { label: 'Dipatch Detials', href: '/dipatchdetials' },
+        { label: 'Dipatch Details', href: '/dipatchdetials' },
     ];
 
     return (
