@@ -74,7 +74,7 @@ const allNavItems: NavItem[] = [
   },
   {
     icon: <TbCategoryPlus />,
-    name: "Dipatch Detials",
+    name: "Dispatch Details",
     path: "/dipatchdetials",
   },
   // {

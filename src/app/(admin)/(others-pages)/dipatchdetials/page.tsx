@@ -8,13 +8,13 @@ const page = async () => {
 
     const breadcrumbItems = [
         { label: 'Home', href: '/' },
-        { label: 'Dipatch Details', href: '/dipatchdetials' },
+        { label: 'Dispatch Details', href: '/dipatchdetials' },
     ];
 
     return (
         <div className="grid grid-cols-6 gap-4 md:gap-6">
             <div className="col-span-12 space-y-6 xl:col-span-7">
-                <Breadcrumbs title="Dipatch Details" breadcrumbs={breadcrumbItems} />
+                <Breadcrumbs title="Dispatch Details" breadcrumbs={breadcrumbItems} />
                 <Dipatchdetials />
             </div>
         </div>
