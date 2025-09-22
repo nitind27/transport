@@ -77,6 +77,11 @@ const allNavItems: NavItem[] = [
     name: "Dispatch Details",
     path: "/dipatchdetials",
   },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Route Paper",
+    path: "/routepaper",
+  },
   // {
   //   icon: <RxDashboard />,
   //   name: "भौतिक तक्ता",
