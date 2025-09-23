@@ -32,6 +32,7 @@ interface SchoolWiseOrder {
     status: string;
     created_at: string;
     class_range?: string; // ensure present
+    patsankhya?: number;  // <-- add this
 }
 // Add proper type declarations for flatpickr
 declare module 'flatpickr' {
@@ -97,6 +98,7 @@ type DispatchListRow = {
     period?: string;
     no_of_days?: number;
     financial_year?: string;
+    patsankhya?: string;
     group_id?: number | null; // <- add this
 };
 
@@ -120,12 +122,13 @@ interface TalukaRow {
 
 
 
+
 const Routepaper = () => {
     const [loading, setLoading] = useState(false);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmCode, setConfirmCode] = useState<string | null>(null);
-
+    const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
 
 
     // NEW: simple selection cart for route paper
@@ -143,9 +146,11 @@ const Routepaper = () => {
         period?: string;
         no_of_days?: number;
         financial_year?: string;
+        patsankhya?: string;
         items: Array<{ name: string; qty: number; unit: string }>;
     };
     const [routeCart, setRouteCart] = useState<CartItem[]>([]);
+    console.log('routeCart', routeCart)
     const [showCartModal, setShowCartModal] = useState(false);
     const [addCode, setAddCode] = useState('');          // manual पावती क्रमांक entry
 
@@ -185,6 +190,7 @@ const Routepaper = () => {
             period: first.period,
             no_of_days: first.no_of_days,
             financial_year: first.financial_year,
+            patsankhya: first.patsankhya,
             items,
         };
 
@@ -227,11 +233,14 @@ const Routepaper = () => {
             }
             toast.success('Route paper saved');
             setRouteCart([]);
-            setShowCartModal(false);
+            // Refresh list so newly grouped/inserted data disappears from table
+            await fetchDispatchList();
+           
         } catch (e) {
             toast.error(e instanceof Error ? e.message : 'Failed to save route paper');
         } finally {
             setLoading(false);
+            setSubmitConfirmOpen(false);
         }
     };
     // Filters
@@ -287,6 +296,7 @@ const Routepaper = () => {
 
 
 
+
     // Initialize Flatpickr for date picker
     useEffect(() => {
         if (datePickerRef.current) {
@@ -317,7 +327,7 @@ const Routepaper = () => {
     }, []);
 
 
-    // Filter dispatch list based on date
+    // Filter dispatch list based on date and hide items added to route cart
     useEffect(() => {
         let filtered = [...dispatchList];
         // Filter by date only if a date is selected
@@ -329,11 +339,17 @@ const Routepaper = () => {
             });
         }
 
-        // Hide rows already inserted/grouped
+        // Hide rows already inserted/grouped on server
         filtered = filtered.filter(item => !item.group_id);
 
+        // Also hide groups that user has added to the route cart locally
+        const cartCodes = new Set(routeCart.map(c => String(c.dispatch_code)));
+        if (cartCodes.size > 0) {
+            filtered = filtered.filter(item => !cartCodes.has(String(item.dispatch_code)));
+        }
+
         setFilteredDispatchList(filtered);
-    }, [dispatchList, selectedDate]);
+    }, [dispatchList, selectedDate, routeCart]);
 
 
     // Fetchers
@@ -386,7 +402,7 @@ const Routepaper = () => {
 
     const fetchDispatchList = async () => {
         try {
-            const res = await fetch('/api/dispatchdetails');
+            const res = await fetch('/api/routedispatch');
             if (res.ok) setDispatchList(await res.json());
         } catch (e) {
             console.error(e);
@@ -697,7 +713,6 @@ const Routepaper = () => {
             .filter(id => Number.isFinite(id));
     };
     const listColumns: Column<DispatchListRow>[] = [
-        // { key: 'dispatch_code', label: 'Dispatch Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
         {
             key: 'schoolname',
             label: 'Action',
@@ -714,7 +729,7 @@ const Routepaper = () => {
                             className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
                             title="Add this group to route cart"
                         >
-                            Add to route
+                            Add to Route
                         </button>
                     </div>
                 );
@@ -733,10 +748,10 @@ const Routepaper = () => {
                 );
             },
         },
-        
+
         { key: 'order_no', label: 'Dispatch Date', accessor: 'created_at', render: (r) => <span>{formatDate(r.created_at) || formatDate(r.created_at)}</span> },
         { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
-      
+
         // Taluka (Marathi) resolved via schoolDataById + talukaList
         {
             key: 'taluka',
@@ -775,9 +790,9 @@ const Routepaper = () => {
             render: (r) => <span>{r.class_range || ''}</span>
         },
         // Center (prefer Marathi name)
-       
+
         { key: 'truckNo', label: 'Truck', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
-        
+
     ];
 
     const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
@@ -945,13 +960,13 @@ const Routepaper = () => {
                             toast.error('Select Order, Truck, Center, and School');
                             return;
                         }
-                    
+
                     }}
                 >
                     Search
                 </button>
 
-              
+
                 <div className="flex items-end justify-end mt-5">
                     <button
                         type="button"
@@ -961,7 +976,7 @@ const Routepaper = () => {
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-600 font-semibold">
                             {routeCart.length}
                         </span>
-                        Add to Route (Cart)
+                        Route (Cart)
                     </button>
                 </div>
             </div>
@@ -1066,7 +1081,7 @@ const Routepaper = () => {
                 />
             )}
 
-       
+
             {/* Route Cart Modal */}
             <Modal isOpen={showCartModal} onClose={() => setShowCartModal(false)} className="max-w-[95vw] w-[1200px] p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -1156,7 +1171,7 @@ const Routepaper = () => {
                                         <td className="border px-2 py-1">{udise}</td>
                                         <td className="border px-2 py-1">{grp.schoolname || ''}</td>
                                         <td className="border px-2 py-1">{grp.class_range || ''}</td>
-                                        <td className="border px-2 py-1 text-right">-</td>
+                                        <td className="border px-2 py-1 text-right">{grp.patsankhya}</td>
                                         {mrGrainColumns.map(c => (
                                             <td key={c.key} className="border px-2 py-1 text-right">
                                                 {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
@@ -1177,10 +1192,16 @@ const Routepaper = () => {
                         Close
                     </button>
                     <button
-                        onClick={submitRouteCart}
+                        onClick={() => setSubmitConfirmOpen(true)}
                         disabled={loading || routeCart.length === 0}
-                        className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60"
+                        className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60 inline-flex items-center"
                     >
+                        {loading && (
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                        )}
                         {loading ? 'Submitting...' : 'Final Submit'}
                     </button>
                 </div>
@@ -1213,6 +1234,30 @@ const Routepaper = () => {
                     </div>
                 </div>
             </Modal >
+
+            <Modal isOpen={submitConfirmOpen} onClose={() => setSubmitConfirmOpen(false)} className="max-w-md p-0">
+                <div className="p-5">
+                    <h3 className="text-base font-semibold text-gray-900">Confirm Final Submit</h3>
+                    <p className="mt-2 text-sm text-gray-600">Are you sure you want to submit the route cart?</p>
+                    <div className="mt-5 flex justify-end gap-2">
+                        <button
+                            onClick={() => setSubmitConfirmOpen(false)}
+                            disabled={loading}
+                            className="px-4 py-2 rounded border border-gray-300 text-gray-800 disabled:opacity-60"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={submitRouteCart}
+                            disabled={loading}
+                            className="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-60"
+                        >
+                            {loading ? 'Submitting...' : 'Yes, submit'}
+                        </button>
+                    </div>
+                </div>
+            </Modal >
+
         </div >
     );
 };

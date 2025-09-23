@@ -9,24 +9,26 @@ function generateDispatchCode() {
 export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(`
-      SELECT d.*,
-             z.order_no,
-             z.period,
-             z.no_of_days,
-             z.financial_year,
-             s.schoolname,
-             c.name AS center_name,
-             t.truckNo,
-              sh.patsankhya
-      FROM dispatch_details d
-      LEFT JOIN zp_order_details z ON d.order_id = z.id
-      LEFT JOIN schooldata s ON d.school_id = s.schoolid
-      LEFT JOIN centerdata c ON d.center_id = c.center_id
-      LEFT JOIN truckdata t ON d.truck_id = t.id
-      LEFT JOIN school_wise_order_details sh 
-         ON d.school_id = sh.school_id
-      WHERE d.status = 'Active'
-      ORDER BY d.created_at DESC
+   SELECT d.*,
+       z.order_no,
+       z.period,
+       z.no_of_days,
+       z.financial_year,
+       s.schoolname,
+       c.name AS center_name,
+       t.truckNo,
+       sh.patsankhya,
+       r.route_number
+FROM dispatch_details d
+LEFT JOIN zp_order_details z ON d.order_id = z.id
+LEFT JOIN schooldata s ON d.school_id = s.schoolid
+LEFT JOIN centerdata c ON d.center_id = c.center_id
+LEFT JOIN truckdata t ON d.truck_id = t.id
+LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
+LEFT JOIN route_paper r ON d.dispatch_code = r.dispatch_code
+WHERE d.status = 'Active'
+  AND (r.dispatch_code IS NULL OR r.dispatch_code != d.dispatch_code)
+
     `);
     return NextResponse.json(rows);
   } catch (e) {
