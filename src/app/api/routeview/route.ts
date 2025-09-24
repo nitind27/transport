@@ -9,7 +9,7 @@ function generateDispatchCode() {
 export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(`
-   SELECT d.*,
+SELECT d.*,
        z.order_no,
        z.period,
        z.no_of_days,
@@ -27,7 +27,8 @@ LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 LEFT JOIN route_paper r ON d.dispatch_code = r.dispatch_code
 WHERE d.status = 'Active'
-   AND (r.dispatch_code = d.dispatch_code);
+   AND r.dispatch_code = d.dispatch_code
+   AND r.route_number IS NOT NULL;
 
     `);
     return NextResponse.json(rows);

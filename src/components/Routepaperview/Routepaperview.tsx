@@ -30,20 +30,26 @@ declare module 'flatpickr' {
         };
     }
 }
-
-// interface TruckRow {
-//     id: number;
-//     truckNo: string;
+// add near DispatchListRow
+type RouteGroupRow = {
+    route_number: string;
+    dispatch_code: string;
+    order_no?: string;
+    taluka?: string;
+    center_name?: string;
+    truckNo?: string;
+    class_range?: string;
+    created_at: string;
+    school_count: number;
+    total_items: number;
+};
+// interface CenterRow {
+//     center_id: number;
+//     name: string;
+//     marathi_name?: string;
 //     status?: string;
+//     taluka_id?: number;
 // }
-
-interface CenterRow {
-    center_id: number;
-    name: string;
-    marathi_name?: string;
-    status?: string;
-    taluka_id?: number;
-}
 
 interface TalukaRow {
     taluka_id: number;
@@ -94,6 +100,7 @@ type DispatchListRow = {
     financial_year?: string;
     patsankhya?: string;
     group_id?: number | null;
+    route_number?: string;
 };
 
 const Routepaperview = () => {
@@ -108,8 +115,7 @@ const Routepaperview = () => {
 
     // Masters
     const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
-    const [centerList, setCenterList] = useState<CenterRow[]>([]);
-    // const [truckList, setTruckList] = useState<TruckRow[]>([]);
+    // const [centerList, setCenterList] = useState<CenterRow[]>([]);
     const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
     const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
     const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
@@ -158,23 +164,14 @@ const Routepaperview = () => {
     }, [dispatchList, selectedDate]);
 
     // Fetch data functions
-    // const fetchTrucks = async () => {
+    // const fetchCenters = async () => {
     //     try {
-    //         // const res = await fetch('/api/truckdata');
-    //         // setTruckList(await res.json());
+    //         const res = await fetch('/api/centerapi');
+    //         setCenterList(await res.json());
     //     } catch {
-    //         toast.error('Failed to load trucks');
+    //         toast.error('Failed to load centers');
     //     }
     // };
-
-    const fetchCenters = async () => {
-        try {
-            const res = await fetch('/api/centerapi');
-            setCenterList(await res.json());
-        } catch {
-            toast.error('Failed to load centers');
-        }
-    };
 
     const fetchTalukas = async () => {
         try {
@@ -188,7 +185,14 @@ const Routepaperview = () => {
     const fetchDispatchList = async () => {
         try {
             const res = await fetch('/api/routeview');
-            if (res.ok) setDispatchList(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                const dataWithRoute = data.map((item: DispatchListRow) => ({
+                    ...item,
+                    route_number: item.route_number || item.dispatch_code
+                }));
+                setDispatchList(dataWithRoute);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -218,9 +222,8 @@ const Routepaperview = () => {
     };
 
     useEffect(() => {
-        // fetchTrucks();
         fetchTalukas();
-        fetchCenters();
+        // fetchCenters();
         fetchDispatchList();
         fetchSchoolDataMap();
     }, []);
@@ -256,24 +259,61 @@ const Routepaperview = () => {
         return sums;
     };
 
-    // Print function with Excel-style formatting
-    const handlePrint = (dispatchCode: string) => {
-        // Find the dispatch group to print
-        const groupRows = dispatchList.filter(d => String(d.dispatch_code) === String(dispatchCode));
-        if (groupRows.length === 0) {
-            toast.error('Dispatch data not found for printing');
+    // Get taluka name by school ID
+    const getTalukaNameBySchoolId = (schoolId: number): string => {
+        const schoolData = schoolDataById.get(schoolId);
+        if (schoolData) {
+            const taluka = talukaList.find(t => t.taluka_id === schoolData.taluka_id);
+            return taluka?.name || '';
+        }
+        return '';
+    };
+
+    // Get UDISE number by school ID
+    const getUdiseNumberBySchoolId = (schoolId: number): string => {
+        const schoolData = schoolDataById.get(schoolId);
+        return schoolData?.udaisno || '';
+    };
+
+    // Get unique route numbers from filtered data
+    const getUniqueRouteNumbers = () => {
+        const routeNumbers = new Set<string>();
+        filteredDispatchList.forEach(item => {
+            if (item.route_number) {
+                routeNumbers.add(item.route_number);
+            }
+        });
+        return Array.from(routeNumbers).sort();
+    };
+
+    // Get data for a specific route number
+    const getDataByRouteNumber = (routeNumber: string) => {
+        return filteredDispatchList.filter(item => item.route_number === routeNumber);
+    };
+
+    // Print function for route number
+    const handlePrint = (routeNumber: string) => {
+        const routeData = getDataByRouteNumber(routeNumber);
+        if (routeData.length === 0) {
+            toast.error('Route data not found for printing');
             return;
         }
 
         // Group by school and calculate totals
         const schoolsMap = new Map();
-        groupRows.forEach(row => {
+        routeData.forEach(row => {
             const schoolKey = `${row.school_id}-${row.class_range || ''}`;
             if (!schoolsMap.has(schoolKey)) {
+                const talukaName = getTalukaNameBySchoolId(row.school_id);
+                const udiseNumber = getUdiseNumberBySchoolId(row.school_id);
+                
                 schoolsMap.set(schoolKey, {
                     schoolname: row.schoolname || '',
                     class_range: row.class_range || '',
                     center_name: row.center_name || '',
+                    taluka_name: talukaName,
+                    udise_number: udiseNumber,
+                    patsankhya: row.patsankhya || '',
                     items: []
                 });
             }
@@ -299,7 +339,10 @@ const Routepaperview = () => {
 
         // Prepare print data
         const printDate = new Date().toLocaleDateString('en-IN');
-        const dispatchDate = groupRows[0]?.created_at ? formatDate(groupRows[0].created_at) : '';
+        const dispatchDate = routeData[0]?.created_at ? formatDate(routeData[0].created_at) : '';
+
+        // Get center name for the route
+        const centerName = routeData[0]?.center_name || '';
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -307,7 +350,7 @@ const Routepaperview = () => {
             printWindow.document.write(`
                 <html>
                     <head>
-                        <title>Route Paper - ${dispatchCode}</title>
+                        <title>Route Paper - ${routeNumber}</title>
                         <style>
                             body { 
                                 font-family: Arial, sans-serif; 
@@ -383,14 +426,15 @@ const Routepaperview = () => {
                     <body>
                         <div class="header">
                             <h2>जिल्हा परिषद प्राथमिक शाळा</h2>
-                            <h2>Route Paper - ${dispatchCode}</h2>
-                            <p>Dispatch Date: ${dispatchDate} | Print Date: ${printDate}</p>
+                            <h2>Route Paper - Route ${routeNumber}</h2>
+                            <p>Center: ${centerName} | Dispatch Date: ${dispatchDate} | Print Date: ${printDate}</p>
                         </div>
                         
                         <table class="table">
                             <thead>
                                 <tr>
                                     <th class="serial-column">अ. क्र.</th>
+                                    <th class="left-align">तालुका</th>
                                     <th class="left-align">केंद्र</th>
                                     <th class="left-align">UDISE Code</th>
                                     <th class="left-align">शाळा</th>
@@ -411,11 +455,12 @@ const Routepaperview = () => {
                                     return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
+                                            <td class="left-align">${school.taluka_name || '-'}</td>
                                             <td class="left-align">${school.center_name}</td>
-                                            <td class="center-align">-</td>
+                                            <td class="center-align">${school.udise_number || '-'}</td>
                                             <td class="left-align">${school.schoolname}</td>
                                             <td class="center-align">${school.class_range}</td>
-                                            <td class="center-align">-</td>
+                                            <td class="center-align">${school.patsankhya || '-'}</td>
                                             ${mrGrainColumns.map(grain => 
                                                 `<td class="right-align">${grainSums[grain.key] ? grainSums[grain.key].toFixed(2) : '0.00'}</td>`
                                             ).join('')}
@@ -427,7 +472,7 @@ const Routepaperview = () => {
                                 
                                 <!-- Grand Total Row -->
                                 <tr class="total-row">
-                                    <td colspan="5" class="right-align"><strong>एकूण वजन:</strong></td>
+                                    <td colspan="6" class="right-align"><strong>एकूण वजन:</strong></td>
                                     <td class="center-align"></td>
                                     ${grandTotals.map(item => 
                                         `<td class="right-align"><strong>${item.total.toFixed(2)}</strong></td>`
@@ -473,79 +518,81 @@ const Routepaperview = () => {
         }
     };
 
-    // Table columns with print button
-    const listColumns: Column<DispatchListRow>[] = [
-        {
-            key: 'schoolname',
-            label: 'Action',
-            render: (r) => (
-                <div className="flex items-center">
-                    <button
-                        onClick={() => handlePrint(String(r.dispatch_code))}
-                        className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
-                        title="Print Route Paper"
-                    >
-                        Print
-                    </button>
-                </div>
-            )
-        },
-        {
-            key: 'dispatch_code',
-            label: 'पावती क्रमांक',
-            accessor: 'dispatch_code',
-            render: (r) => <span>{r.dispatch_code}</span>,
-        },
-        // { 
-        //     key: 'created_at', 
-        //     label: 'Dispatch Date', 
-        //     accessor: 'created_at', 
-        //     render: (r) => <span>{formatDate(r.created_at)}</span> 
-        // },
-        { 
-            key: 'order_no', 
-            label: 'Order No', 
-            accessor: 'order_no', 
-            render: (r) => <span>{r.order_no || ''}</span> 
-        },
-        {
-            key: 'taluka',
-            label: 'Taluka',
-            render: (r) => {
-                const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-                const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-                return <span>{talukaName}</span>;
-            }
-        },
-        {
-            key: 'center_name',
-            label: 'Center',
-            accessor: 'center_name',
-            render: (r) => {
-                const c = centerList.find(cn => String(cn.center_id) === String(r.center_id));
-                const name = c?.marathi_name || c?.name || r.center_name || r.center_id;
-                return <span>{name}</span>;
-            }
-        },
-        {
-            key: 'schoolname',
-            label: 'School',
-            accessor: 'schoolname',
-            render: (r) => <span>{r.schoolname || ''}</span>
-        },
-        {
-            key: 'class_range',
-            label: 'Class',
-            accessor: 'class_range',
-            render: (r) => <span>{r.class_range || ''}</span>
-        },
-        { 
-            key: 'truckNo', 
-            label: 'Truck', 
-            accessor: 'truckNo', 
-            render: (r) => <span>{r.truckNo || r.truck_id}</span> 
-        },
-    ];
+// Create grouped data by route_number
+const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
+    const routeData = getDataByRouteNumber(routeNumber);
+    const firstItem = routeData[0];
+
+    return {
+        route_number: routeNumber,
+        dispatch_code: firstItem?.dispatch_code || '',
+        order_no: firstItem?.order_no || '',
+        taluka: firstItem?.taluka || '',
+        center_name: firstItem?.center_name || '',
+        truckNo: firstItem?.truckNo || '',
+        class_range: firstItem?.class_range || '',
+        created_at: firstItem?.created_at || '',
+        school_count: new Set(routeData.map(item => item.school_id)).size,
+        total_items: routeData.length
+    };
+});
+
+    // Table columns for route grouping
+// Table columns for route grouping
+const listColumns: Column<RouteGroupRow>[] = [
+    {
+      key: 'action',
+      label: 'Action',
+      render: (r) => (
+        <div className="flex items-center">
+          <button
+            onClick={() => handlePrint(r.route_number)}
+            className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+            title="Print Route Paper"
+          >
+            Print
+          </button>
+        </div>
+      )
+    },
+    {
+      key: 'route_number',
+      label: 'Route Number',
+      render: (r) => <span className="font-semibold">{r.route_number}</span>,
+    },
+    {
+      key: 'dispatch_code',
+      label: 'पावती क्रमांक',
+      render: (r) => <span>{r.dispatch_code}</span>,
+    },
+    {
+      key: 'order_no',
+      label: 'Order No',
+      render: (r) => <span>{r.order_no || ''}</span>
+    },
+    
+   
+    {
+      key: 'school_count',
+      label: 'Schools',
+      render: (r) => <span>{r.school_count} Schools</span>
+    },
+    {
+      key: 'class_range',
+      label: 'Class',
+      render: (r) => <span>{r.class_range || ''}</span>
+    },
+    {
+      key: 'truckNo',
+      label: 'Truck',
+      render: (r) => <span>{r.truckNo || ''}</span>
+    },
+    {
+      key: 'created_at',
+      label: 'Date',
+      render: (r) => <span>{formatDate(r.created_at)}</span>
+    },
+  ];
 
     // Simplified toolbar with only date filter
     const toolbar = (
@@ -595,18 +642,18 @@ const Routepaperview = () => {
     return (
         <div className="">
             <Filterroutepaper
-                data={filteredDispatchList}
+                data={groupedByRoute}
                 columns={listColumns}
                 filterOptions={[]}
                 filterKey={undefined}
                 toolbar={toolbar}
-                groupByKey="dispatch_code"
+                groupByKey="route_number"
                 colspanKeys={[
+                    "route_number",
                     "dispatch_code",
                     "order_no",
                     "taluka",
                     "class_range",
-                    "schoolname",
                     "center_name",
                     "truckNo",
                 ]}

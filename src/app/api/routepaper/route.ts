@@ -54,10 +54,12 @@ export async function POST(req: Request) {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
+    // Get last route_number from DB
+    type MaxRow = RowDataPacket & { lastNum: number | null };
+    const [rows] = await conn.query<MaxRow[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
+    const routeNumber = ((rows && rows[0]?.lastNum) ? Number(rows[0].lastNum) : 0) + 1; // Next batch number, starts from 1 if table empty
     const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // e.g., 20250922
-
-    let routeNumber = 1;
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
 
     for (const r of routes) {
       if (!Array.isArray(r.dispatch_ids) || r.dispatch_ids.length === 0) {
@@ -66,20 +68,12 @@ export async function POST(req: Request) {
       }
 
       const placeholders = r.dispatch_ids.map(() => '?').join(',');
-      // Validate IDs exist
-      // const [rows] = await conn.query<RowDataPacket[]>(
-      //   `SELECT id FROM dispatch_details WHERE id IN (${placeholders})`,
-      //   r.dispatch_ids
-      // );
-
-      // Derive dispatch_code for these rows
       const [dcRows] = await conn.query<RowDataPacket[]>(
         `SELECT DISTINCT dispatch_code FROM dispatch_details WHERE id IN (${placeholders})`,
         r.dispatch_ids
       );
       let dispatch_code: string | null = null;
       if (dcRows && dcRows.length > 0) {
-        // If there are multiple different codes, it's ambiguous; fail fast.
         if (dcRows.length > 1) {
           await conn.rollback();
           return NextResponse.json({ message: 'Selected rows contain multiple dispatch_code values; please group by same dispatch_code.' }, { status: 400 });
@@ -88,14 +82,11 @@ export async function POST(req: Request) {
       }
 
       const routecode = `RP-${dateStr}-${routeNumber}`;
-
       await conn.query<ResultSetHeader>(
         `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code)
          VALUES (?, 'Active', NOW(), ?, ?, ?)`,
         [JSON.stringify(r.dispatch_ids), routeNumber, routecode, dispatch_code]
       );
-
-      routeNumber++;
     }
 
     await conn.commit();
@@ -108,3 +99,6 @@ export async function POST(req: Request) {
     if (conn) conn.release();
   }
 }
+
+
+
