@@ -514,7 +514,7 @@ const Routepaperview = () => {
                     </body>
                 </html>
             `);
-            printWindow.document.close();
+            // printWindow.document.close();
         }
     };
 
@@ -560,11 +560,11 @@ const listColumns: Column<RouteGroupRow>[] = [
       label: 'Route Number',
       render: (r) => <span className="font-semibold">{r.route_number}</span>,
     },
-    {
-      key: 'dispatch_code',
-      label: 'पावती क्रमांक',
-      render: (r) => <span>{r.dispatch_code}</span>,
-    },
+    // {
+    //   key: 'dispatch_code',
+    //   label: 'पावती क्रमांक',
+    //   render: (r) => <span>{r.dispatch_code}</span>,
+    // },
     {
       key: 'order_no',
       label: 'Order No',
@@ -577,11 +577,11 @@ const listColumns: Column<RouteGroupRow>[] = [
       label: 'Schools',
       render: (r) => <span>{r.school_count} Schools</span>
     },
-    {
-      key: 'class_range',
-      label: 'Class',
-      render: (r) => <span>{r.class_range || ''}</span>
-    },
+    // {
+    //   key: 'class_range',
+    //   label: 'Class',
+    //   render: (r) => <span>{r.class_range || ''}</span>
+    // },
     {
       key: 'truckNo',
       label: 'Truck',
