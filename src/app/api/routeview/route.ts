@@ -18,7 +18,8 @@ SELECT d.*,
        c.name AS center_name,
        t.truckNo,
        sh.patsankhya,
-       r.route_number
+       r.route_number,
+       r.create_at
 FROM dispatch_details d
 LEFT JOIN zp_order_details z ON d.order_id = z.id
 LEFT JOIN schooldata s ON d.school_id = s.schoolid

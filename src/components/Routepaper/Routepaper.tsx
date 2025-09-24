@@ -122,8 +122,7 @@ interface TalukaRow {
 
 
 
-
-const Routepaper = () => {
+const Routepaper = ({ onSubmitted }: { onSubmitted?: () => void }) => {
     const [loading, setLoading] = useState(false);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -235,6 +234,8 @@ const Routepaper = () => {
             setRouteCart([]);
             // Refresh list so newly grouped/inserted data disappears from table
             await fetchDispatchList();
+            setShowCartModal(false);
+            if (onSubmitted) onSubmitted();
            
         } catch (e) {
             toast.error(e instanceof Error ? e.message : 'Failed to save route paper');

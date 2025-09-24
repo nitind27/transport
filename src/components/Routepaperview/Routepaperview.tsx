@@ -39,7 +39,7 @@ type RouteGroupRow = {
     center_name?: string;
     truckNo?: string;
     class_range?: string;
-    created_at: string;
+    create_at: string;
     school_count: number;
     total_items: number;
 };
@@ -88,7 +88,7 @@ type DispatchListRow = {
     qty_dispatch: number;
     bal_qty: number;
     status: string;
-    created_at: string;
+    create_at: string;
     order_no?: string;
     schoolname?: string;
     center_name?: string;
@@ -155,7 +155,7 @@ const Routepaperview = () => {
         if (selectedDate && selectedDate.trim() !== '') {
             const selectedDateObj = new Date(selectedDate);
             filtered = filtered.filter(item => {
-                const itemDate = new Date(item.created_at);
+                const itemDate = new Date(item.create_at);
                 return itemDate.toDateString() === selectedDateObj.toDateString();
             });
         }
@@ -189,7 +189,8 @@ const Routepaperview = () => {
                 const data = await res.json();
                 const dataWithRoute = data.map((item: DispatchListRow) => ({
                     ...item,
-                    route_number: item.route_number || item.dispatch_code
+                    route_number: item.route_number || item.dispatch_code,
+                    create_at: item.create_at || item.create_at|| '',
                 }));
                 setDispatchList(dataWithRoute);
             }
@@ -290,7 +291,201 @@ const Routepaperview = () => {
     const getDataByRouteNumber = (routeNumber: string) => {
         return filteredDispatchList.filter(item => item.route_number === routeNumber);
     };
-
+    const handlePrintDc = (routeNumber: string) => {
+        const routeData = getDataByRouteNumber(routeNumber);
+        if (routeData.length === 0) {
+            toast.error('Route data not found for DC printing');
+            return;
+        }
+    
+        // Aggregate items across all schools in the route
+        const allItems = routeData.map(r => ({ name: r.item_name, qty: r.qty_dispatch }));
+        const sums = sumGrainsForGroup(allItems);
+    
+        // Top meta from first row
+        const first = routeData[0];
+        const talukaName = first?.taluka || '';
+        const orderNo = first?.order_no || '';
+        const dcNo = first?.dispatch_code || '';
+        const vehicleNo = first?.truckNo || '';
+        const dateStr = first?.create_at ? formatDate(first.create_at) : '';
+        const periodText = first?.period || 'Aug-Sept-2025';
+        const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
+    
+        // Prepare rows
+        const knownKeys = mrGrainColumns.map(g => g.key);
+        const ordered: Array<{ name: string; qty: number }> = [];
+        mrGrainColumns.forEach(g => {
+            const q = Number(sums[g.key] || 0);
+            if (q > 0) ordered.push({ name: g.key, qty: q });
+        });
+        Object.keys(sums)
+            .filter(k => !knownKeys.includes(k))
+            .sort()
+            .forEach(k => ordered.push({ name: k, qty: Number(sums[k] || 0) }));
+    
+        const MAX_ROWS = 15;
+        const rows = ordered.slice(0, MAX_ROWS);
+        const overflow = ordered.slice(MAX_ROWS);
+        if (overflow.length > 0) {
+            const extra = overflow.reduce((a, r) => a + (r.qty || 0), 0);
+            if (rows.length === MAX_ROWS) {
+                const last = rows[MAX_ROWS - 1];
+                rows[MAX_ROWS - 1] = {
+                    name: last?.name ? last.name + ' / इतर' : 'इतर',
+                    qty: (last?.qty || 0) + extra
+                };
+            } else {
+                rows.push({ name: 'इतर', qty: extra });
+            }
+        }
+        while (rows.length < MAX_ROWS) rows.push({ name: '', qty: 0 });
+    
+        const grandTotal = ordered.reduce((a, r) => a + (r.qty || 0), 0);
+    
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+    
+        printWindow.document.write(`
+        <html>
+        <head>
+            <title>Print DC - ${routeNumber}</title>
+            <style>
+                @page { size: A4 portrait; margin: 10mm; }
+                body { font-family: "Kruti Dev", "Mangal", Arial, sans-serif; font-size: 12px; }
+    
+                .header { text-align:center; line-height:1.3; }
+                .header p { margin: 2px 0; font-weight: 600; }
+                .box-title {
+                    display:inline-block;
+                    border:1px solid #000;
+                    padding:2px 10px;
+                    margin:5px 0;
+                    font-weight:bold;
+                }
+    
+                .meta { width:100%; font-size:12px; margin-top:4px; }
+                .meta td { padding:2px; }
+    
+                .table-outer { border:1.5px solid #000; margin-top:6px; }
+                table.dc { border-collapse:collapse; width:100%; font-size:12px; }
+                table.dc th, table.dc td {
+                    border:1px solid #000;
+                    padding:4px 6px;
+                    text-align:center;
+                }
+                table.dc th { font-weight:bold; }
+    
+                .total-bar {
+                    text-align:right;
+                    font-weight:bold;
+                    font-size:13px;
+                    margin-top:6px;
+                }
+                .total-bar span {
+                    border:1.5px solid #000;
+                    padding:4px 8px;
+                    display:inline-block;
+                    min-width:60px;
+                }
+    
+                .note {
+                    font-size:11px;
+                    line-height:1.4;
+                    text-align:justify;
+                    margin-top:8px;
+                }
+    
+                .signs {
+                    display:flex;
+                    justify-content:space-between;
+                    margin-top:15px;
+                }
+                .sign-box {
+                    width:45%;
+                    text-align:center;
+                }
+                .sign-line {
+                    border-top:1px solid #000;
+                    margin-top:35px;
+                    font-size:11px;
+                    padding-top:2px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <p>गौरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था</p>
+                <p>शालेय पोषण आहार योजना</p>
+                <p>शिक्षण विभाग (प्राथमिक), जिल्हा परिषद, नंदुरबार</p>
+                <div class="box-title">ड्रायव्हर समरी चार्ट / जावक</div>
+            </div>
+    
+            <table class="meta">
+                <tr>
+                    <td><b>${periodText} (${daysText})</b></td>
+                    <td style="text-align:right;">Tal:- ${talukaName}</td>
+                </tr>
+                <tr>
+                    <td>Oder No. ${orderNo}</td>
+                    <td style="text-align:right;">Date ${dateStr}</td>
+                </tr>
+                <tr>
+                    <td>DC No. ${dcNo}</td>
+                    <td style="text-align:right;">गाडी नं. ${vehicleNo}</td>
+                </tr>
+            </table>
+    
+            <div class="table-outer">
+                <table class="dc">
+                    <thead>
+                        <tr>
+                            <th style="width:10%;">अ. क्र.</th>
+                            <th style="text-align:left;">धान्यादी वस्तूचे नाव</th>
+                            <th style="width:25%;">वजन</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((r, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td style="text-align:left;">${r.name || ''}</td>
+                                <td style="text-align:right;">${r.name ? Number(r.qty || 0).toFixed(1) : ''}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+    
+            <div class="total-bar">
+                <span>एकूण ${grandTotal.toFixed(1)}</span>
+            </div>
+    
+            <div class="note">
+                शाळेकडून शालेय पोषण आहार योजनेअंतर्गत माल पोहोच करुन देण्याकरीता तपशिलाप्रमाणे माल बाब्यात मिळाला. 
+                तसेच सोबत दिलेल्या शाळेच्या यादीनुसार माल उतरवून पोहचवून आणून देण्याची जबाबदारी माझी (ड्रायव्हरची) राहील.
+            </div>
+    
+            <div class="signs">
+                <div class="sign-box">
+                    <div class="sign-line">माल ताब्यात घेणाऱ्याचे नाव सही</div>
+                </div>
+                <div class="sign-box">
+                    <div class="sign-line">माल ताब्यात देणाऱ्याचे नाव सही</div>
+                </div>
+            </div>
+    
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(()=>window.close(), 600);
+                }
+            </script>
+        </body>
+        </html>
+        `);
+    };
+    
     // Print function for route number
     const handlePrint = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
@@ -339,7 +534,7 @@ const Routepaperview = () => {
 
         // Prepare print data
         const printDate = new Date().toLocaleDateString('en-IN');
-        const dispatchDate = routeData[0]?.created_at ? formatDate(routeData[0].created_at) : '';
+        const dispatchDate = routeData[0]?.create_at ? formatDate(routeData[0].create_at) : '';
 
         // Get center name for the route
         const centerName = routeData[0]?.center_name || '';
@@ -531,7 +726,7 @@ const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber 
         center_name: firstItem?.center_name || '',
         truckNo: firstItem?.truckNo || '',
         class_range: firstItem?.class_range || '',
-        created_at: firstItem?.created_at || '',
+        create_at: firstItem?.create_at || '',
         school_count: new Set(routeData.map(item => item.school_id)).size,
         total_items: routeData.length
     };
@@ -544,7 +739,7 @@ const listColumns: Column<RouteGroupRow>[] = [
       key: 'action',
       label: 'Action',
       render: (r) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => handlePrint(r.route_number)}
             className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
@@ -552,6 +747,13 @@ const listColumns: Column<RouteGroupRow>[] = [
           >
             Print
           </button>
+          <button
+			onClick={() => handlePrintDc(r.route_number)}
+			className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
+			title="Print Driver Summary (DC)"
+		>
+			Print_Dc
+		</button>
         </div>
       )
     },
@@ -560,11 +762,7 @@ const listColumns: Column<RouteGroupRow>[] = [
       label: 'Route Number',
       render: (r) => <span className="font-semibold">{r.route_number}</span>,
     },
-    // {
-    //   key: 'dispatch_code',
-    //   label: 'पावती क्रमांक',
-    //   render: (r) => <span>{r.dispatch_code}</span>,
-    // },
+
     {
       key: 'order_no',
       label: 'Order No',
@@ -577,20 +775,16 @@ const listColumns: Column<RouteGroupRow>[] = [
       label: 'Schools',
       render: (r) => <span>{r.school_count} Schools</span>
     },
-    // {
-    //   key: 'class_range',
-    //   label: 'Class',
-    //   render: (r) => <span>{r.class_range || ''}</span>
-    // },
+   
     {
       key: 'truckNo',
       label: 'Truck',
       render: (r) => <span>{r.truckNo || ''}</span>
     },
     {
-      key: 'created_at',
-      label: 'Date',
-      render: (r) => <span>{formatDate(r.created_at)}</span>
+        key: 'create_at',
+        label: 'Date',
+        render: (r) => <span>{formatDate(r.create_at)}</span>
     },
   ];
 

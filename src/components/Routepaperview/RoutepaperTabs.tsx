@@ -35,7 +35,7 @@ const RoutepaperTabs = () => {
       </div>
 
       {activeTab === "prepare" ? (
-        <Routepaper />
+        <Routepaper onSubmitted={() => setActiveTab("view")} />
       ) : (
         <Routepaperview />
       )}
