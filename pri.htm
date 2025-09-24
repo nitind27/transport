@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dynamic Coupon Generator</title>
+<style>
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f7f7f7;
+  }
+  h1 {
+    color: #d6336c;
+    margin-bottom: 10px;
+  }
+  label {
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  input[type="text"],
+  input[type="number"] {
+    padding: 6px;
+    font-size: 14px;
+    width: 250px;
+    margin-right: 10px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+  input[readonly] {
+    background: #eee;
+  }
+  button {
+    padding: 8px 16px;
+    font-size: 14px;
+    margin-right: 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    background-color: #d6336c;
+    color: white;
+  }
+  button:disabled {
+    background-color: #bbb;
+    cursor: default;
+  }
+  #formControls {
+    margin-bottom: 20px;
+  }
+  .container {
+    width: 210mm;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10mm;
+    box-sizing: border-box;
+    margin: auto;
+  }
+  .coupon {
+    background: white;
+    width: calc((210mm - 30mm) / 4);
+    min-height: 110mm;
+    border: 2px dashed #333;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+  .coupon-title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #d6336c;
+    margin: 0 0 4px 0;
+  }
+  .date {
+    font-size: 12px;
+    color: #333;
+    border-bottom: 1.5px solid #333;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+  .items {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* equal spacing */
+    font-size: 13px;
+    color: #000;
+  }
+  .items div {
+    min-height: 14px; /* space for manual writing */
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+  }
+  .receipt-number {
+    font-size: 13px;
+    margin-top: 8px;
+    text-align: right;
+    color: #000;
+  }
+  @media print {
+    body {
+      margin: 0;
+      background: none;
+    }
+    #formControls {
+      display: none;
+    }
+    .container {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      gap: 5mm;
+    }
+    .coupon {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      border: 1px dashed #000;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Coupon Generator</h1>
+
+<div id="formControls">
+  <label for="titleInput">Title:</label>
+  <input type="text" id="titleInput" value="Puniya Bhumi Navtrati" />
+  
+  <label for="dateInput">Date:</label>
+  <input type="text" id="dateInput" readonly />
+
+  <label for="countInput">Number of Coupons:</label>
+  <input type="number" id="countInput" min="1" max="100" value="8" />
+  
+  <button id="generateBtn">Generate</button>
+  <button id="printBtn" disabled>Print</button>
+</div>
+
+<div class="container" id="couponContainer"></div>
+
+<script>
+  const titleInput = document.getElementById('titleInput');
+  const dateInput = document.getElementById('dateInput');
+  const countInput = document.getElementById('countInput');
+  const generateBtn = document.getElementById('generateBtn');
+  const printBtn = document.getElementById('printBtn');
+  const couponContainer = document.getElementById('couponContainer');
+
+  function formatDate(date) {
+    const day = String(date.getDate()).padStart(2,'0');
+    const month = String(date.getMonth() + 1).padStart(2,'0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  const today = new Date();
+  dateInput.value = formatDate(today);
+
+  function clearCoupons() {
+    couponContainer.innerHTML = '';
+    printBtn.disabled = true;
+  }
+
+  function generateCoupons() {
+    clearCoupons();
+
+    const title = titleInput.value.trim() || "Puniya Bhumi Navtrati";
+    const date = dateInput.value;
+    let count = parseInt(countInput.value, 10);
+    if (isNaN(count) || count < 1) count = 1;
+    if (count > 100) count = 100;
+
+    for(let i = 1; i <= count; i++) {
+      const coupon = document.createElement('div');
+      coupon.className = 'coupon';
+
+      let blankLinesHtml = '';
+      for(let j = 0; j < 10; j++) {
+        blankLinesHtml += '<div>&nbsp;</div>';
+      }
+
+      coupon.innerHTML = `
+        <div class="coupon-title">${title}</div>
+        <div class="date">${date}</div>
+        <div class="items">${blankLinesHtml}</div>
+        <div class="receipt-number">Receipt No: ${i.toString().padStart(4, '0')}</div>
+      `;
+
+      couponContainer.appendChild(coupon);
+    }
+
+    printBtn.disabled = false;
+  }
+
+  generateBtn.addEventListener('click', generateCoupons);
+  printBtn.addEventListener('click', () => window.print());
+
+  generateCoupons();
+</script>
+
+</body>
+</html>

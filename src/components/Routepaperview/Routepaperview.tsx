@@ -104,7 +104,7 @@ type DispatchListRow = {
 };
 
 const Routepaperview = () => {
- 
+
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         const today = new Date();
         return today.toISOString().split('T')[0];
@@ -151,7 +151,7 @@ const Routepaperview = () => {
     // Filter dispatch list based on date
     useEffect(() => {
         let filtered = [...dispatchList];
-        
+
         if (selectedDate && selectedDate.trim() !== '') {
             const selectedDateObj = new Date(selectedDate);
             filtered = filtered.filter(item => {
@@ -190,7 +190,7 @@ const Routepaperview = () => {
                 const dataWithRoute = data.map((item: DispatchListRow) => ({
                     ...item,
                     route_number: item.route_number || item.dispatch_code,
-                    create_at: item.create_at || item.create_at|| '',
+                    create_at: item.create_at || item.create_at || '',
                 }));
                 setDispatchList(dataWithRoute);
             }
@@ -297,11 +297,11 @@ const Routepaperview = () => {
             toast.error('Route data not found for DC printing');
             return;
         }
-    
+
         // Aggregate items across all schools in the route
         const allItems = routeData.map(r => ({ name: r.item_name, qty: r.qty_dispatch }));
         const sums = sumGrainsForGroup(allItems);
-    
+
         // Top meta from first row
         const first = routeData[0];
         const talukaName = first?.taluka || '';
@@ -311,7 +311,7 @@ const Routepaperview = () => {
         const dateStr = first?.create_at ? formatDate(first.create_at) : '';
         const periodText = first?.period || 'Aug-Sept-2025';
         const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
-    
+
         // Prepare rows
         const knownKeys = mrGrainColumns.map(g => g.key);
         const ordered: Array<{ name: string; qty: number }> = [];
@@ -323,7 +323,7 @@ const Routepaperview = () => {
             .filter(k => !knownKeys.includes(k))
             .sort()
             .forEach(k => ordered.push({ name: k, qty: Number(sums[k] || 0) }));
-    
+
         const MAX_ROWS = 15;
         const rows = ordered.slice(0, MAX_ROWS);
         const overflow = ordered.slice(MAX_ROWS);
@@ -340,12 +340,12 @@ const Routepaperview = () => {
             }
         }
         while (rows.length < MAX_ROWS) rows.push({ name: '', qty: 0 });
-    
+
         const grandTotal = ordered.reduce((a, r) => a + (r.qty || 0), 0);
-    
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
-    
+
         printWindow.document.write(`
         <html>
         <head>
@@ -422,16 +422,16 @@ const Routepaperview = () => {
             </div>
     
             <table class="meta">
-                <tr>
+                             <tr>
                     <td><b>${periodText} (${daysText})</b></td>
-                    <td style="text-align:right;">Tal:- ${talukaName}</td>
+                    <td style="text-align:right;">तालुका: ${talukaName}</td>
                 </tr>
                 <tr>
-                    <td>Oder No. ${orderNo}</td>
+                    <td>Order No. ${orderNo}</td>
                     <td style="text-align:right;">Date ${dateStr}</td>
                 </tr>
                 <tr>
-                    <td>DC No. ${dcNo}</td>
+                    <td>पावती क्रमांक: ${dcNo}</td>
                     <td style="text-align:right;">गाडी नं. ${vehicleNo}</td>
                 </tr>
             </table>
@@ -460,7 +460,6 @@ const Routepaperview = () => {
             <div class="total-bar">
                 <span>एकूण ${grandTotal.toFixed(1)}</span>
             </div>
-    
             <div class="note">
                 शाळेकडून शालेय पोषण आहार योजनेअंतर्गत माल पोहोच करुन देण्याकरीता तपशिलाप्रमाणे माल बाब्यात मिळाला. 
                 तसेच सोबत दिलेल्या शाळेच्या यादीनुसार माल उतरवून पोहचवून आणून देण्याची जबाबदारी माझी (ड्रायव्हरची) राहील.
@@ -485,7 +484,7 @@ const Routepaperview = () => {
         </html>
         `);
     };
-    
+
     // Print function for route number
     const handlePrint = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
@@ -501,7 +500,6 @@ const Routepaperview = () => {
             if (!schoolsMap.has(schoolKey)) {
                 const talukaName = getTalukaNameBySchoolId(row.school_id);
                 const udiseNumber = getUdiseNumberBySchoolId(row.school_id);
-                
                 schoolsMap.set(schoolKey, {
                     schoolname: row.schoolname || '',
                     class_range: row.class_range || '',
@@ -509,14 +507,21 @@ const Routepaperview = () => {
                     taluka_name: talukaName,
                     udise_number: udiseNumber,
                     patsankhya: row.patsankhya || '',
-                    items: []
+                    items: [],
+                    // added: collect unique receipts (dispatch_code)
+                    receipts: new Set<string>(),
                 });
             }
+            // add items
             schoolsMap.get(schoolKey).items.push({
                 name: row.item_name,
                 qty: row.qty_dispatch,
                 unit: row.unit
             });
+            // added: collect पावती क्रमांक
+            if (row.dispatch_code) {
+                schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
+            }
         });
 
         const schools = Array.from(schoolsMap.values());
@@ -627,47 +632,55 @@ const Routepaperview = () => {
                         
                         <table class="table">
                             <thead>
-                                <tr>
+                                                              <tr>
                                     <th class="serial-column">अ. क्र.</th>
                                     <th class="left-align">तालुका</th>
+                                    <th class="left-align">पावती क्रमांक</th>
                                     <th class="left-align">केंद्र</th>
                                     <th class="left-align">UDISE Code</th>
                                     <th class="left-align">शाळा</th>
                                     <th class="center-align">वर्ग</th>
                                     <th class="center-align">पट संख्या</th>
-                                    ${mrGrainColumns.map(grain => 
-                                        `<th class="grain-column">${grain.key}</th>`
-                                    ).join('')}
-                                    <th class="center-align">एकुण वजन</th>
+                                    ${mrGrainColumns.map(grain =>
+                `<th class="grain-column">${grain.key}</th>`
+            ).join('')}
+                                                                   ).join('')}
+
+                                   <th class="center-align">एकूण</th>
+                                    <th class="center-align">हेड मास्टर मोबाइल No.</th>
                                     <th class="center-align">हेड मास्टर मोबाइल No.</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${schools.map((school, index) => {
-                                    const grainSums = sumGrainsForGroup(school.items);
-                                    const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                                    
-                                    return `
+                                                               ${schools.map((school, index) => {
+                const grainSums = sumGrainsForGroup(school.items);
+                const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+
+                // added: build receipt list text
+                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+
+                return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
                                             <td class="left-align">${school.taluka_name || '-'}</td>
+                                            <td class="left-align">${receipts}</td>
                                             <td class="left-align">${school.center_name}</td>
                                             <td class="center-align">${school.udise_number || '-'}</td>
                                             <td class="left-align">${school.schoolname}</td>
                                             <td class="center-align">${school.class_range}</td>
                                             <td class="center-align">${school.patsankhya || '-'}</td>
-                                            ${mrGrainColumns.map(grain => 
-                                                `<td class="right-align">${grainSums[grain.key] ? grainSums[grain.key].toFixed(2) : '0.00'}</td>`
-                                            ).join('')}
+                                            ${mrGrainColumns.map(grain =>
+                    `<td class="right-align">${grainSums[grain.key] ? grainSums[grain.key].toFixed(2) : '0.00'}</td>`
+                ).join('')}
                                             <td class="right-align">${schoolTotal.toFixed(2)}</td>
                                             <td class="center-align">-</td>
                                         </tr>
                                     `;
-                                }).join('')}
+            }).join('')}
                                 
-                                <!-- Grand Total Row -->
+                                                                                              <!-- Grand Total Row -->
                                 <tr class="total-row">
-                                    <td colspan="6" class="right-align"><strong>एकूण वजन:</strong></td>
+                                 <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
                                     <td class="center-align"></td>
                                     ${grandTotals.map(item => 
                                         `<td class="right-align"><strong>${item.total.toFixed(2)}</strong></td>`
@@ -713,80 +726,80 @@ const Routepaperview = () => {
         }
     };
 
-// Create grouped data by route_number
-const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
-    const routeData = getDataByRouteNumber(routeNumber);
-    const firstItem = routeData[0];
+    // Create grouped data by route_number
+    const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
+        const routeData = getDataByRouteNumber(routeNumber);
+        const firstItem = routeData[0];
 
-    return {
-        route_number: routeNumber,
-        dispatch_code: firstItem?.dispatch_code || '',
-        order_no: firstItem?.order_no || '',
-        taluka: firstItem?.taluka || '',
-        center_name: firstItem?.center_name || '',
-        truckNo: firstItem?.truckNo || '',
-        class_range: firstItem?.class_range || '',
-        create_at: firstItem?.create_at || '',
-        school_count: new Set(routeData.map(item => item.school_id)).size,
-        total_items: routeData.length
-    };
-});
+        return {
+            route_number: routeNumber,
+            dispatch_code: firstItem?.dispatch_code || '',
+            order_no: firstItem?.order_no || '',
+            taluka: firstItem?.taluka || '',
+            center_name: firstItem?.center_name || '',
+            truckNo: firstItem?.truckNo || '',
+            class_range: firstItem?.class_range || '',
+            create_at: firstItem?.create_at || '',
+            school_count: new Set(routeData.map(item => item.school_id)).size,
+            total_items: routeData.length
+        };
+    });
 
     // Table columns for route grouping
-// Table columns for route grouping
-const listColumns: Column<RouteGroupRow>[] = [
-    {
-      key: 'action',
-      label: 'Action',
-      render: (r) => (
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handlePrint(r.route_number)}
-            className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
-            title="Print Route Paper"
-          >
-            Print
-          </button>
-          <button
-			onClick={() => handlePrintDc(r.route_number)}
-			className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
-			title="Print Driver Summary (DC)"
-		>
-			Print_Dc
-		</button>
-        </div>
-      )
-    },
-    {
-      key: 'route_number',
-      label: 'Route Number',
-      render: (r) => <span className="font-semibold">{r.route_number}</span>,
-    },
+    // Table columns for route grouping
+    const listColumns: Column<RouteGroupRow>[] = [
+        {
+            key: 'action',
+            label: 'Action',
+            render: (r) => (
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => handlePrint(r.route_number)}
+                        className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                        title="Print Route Paper"
+                    >
+                        Print
+                    </button>
+                    <button
+                        onClick={() => handlePrintDc(r.route_number)}
+                        className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                        title="Print Driver Summary (DC)"
+                    >
+                        Print_Dc
+                    </button>
+                </div>
+            )
+        },
+        {
+            key: 'route_number',
+            label: 'Route Number',
+            render: (r) => <span className="font-semibold">{r.route_number}</span>,
+        },
 
-    {
-      key: 'order_no',
-      label: 'Order No',
-      render: (r) => <span>{r.order_no || ''}</span>
-    },
-    
-   
-    {
-      key: 'school_count',
-      label: 'Schools',
-      render: (r) => <span>{r.school_count} Schools</span>
-    },
-   
-    {
-      key: 'truckNo',
-      label: 'Truck',
-      render: (r) => <span>{r.truckNo || ''}</span>
-    },
-    {
-        key: 'create_at',
-        label: 'Date',
-        render: (r) => <span>{formatDate(r.create_at)}</span>
-    },
-  ];
+        {
+            key: 'order_no',
+            label: 'Order No',
+            render: (r) => <span>{r.order_no || ''}</span>
+        },
+
+
+        {
+            key: 'school_count',
+            label: 'Schools',
+            render: (r) => <span>{r.school_count} Schools</span>
+        },
+
+        {
+            key: 'truckNo',
+            label: 'Truck',
+            render: (r) => <span>{r.truckNo || ''}</span>
+        },
+        {
+            key: 'create_at',
+            label: 'Date',
+            render: (r) => <span>{formatDate(r.create_at)}</span>
+        },
+    ];
 
     // Simplified toolbar with only date filter
     const toolbar = (
@@ -819,7 +832,7 @@ const listColumns: Column<RouteGroupRow>[] = [
                         </button>
                     </div>
                 </div>
-                
+
                 <div className="flex items-end">
                     <button
                         type="button"
