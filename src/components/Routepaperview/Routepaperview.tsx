@@ -293,6 +293,7 @@ const Routepaperview = () => {
     };
     const handlePrintDc = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
+        console.log("routeData", routeData);
         if (routeData.length === 0) {
             toast.error('Route data not found for DC printing');
             return;
@@ -314,7 +315,24 @@ const Routepaperview = () => {
 
         // Prepare rows
         const knownKeys = mrGrainColumns.map(g => g.key);
-        const ordered: Array<{ name: string; qty: number }> = [];
+        // Prepare rows: fixed list in exact order + "एकूण"
+        const ordered: Array<{ name: string; qty: number }> = mrGrainColumns.map(g => ({
+            name: g.key,
+            qty: Number(sums[g.key] || 0),
+        }));
+
+        // Grand total across all listed items
+
+        // Final rows include "एकूण" as the last row
+        // Prepare rows: fixed 15 items only (no "इतर", no "एकूण" in the table)
+        const rows: Array<{ name: string; qty: number }> = mrGrainColumns.map(g => ({
+            name: g.key,
+            qty: Number(sums[g.key] || 0),
+        }));
+
+        // Grand total kept for the total bar (not a table row)
+        const grandTotal = rows.reduce((a, r) => a + (r.qty || 0), 0);
+
         mrGrainColumns.forEach(g => {
             const q = Number(sums[g.key] || 0);
             if (q > 0) ordered.push({ name: g.key, qty: q });
@@ -325,23 +343,23 @@ const Routepaperview = () => {
             .forEach(k => ordered.push({ name: k, qty: Number(sums[k] || 0) }));
 
         const MAX_ROWS = 15;
-        const rows = ordered.slice(0, MAX_ROWS);
+        // const rows = ordered.slice(0, MAX_ROWS);
         const overflow = ordered.slice(MAX_ROWS);
         if (overflow.length > 0) {
-            const extra = overflow.reduce((a, r) => a + (r.qty || 0), 0);
+            // const extra = overflow.reduce((a, r) => a + (r.qty || 0), 0);
             if (rows.length === MAX_ROWS) {
                 const last = rows[MAX_ROWS - 1];
                 rows[MAX_ROWS - 1] = {
-                    name: last?.name ? last.name + ' / इतर' : 'इतर',
-                    qty: (last?.qty || 0) + extra
+                    name: last?.name ? last.name + '' : '',
+                    qty: (last?.qty || 0)
                 };
             } else {
-                rows.push({ name: 'इतर', qty: extra });
+                // rows.push({ name: 'इतर', qty: extra });
             }
         }
         while (rows.length < MAX_ROWS) rows.push({ name: '', qty: 0 });
 
-        const grandTotal = ordered.reduce((a, r) => a + (r.qty || 0), 0);
+        // const grandTotal = ordered.reduce((a, r) => a + (r.qty || 0), 0);
 
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
@@ -446,7 +464,7 @@ const Routepaperview = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map((r, i) => `
+                                             ${rows.map((r, i) => `
                             <tr>
                                 <td>${i + 1}</td>
                                 <td style="text-align:left;">${r.name || ''}</td>
@@ -538,11 +556,12 @@ const Routepaperview = () => {
         const overallTotal = grandTotals.reduce((sum, item) => sum + item.total, 0);
 
         // Prepare print data
-        const printDate = new Date().toLocaleDateString('en-IN');
-        const dispatchDate = routeData[0]?.create_at ? formatDate(routeData[0].create_at) : '';
+        // const printDate = new Date().toLocaleDateString('en-IN');
+        // const dispatchDate = routeData[0]?.create_at ? formatDate(routeData[0].create_at) : '';
 
         // Get center name for the route
-        const centerName = routeData[0]?.center_name || '';
+        // const centerName = routeData[0]?.center_name || '';
+
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -557,19 +576,46 @@ const Routepaperview = () => {
                                 margin: 10px; 
                                 font-size: 12px;
                             }
-                            .header { 
-                                text-align: center; 
-                                margin-bottom: 15px;
-                                border-bottom: 2px solid #000;
-                                padding-bottom: 10px;
+                            .header-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 14px;
                             }
-                            .header h2 { 
-                                margin: 5px 0; 
-                                font-size: 18px;
+                            .header-table td {
+                                vertical-align: top;
+                                padding: 0 5px;
                             }
-                            .header p { 
-                                margin: 2px 0; 
+                            .header-org {
+                                font-size: 13px; 
+                                font-weight: bold; 
+                                line-height: 1.25; 
+                                text-align: center;
+                            }
+                            .header-logo {
+                                width: 78px;
+                                /* FIX 1: Set margin to auto for horizontal centering. */
+                                margin: 6px auto 3px auto;
+                                /* FIX 2: Ensure it is treated as a block element for margin: auto to work. */
+                                display: block; 
+                            }
+                            .dispatch-detail {
+                                text-align: left;
                                 font-size: 12px;
+                                line-height: 1.55;
+                                
+                            }
+                            .driver-detail {
+                                text-align: right;
+                                font-size: 12px;
+                                line-height: 1.55;
+                            }
+                            /* This class is for the location 'तळोदे जि. नंदुरबार' */
+                            .header-center { 
+                                font-size: 12px;
+                                font-weight: bold;
+                                text-align: right;
+                                /* FIX 3: Added margin-top to separate it from the Vehicle No, as seen in the image. */
+                                margin-top: 6px; 
                             }
                             .table { 
                                 width: 100%; 
@@ -624,15 +670,43 @@ const Routepaperview = () => {
                         </style>
                     </head>
                     <body>
-                        <div class="header">
-                            <h2>जिल्हा परिषद प्राथमिक शाळा</h2>
-                            <h2>Route Paper - Route ${routeNumber}</h2>
-                            <p>Center: ${centerName} | Dispatch Date: ${dispatchDate} | Print Date: ${printDate}</p>
-                        </div>
-                        
+                        <table class="header-table">
+                            <tr>
+                           
+                                <td style="width:44%; text-align:center;">
+                                    <div class="header-org">
+                                        मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
+                                        शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
+                                    </div>
+                                    <div>
+                                    <div>
+                                        Dispatch No. - Aug-Sept-2025/LD 4<br>
+                                    Dispatch date - 17-09-2025<br>
+                                    पुरवठा माहे - Aug-Sept-2025 (42 Days)<br>
+                                    Total Weight - <b>2795.5</b>
+                                    </div>
+                                    <div>
+                                    <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+                                    </div>
+                                    <div>
+                                       Driver MOTIRAM PADAVI<br>
+                                    Mob 9022899429<br>
+                                    Vehicle No MH39A01822<br>
+                                    <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                    </div>
+                                    </div>
+                                  
+                                    <div style="font-size:12px; font-weight:bold; margin-top:-2px;">
+                                        मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
+                                    </div>
+                                </td>
+                          
+                            </tr>
+                        </table>
+                
                         <table class="table">
                             <thead>
-                                                              <tr>
+                                <tr>
                                     <th class="serial-column">अ. क्र.</th>
                                     <th class="left-align">तालुका</th>
                                     <th class="left-align">पावती क्रमांक</th>
@@ -644,21 +718,15 @@ const Routepaperview = () => {
                                     ${mrGrainColumns.map(grain =>
                 `<th class="grain-column">${grain.key}</th>`
             ).join('')}
-                                                                   ).join('')}
-
-                                   <th class="center-align">एकूण</th>
-                                    <th class="center-align">हेड मास्टर मोबाइल No.</th>
+                                    <th class="center-align">एकूण</th>
                                     <th class="center-align">हेड मास्टर मोबाइल No.</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                                               ${schools.map((school, index) => {
+                                ${schools.map((school, index) => {
                 const grainSums = sumGrainsForGroup(school.items);
                 const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-
-                // added: build receipt list text
                 const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
-
                 return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
@@ -677,20 +745,18 @@ const Routepaperview = () => {
                                         </tr>
                                     `;
             }).join('')}
-                                
-                                                                                              <!-- Grand Total Row -->
                                 <tr class="total-row">
-                                 <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
+                                    <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
                                     <td class="center-align"></td>
-                                    ${grandTotals.map(item => 
-                                        `<td class="right-align"><strong>${item.total.toFixed(2)}</strong></td>`
-                                    ).join('')}
+                                    ${grandTotals.map(item =>
+                `<td class="right-align"><strong>${item.total.toFixed(2)}</strong></td>`
+            ).join('')}
                                     <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
                                     <td class="center-align"></td>
                                 </tr>
                             </tbody>
                         </table>
-
+                
                         <div class="footer">
                             <table style="width: 100%; margin-top: 20px;">
                                 <tr>
@@ -710,7 +776,7 @@ const Routepaperview = () => {
                             </table>
                             <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
                         </div>
-
+                
                         <script>
                             window.onload = function() {
                                 window.print();
@@ -721,7 +787,8 @@ const Routepaperview = () => {
                         </script>
                     </body>
                 </html>
-            `);
+                `);
+
             // printWindow.document.close();
         }
     };

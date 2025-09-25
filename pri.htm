@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dynamic Coupon Generator</title>
+<title>Dynamic Coupon Generator - Height Reduced</title>
 <style>
   @page {
     size: A4;
@@ -53,16 +53,16 @@
   }
   .container {
     width: 210mm;
+    margin: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 10mm;
     box-sizing: border-box;
-    margin: auto;
   }
   .coupon {
-    background: white;
     width: calc((210mm - 30mm) / 4);
-    min-height: 110mm;
+    min-height: 20px; /* Reduced height */
+    background: white;
     border: 2px dashed #333;
     padding: 8px 10px;
     box-sizing: border-box;
@@ -87,12 +87,12 @@
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* equal spacing */
+    justify-content: space-between;
     font-size: 13px;
     color: #000;
   }
   .items div {
-    min-height: 14px; /* space for manual writing */
+    min-height: 14px;
     border-bottom: 1px solid #ddd;
     white-space: nowrap;
   }
@@ -115,11 +115,15 @@
       margin: 0;
       padding: 0;
       gap: 5mm;
+      flex-wrap: wrap;
+      display: flex;
     }
     .coupon {
       page-break-inside: avoid;
       break-inside: avoid;
       border: 1px dashed #000;
+      width: calc((100% - 30mm) / 4);
+      min-height: 20px;
     }
   }
 </style>
@@ -174,14 +178,14 @@
     const date = dateInput.value;
     let count = parseInt(countInput.value, 10);
     if (isNaN(count) || count < 1) count = 1;
-    if (count > 100) count = 100;
+    if (count > 10000) count = 10000;
 
     for(let i = 1; i <= count; i++) {
       const coupon = document.createElement('div');
       coupon.className = 'coupon';
 
       let blankLinesHtml = '';
-      for(let j = 0; j < 10; j++) {
+      for(let j = 0; j < 6; j++) {
         blankLinesHtml += '<div>&nbsp;</div>';
       }
 
