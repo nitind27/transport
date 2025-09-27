@@ -590,13 +590,13 @@ const Routepaperview = () => {
                                 font-weight: bold; 
                                 line-height: 1.25; 
                                 text-align: center;
+                                margin-bottom: 10px;
                             }
                             .header-logo {
                                 width: 78px;
-                                /* FIX 1: Set margin to auto for horizontal centering. */
+                                height: auto;
+                                display: block;
                                 margin: 6px auto 3px auto;
-                                /* FIX 2: Ensure it is treated as a block element for margin: auto to work. */
-                                display: block; 
                             }
                             .dispatch-detail {
                                 text-align: left;
@@ -616,6 +616,30 @@ const Routepaperview = () => {
                                 text-align: right;
                                 /* FIX 3: Added margin-top to separate it from the Vehicle No, as seen in the image. */
                                 margin-top: 6px; 
+                            }
+                            .dataflex {
+                                display: flex;
+                                justify-content: space-around;
+                                align-items: flex-start;
+                                margin-top: 10px;
+                                width: 100%;
+                            }
+                            .dataflex > div {
+                                flex: 1;
+                                text-align: center;
+                                padding: 0 10px;
+                            }
+                            .dataflex > div:first-child {
+                                text-align: left;
+                            }
+                            .dataflex > div:last-child {
+                                text-align: right;
+                            }
+                            .center-title {
+                                font-size: 12px;
+                                font-weight: bold;
+                                text-align: center;
+                                margin-top: 10px;
                             }
                             .table { 
                                 width: 100%; 
@@ -667,6 +691,7 @@ const Routepaperview = () => {
                                 body { margin: 5mm; }
                                 .table { font-size: 10px; }
                             }
+                               
                         </style>
                     </head>
                     <body>
@@ -678,25 +703,25 @@ const Routepaperview = () => {
                                         मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
                                         शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
                                     </div>
-                                    <div>
-                                    <div>
-                                        Dispatch No. - Aug-Sept-2025/LD 4<br>
-                                    Dispatch date - 17-09-2025<br>
-                                    पुरवठा माहे - Aug-Sept-2025 (42 Days)<br>
-                                    Total Weight - <b>2795.5</b>
-                                    </div>
-                                    <div>
-                                    <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
-                                    </div>
-                                    <div>
-                                       Driver MOTIRAM PADAVI<br>
-                                    Mob 9022899429<br>
-                                    Vehicle No MH39A01822<br>
-                                    <div class="header-center"> तळोदे जि. नंदुरबार</div>
-                                    </div>
+                                    <div class="dataflex">
+                                        <div>
+                                            Dispatch No. - Aug-Sept-2025/LD 4<br>
+                                        Dispatch date - 17-09-2025<br>
+                                        पुरवठा माहे - Aug-Sept-2025 (42 Days)<br>
+                                        Total Weight - <b>2795.5</b>
+                                        </div>
+                                        <div>
+                                        <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+                                        </div>
+                                        <div>
+                                           Driver MOTIRAM PADAVI<br>
+                                        Mob 9022899429<br>
+                                        Vehicle No MH39A01822<br>
+                                        <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                        </div>
                                     </div>
                                   
-                                    <div style="font-size:12px; font-weight:bold; margin-top:-2px;">
+                                    <div class="center-title">
                                         मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
                                     </div>
                                 </td>
@@ -825,7 +850,7 @@ const Routepaperview = () => {
                         className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
                         title="Print Route Paper"
                     >
-                        Print
+                        Print Route Paper
                     </button>
                     <button
                         onClick={() => handlePrintDc(r.route_number)}

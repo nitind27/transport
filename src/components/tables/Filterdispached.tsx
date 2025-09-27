@@ -297,49 +297,59 @@ export function Filterdispached<T extends Record<string, unknown>>({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {paginatedData.map((row: ExtendedData<T>, index: number) => (
-                <tr key={`${row._groupKey}-${index}`} className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}>
-                  {/* Sr No */}
-                  {row._isFirstInGroup ? (
-                    <td 
-                      rowSpan={row._groupCount} 
-                      className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
-                      style={{ verticalAlign: 'top' }}
-                    >
-                      {(perPage * (currentPage - 1)) + Math.floor(index / (row._groupCount || 1)) + 1}
-                    </td>
-                  ) : null}
-                  
-                  {/* Other columns */}
-                  {columns.map((col) => {
-                    const isColspanKey = colspanKeys.includes(col.key as keyof T);
-                    const cellValue = col.render ? col.render(row) : (col.accessor ? toStringVal(row[col.accessor]) : "");
+              {paginatedData.map((row: ExtendedData<T>, index: number) => {
+                // Count how many groups have been displayed before this row
+                let groupCounter = 0;
+                for (let i = 0; i <= index; i++) {
+                  if (paginatedData[i]._isFirstInGroup) {
+                    groupCounter++;
+                  }
+                }
+                
+                return (
+                  <tr key={`${row._groupKey}-${index}`} className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}>
+                    {/* Sr No */}
+                    {row._isFirstInGroup ? (
+                      <td 
+                        rowSpan={row._groupCount} 
+                        className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
+                        style={{ verticalAlign: 'top' }}
+                      >
+                        {(currentPage - 1) * perPage + groupCounter}
+                      </td>
+                    ) : null}
                     
-                    if (isColspanKey && !row._isFirstInGroup) {
-                      return null;
-                    }
-                    
-                    if (isColspanKey && row._isFirstInGroup) {
+                    {/* Other columns */}
+                    {columns.map((col) => {
+                      const isColspanKey = colspanKeys.includes(col.key as keyof T);
+                      const cellValue = col.render ? col.render(row) : (col.accessor ? toStringVal(row[col.accessor]) : "");
+                      
+                      if (isColspanKey && !row._isFirstInGroup) {
+                        return null;
+                      }
+                      
+                      if (isColspanKey && row._isFirstInGroup) {
+                        return (
+                          <td 
+                            key={String(col.key)}
+                            rowSpan={row._groupCount} 
+                            className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
+                            style={{ verticalAlign: 'top' }}
+                          >
+                            {cellValue}
+                          </td>
+                        );
+                      }
+                      
                       return (
-                        <td 
-                          key={String(col.key)}
-                          rowSpan={row._groupCount} 
-                          className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
-                          style={{ verticalAlign: 'top' }}
-                        >
+                        <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
                           {cellValue}
                         </td>
                       );
-                    }
-                    
-                    return (
-                      <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
-                        {cellValue}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

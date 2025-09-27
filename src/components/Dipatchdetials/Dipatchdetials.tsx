@@ -95,6 +95,7 @@ type DispatchListRow = {
   period?: string;
   no_of_days?: number;
   financial_year?: string;
+  udaisno?: string;
 };
 
 type DispatchRow = {
@@ -135,7 +136,6 @@ interface TalukaRow {
   dist_id?: number;
   status?: string;
 }
-
 
 const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }) => {
   const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
@@ -738,8 +738,6 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     };
   };
 
-
-
   if (!isOpen) return null;
 
   return (
@@ -808,7 +806,6 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
           </div>
 
           {/* Action Buttons */}
-          {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={() => {
@@ -865,12 +862,6 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                 >
                   Print
                 </button>
-                {/* <button
-                  onClick={() => setIsPreviewOpen(false)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-                >
-                  Close
-                </button> */}
               </div>
             </div>
 
@@ -882,41 +873,6 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
               />
             </div>
           </Modal>
-          {/* Preview Section */}
-          {/* {previewContent && (
-            <div className="mt-6 p-4 border rounded-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">
-                  {previewType === 'rice' ? 'Rice' : 'Kirana'} Receipt Preview
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={printPreview}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Print
-                  </button>
-                  <button
-                    onClick={closePreview}
-                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-                  >
-                    Close Preview
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-gray-100 p-4 rounded ">
-                <iframe
-                  srcDoc={previewContent}
-                  className="w-full h-96 border rounded "
-                  title="Receipt Preview"
-                />
-                <p className="text-sm text-gray-600 mt-2">
-                  Note: This is a preview. Click &quot;Print&quot; to open the print dialog.
-                </p>
-              </div>
-            </div>
-          )} */}
         </div>
       </div>
     </div>
@@ -985,7 +941,6 @@ const Dipatchdetials = () => {
   const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
   const [truckList, setTruckList] = useState<TruckRow[]>([]);
-  // const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
 
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
@@ -1028,7 +983,6 @@ const Dipatchdetials = () => {
     }
   }, []);
 
-
   // Filter dispatch list based on date
   useEffect(() => {
     let filtered = [...dispatchList];
@@ -1043,7 +997,6 @@ const Dipatchdetials = () => {
 
     setFilteredDispatchList(filtered);
   }, [dispatchList, selectedDate]);
-
 
   // Fetchers
   const fetchZpOrders = async () => {
@@ -1139,11 +1092,11 @@ const Dipatchdetials = () => {
     fetchZpOrders();
     fetchSchoolWiseOrders();
     fetchTrucks();
-    fetchTalukas();         // NEW
+    fetchTalukas();
     fetchCenters();
     fetchItemMaster();
     fetchDispatchList();
-    fetchSchoolDataMap();   // NEW
+    fetchSchoolDataMap();
   }, []);
 
   // Options
@@ -1169,6 +1122,8 @@ const Dipatchdetials = () => {
       .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
   ], [centerList, selectedTalukaId]);
 
+  
+
   const classRangeOptions = useMemo(() => {
     if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
     const uniq = new Set<string>();
@@ -1179,6 +1134,7 @@ const Dipatchdetials = () => {
     return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
   }, [orderNo, selectedSchoolId, schoolWiseOrders]);
 
+  // Updated school options - exclude schools that have already been dispatched
   const schoolOptions = useMemo(() => {
     if (!orderNo) return [{ value: '', label: 'Select School' }];
 
@@ -1195,6 +1151,17 @@ const Dipatchdetials = () => {
         return sd && String(sd.taluka_id) === String(selectedTalukaId);
       });
     }
+
+    // NEW: Filter out schools that have already been dispatched
+    const dispatchedSchools = new Set<number>();
+    dispatchList.forEach(dispatch => {
+      if (String(dispatch.order_id) === orderNo) {
+        dispatchedSchools.add(dispatch.school_id);
+      }
+    });
+
+    // Remove dispatched schools from the list
+    filtered = filtered.filter(s => !dispatchedSchools.has(s.school_id));
 
     // De-dup by school_id
     const seen = new Set<number>();
@@ -1224,7 +1191,8 @@ const Dipatchdetials = () => {
         };
       })
     ];
-  }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById]);
+  }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById, dispatchList]);
+
   const handleOrderChange = (orderId: string) => {
     setOrderNo(orderId);
     setSelectedClassRange('');
@@ -1251,7 +1219,6 @@ const Dipatchdetials = () => {
     return all[0];
   }, [orderNo, selectedSchoolId, selectedClassRange, schoolWiseOrders]);
 
-  // Sum already dispatched per item for selected order + school (+ class)
   // Sum already dispatched per item for selected order + school (+ class)
   const dispatchedByItem = useMemo<Record<string, number>>(() => {
     if (!orderNo || !selectedSchoolId) return {};
@@ -1293,6 +1260,7 @@ const Dipatchdetials = () => {
     Object.entries(map).forEach(([k, v]) => { out[k] = { id: v.id, qty: v.qty, total: v.total }; });
     return out;
   }, [dispatchList, orderNo, selectedSchoolId, selectedClassRange, selectedOrderSchool?.class_range]);
+
   // Build input-mode rows with remaining qty (planned - already dispatched)
   const dispatchRows = useMemo<DispatchRow[]>(() => {
     if (!selectedOrderSchool) return [];
@@ -1355,52 +1323,32 @@ const Dipatchdetials = () => {
       return next;
     });
   }, [storageKey]);
+
   // Persist on change
   useEffect(() => {
     if (!storageKey) return;
     try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
   }, [dispatchInputs, storageKey]);
 
-  useEffect(() => {
-    if (!storageKey) return;
-    try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
-  }, [dispatchInputs, storageKey]);
-
-
+  // Updated table columns with new structure
   const listColumns: Column<DispatchListRow>[] = [
-    // { key: 'dispatch_code', label: 'Dispatch Code', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
-    { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
-    {
-      key: 'schoolname',
-      label: 'School',
-      accessor: 'schoolname',
-      render: (r) => (
-        <div className="flex items-center justify-between">
-          <span>{r.schoolname || r.schoolname}</span>
-        </div>
-      )
-    },
+    
+    { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
+    { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList
     {
       key: 'taluka',
-      label: 'Taluka',
+      label: 'TALUKA',
       render: (r) => {
         const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
         const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
         return <span>{talukaName}</span>;
       }
     },
-    // Class Range
-    {
-      key: 'class_range',
-      label: 'Class',
-      accessor: 'class_range',
-      render: (r) => <span>{r.class_range || ''}</span>
-    },
     // Center (prefer Marathi name)
     {
       key: 'center_name',
-      label: 'Center',
+      label: 'CENTER',
       accessor: 'center_name',
       render: (r) => {
         const c = centerList.find(cn => String(cn.center_id) === String(r.center_id));
@@ -1408,11 +1356,36 @@ const Dipatchdetials = () => {
         return <span>{name}</span>;
       }
     },
-    { key: 'truckNo', label: 'Truck', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
     {
       key: 'schoolname',
-      label: 'Action',
+      label: 'SCHOOL',
       accessor: 'schoolname',
+      render: (r) => (
+        <div className="flex items-center justify-between">
+          <span>{r.schoolname || r.schoolname}</span>
+        </div>
+      )
+    },
+    {
+      key: 'udaisno',
+      label: 'UDIAS',
+      render: (r) => {
+        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
+        const udaisno = sd?.udaisno || '';
+        return <span>{udaisno}</span>;
+      }
+    },
+    // Class Range
+    {
+      key: 'class_range',
+      label: 'CLASS',
+      accessor: 'class_range',
+      render: (r) => <span>{r.class_range || ''}</span>
+    },
+    { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
+    {
+      key: 'truckNo',
+      label: 'ACTION',
       render: (r) => (
         <div className="flex items-center justify-between">
           <button
@@ -1435,7 +1408,7 @@ const Dipatchdetials = () => {
               const dispatchData = {
                 dispatch_code: r.dispatch_code,
                 schoolname: r.schoolname || '',
-                udaisno: schoolWiseOrders.find(s => s.schoolname === r.schoolname)?.udaisno || '',
+                udaisno: sd?.udaisno || '',
                 taluka: talukaName,
                 center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
                 truckNo: r.truckNo || '',
@@ -1462,8 +1435,10 @@ const Dipatchdetials = () => {
       )
     },
   ];
+
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
+
   // Initialize Flatpickr for date picker (re-init when mode changes so toolbar remounts)
   useEffect(() => {
     if (!datePickerRef.current) return;
@@ -1497,6 +1472,7 @@ const Dipatchdetials = () => {
       }
     };
   }, [showInputMode, selectedDate]);
+
   // Update the toolbar section with the clear button
   const toolbar = (
     <div className="space-y-4">
@@ -1589,8 +1565,9 @@ const Dipatchdetials = () => {
               placeholder="Select Date"
               className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
               readOnly
+              disabled
             />
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 setSelectedDate('');
@@ -1604,7 +1581,7 @@ const Dipatchdetials = () => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -1724,7 +1701,6 @@ const Dipatchdetials = () => {
               toast.success(newCode ? `Saved (Code: ${newCode})` : 'Updated successfully');
 
               // Refresh from DB and auto-apply latest values into inputs
-              // After successful save, refresh DB and re-seed inputs from DB (0 if fully dispatched)
               await fetchDispatchList();
 
               setDispatchInputs(() => {
@@ -1733,13 +1709,14 @@ const Dipatchdetials = () => {
                   const latest = latestDispatchByItem[row.grain];
                   const dbQty = Number(latest?.qty ?? NaN);
                   if (Number.isNaN(dbQty)) {
-                    next[row.grain] = Number(row.totalQty);           // still no DB row -> show Quantity
+                    next[row.grain] = Number(row.totalQty);
                   } else {
-                    next[row.grain] = dbQty >= Number(row.totalQty) ? 0 : dbQty;  // equal => 0, else DB qty
+                    next[row.grain] = dbQty >= Number(row.totalQty) ? 0 : dbQty;
                   }
                 });
                 return next;
               });
+
               // Keep filters as-is; show print modal as before if needed
               const dispatchItems = dispatchRows
                 .map(r => ({
@@ -1794,8 +1771,7 @@ const Dipatchdetials = () => {
                 try { flatpickrInstanceRef.current.clear(); } catch { }
               }
             }
-          }
-          }
+          }}
           disabled={loading || !showInputMode}
         >
           {loading ? 'Submitting...' : 'Submit'}
@@ -1803,7 +1779,6 @@ const Dipatchdetials = () => {
       </div>
     </div>
   );
-
 
   return (
     <div className="">
@@ -1889,7 +1864,7 @@ const Dipatchdetials = () => {
           filterKey={undefined}
           toolbar={toolbar}
           groupByKey="dispatch_code"
-          colspanKeys={["order_no", "taluka", "class_range", "schoolname", "center_name", "truckNo"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo"]}
         />
       )}
 
