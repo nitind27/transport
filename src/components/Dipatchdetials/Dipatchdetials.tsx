@@ -141,7 +141,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
   const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
-  
+
   // Separate rice items from other items - तांदुळ is rice
   const riceItems = dispatchData.items.filter(item => {
     const itemName = item.name.toLowerCase();
@@ -160,18 +160,18 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
   // Helper function to format class range
   const formatClassRange = (classRange?: string) => {
     if (!classRange) return '1 ली ते 5 वी';
-    
+
     // Handle different class range formats
     if (classRange.includes('-')) {
       const [start, end] = classRange.split('-');
       return `${start} ली ते ${end} वी`;
     }
-    
+
     // Handle single class
     if (classRange.includes('ली') || classRange.includes('वी')) {
       return classRange;
     }
-    
+
     // Default fallback
     return '1 ली ते 5 वी';
   };
@@ -183,7 +183,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
       'जिल्हा परिषद ऑफीस',
       'O .C'
     ];
-    
+
     return `
 <!DOCTYPE html>
 <html>
@@ -1122,7 +1122,7 @@ const Dipatchdetials = () => {
       .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
   ], [centerList, selectedTalukaId]);
 
-  
+
 
   const classRangeOptions = useMemo(() => {
     if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
@@ -1134,65 +1134,111 @@ const Dipatchdetials = () => {
     return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
   }, [orderNo, selectedSchoolId, schoolWiseOrders]);
 
-  // Updated school options - exclude schools that have already been dispatched
   const schoolOptions = useMemo(() => {
     if (!orderNo) return [{ value: '', label: 'Select School' }];
-
-    let filtered = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
-
+  
+    // Get all schools for this order
+    let allSchoolsForOrder = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
+  
+    // Filter by center if selected
     if (selectedCenterId) {
-      filtered = filtered.filter(s => {
+      allSchoolsForOrder = allSchoolsForOrder.filter(s => {
         const sd = schoolDataById.get(Number(s.school_id));
         return sd && String(sd.center) === String(selectedCenterId);
       });
     } else if (selectedTalukaId) {
-      filtered = filtered.filter(s => {
+      allSchoolsForOrder = allSchoolsForOrder.filter(s => {
         const sd = schoolDataById.get(Number(s.school_id));
         return sd && String(sd.taluka_id) === String(selectedTalukaId);
       });
     }
-
-    // NEW: Filter out schools that have already been dispatched
-    const dispatchedSchools = new Set<number>();
-    dispatchList.forEach(dispatch => {
-      if (String(dispatch.order_id) === orderNo) {
-        dispatchedSchools.add(dispatch.school_id);
+  
+    // Get unique schools
+    const uniqueSchools = new Map<number, SchoolWiseOrder>();
+    allSchoolsForOrder.forEach(s => {
+      if (!uniqueSchools.has(s.school_id)) {
+        uniqueSchools.set(s.school_id, s);
       }
     });
-
-    // Remove dispatched schools from the list
-    filtered = filtered.filter(s => !dispatchedSchools.has(s.school_id));
-
-    // De-dup by school_id
-    const seen = new Set<number>();
-    const dedup = filtered.filter(s => {
-      if (seen.has(s.school_id)) return false;
-      seen.add(s.school_id);
-      return true;
+  
+    // Check each unique school
+    const schoolsToShow = [];
+    
+    for (const [schoolId, schoolData] of uniqueSchools) {
+      // Get all class ranges for this school in this order
+      const schoolClassRanges = schoolWiseOrders
+        .filter(s => String(s.order_id) === orderNo && s.school_id === schoolId)
+        .map(s => s.class_range)
+        .filter(Boolean);
+  
+      // Check if school has both "1-5" and "6-8"
+      const has1to5 = schoolClassRanges.includes("1-5");
+      const has6to8 = schoolClassRanges.includes("6-8");
+      const hasBothRanges = has1to5 && has6to8;
+  
+      if (hasBothRanges) {
+        // Check if both ranges have been dispatched
+        const dispatched1to5 = dispatchList.some(d => 
+          String(d.order_id) === orderNo && 
+          d.school_id === schoolId && 
+          String(d.class_range || '') === "1-5"
+        );
+        
+        const dispatched6to8 = dispatchList.some(d => 
+          String(d.order_id) === orderNo && 
+          d.school_id === schoolId && 
+          String(d.class_range || '') === "6-8"
+        );
+  
+        // Debug logging
+        console.log(`School ${schoolId}:`, {
+          classRanges: schoolClassRanges,
+          has1to5,
+          has6to8,
+          dispatched1to5,
+          dispatched6to8,
+          willHide: dispatched1to5 && dispatched6to8
+        });
+  
+        // Only hide if BOTH are dispatched
+        if (dispatched1to5 && dispatched6to8) {
+          console.log(`Hiding school ${schoolId} because both class ranges are dispatched`);
+          continue; // Skip this school (hide it)
+        }
+      }
+      
+      // Show this school
+      schoolsToShow.push(schoolData);
+    }
+  
+    // Sort schools by name
+    schoolsToShow.sort((a, b) => {
+      const nameA = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
+      const nameB = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
+      return nameA.localeCompare(nameB);
     });
-
-    // Stable sort
-    dedup.sort((a, b) => {
-      const an = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
-      const bn = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
-      return an.localeCompare(bn);
-    });
-
-    // Label: SR) Name (UDISE) with fallback from schooldata if missing in API
+  
     return [
       { value: '', label: 'Select School' },
-      ...dedup.map((s, idx) => {
+      ...schoolsToShow.map((s, idx) => {
         const fallback = schoolDataById.get(Number(s.school_id));
         const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
         const ud = s.udaisno || fallback?.udaisno || 'NA';
+        
+        // Show class ranges for this school
+        const classRanges = schoolWiseOrders
+          .filter(sw => String(sw.order_id) === orderNo && sw.school_id === s.school_id)
+          .map(sw => sw.class_range)
+          .filter(Boolean)
+          .join(', ');
+  
         return {
           value: String(s.school_id),
-          label: `${idx + 1}) ${name} (${ud})`,
+          label: `${idx + 1}) ${name} (${ud}) ${classRanges ? `[${classRanges}]` : ''}`,
         };
       })
     ];
   }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById, dispatchList]);
-
   const handleOrderChange = (orderId: string) => {
     setOrderNo(orderId);
     setSelectedClassRange('');
@@ -1332,7 +1378,7 @@ const Dipatchdetials = () => {
 
   // Updated table columns with new structure
   const listColumns: Column<DispatchListRow>[] = [
-    
+
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList

@@ -1,6 +1,7 @@
 // app/ecommerce/page.tsx
 import type { Metadata } from "next";
 import { EcommerceMetrics } from "@/components/ecommerce/EcommerceMetrics";
+import Dashboardtaluka from "@/components/ecommerce/Dashboardtaluka";
 
 // import Showschemstable from "@/components/ecommerce/Showschemstable";
 import { Suspense } from "react";
@@ -30,7 +31,7 @@ async function fetchMetrics() {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/villages`, { cache: 'no-store' }),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/grampanchayt`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vyaktikapi`, { cache: 'no-store' }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vyktikapi`, { cache: 'no-store' }),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bhautikapi`, { cache: 'no-store' }),
     ]);
 
@@ -88,8 +89,9 @@ export default async function Ecommerce() {
          
 
             <EcommerceMetrics metrics={metrics} />
-            {/* <Dashboardtabfilter metrics={metrics} /> */}
-
+            <div className="mt-6">
+              <Dashboardtaluka />
+            </div>
 
           </Suspense>
         </div>
