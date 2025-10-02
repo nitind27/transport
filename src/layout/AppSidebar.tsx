@@ -69,6 +69,7 @@ const allNavItems: NavItem[] = [
     subItems: [
       { name: "Order Details", path: "/zporderdetails" },
       { name: "Add Schools Wise Order Detials", path: "/addSchoolswiseorder" },
+      { name: "Order Register", path: "/orderregister" },
       
     ],
   },

@@ -7,10 +7,10 @@ interface TalukaApiResponse {
   taluka_id: number;
   name: string;
   name_en: string;
-  districtname: string;
-  total_schools: string | number;      // Could be string in API
-  distributed_schools: string | number;// Could be string in API
-  remaining_schools: string | number;  // Could be string in API
+  total_schools: string | number;
+  schools_with_orders: string | number;    // Schools that have orders for specific order_no
+  distributed_schools: string | number;   // Schools that have been dispatched
+  remaining_schools: string | number;     // Schools with orders - Schools dispatched
 }
 
 // Interface for transformed taluka dashboard data
@@ -18,43 +18,68 @@ interface TalukaData {
   taluka_id: number;
   name: string;
   name_en: string;
-  districtname: string;
   total_schools: number;
+  schools_with_orders: number;
   distributed_schools: number;
   remaining_schools: number;
   date: string;
 }
 
+// Interface for order counts
+interface OrderCount {
+  order_id: number;
+  order_no: string;
+  period: string;
+  financial_year: string;
+  no_of_days: number;
+  total_schools: number;
+  dispatched_schools: number;
+  remaining_schools: number;
+}
+
 const Dashboardtaluka = () => {
   const [talukaData, setTalukaData] = useState<TalukaData[]>([]);
+  const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
+  const [selectedOrderNo, setSelectedOrderNo] = useState('20');
   const [loading, setLoading] = useState(true);
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
   useEffect(() => {
-    fetchTalukaData();
-  }, []);
+    fetchData();
+  }, [selectedOrderNo]);
 
-  const fetchTalukaData = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Fetch taluka dashboard data from the API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard`, {
-        cache: 'no-store'
-      });
+      // Fetch both taluka data and order counts
+      const [talukaResponse, orderCountsResponse] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard?order_no=${selectedOrderNo}`, {
+          cache: 'no-store'
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schoolwiseorders/count`, {
+          cache: 'no-store'
+        })
+      ]);
 
-      // Strongly type API response as array of TalukaApiResponse
-      const data: TalukaApiResponse[] = await response.json();
+      if (!talukaResponse.ok || !orderCountsResponse.ok) {
+        throw new Error('Failed to fetch data');
+      }
 
-      // Transform and map to TalukaData
-      const processedData: TalukaData[] = data.map((taluka) => ({
+      const talukaData: TalukaApiResponse[] = await talukaResponse.json();
+      const orderCountsData: OrderCount[] = await orderCountsResponse.json();
+
+      // Transform taluka data
+      const processedTalukaData: TalukaData[] = talukaData.map((taluka) => ({
         taluka_id: taluka.taluka_id,
         name: taluka.name,
         name_en: taluka.name_en,
-        districtname: taluka.districtname,
         total_schools: typeof taluka.total_schools === 'string'
           ? parseInt(taluka.total_schools) || 0
           : taluka.total_schools,
+        schools_with_orders: typeof taluka.schools_with_orders === 'string'
+          ? parseInt(taluka.schools_with_orders) || 0
+          : taluka.schools_with_orders || 0,
         distributed_schools: typeof taluka.distributed_schools === 'string'
           ? parseInt(taluka.distributed_schools) || 0
           : taluka.distributed_schools,
@@ -64,21 +89,26 @@ const Dashboardtaluka = () => {
         date: currentDate
       }));
 
-      setTalukaData(processedData);
+      setTalukaData(processedTalukaData);
+      setOrderCounts(orderCountsData);
     } catch (error) {
-      console.error('Error fetching taluka data:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   // Calculate totals
-  const totalSchools = talukaData.reduce((sum, taluka) => sum + taluka.total_schools, 0);
+  // const totalSchools = talukaData.reduce((sum, taluka) => sum + taluka.total_schools, 0);
+  const totalSchoolsWithOrders = talukaData.reduce((sum, taluka) => sum + taluka.schools_with_orders, 0);
   const totalDistributed = talukaData.reduce((sum, taluka) => sum + taluka.distributed_schools, 0);
   const totalRemaining = talukaData.reduce((sum, taluka) => sum + taluka.remaining_schools, 0);
-  const distributionPercentage = totalSchools > 0
-    ? ((totalDistributed / totalSchools) * 100).toFixed(1)
+  const distributionPercentage = totalSchoolsWithOrders > 0
+    ? ((totalDistributed / totalSchoolsWithOrders) * 100).toFixed(1)
     : '0.0';
+
+  // Get current order details
+  const currentOrder = orderCounts.find(order => order.order_no === selectedOrderNo);
 
   if (loading) {
     return (
@@ -94,6 +124,23 @@ const Dashboardtaluka = () => {
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Mid Day Meal</h1>
         <p className="text-lg text-gray-600">Aug-Sept-2025 (42 days)</p>
+        
+        {/* Order Selection */}
+        <div className="mt-4 mb-4">
+          <label className="font-semibold mr-2">Select Order Number:</label>
+          <select 
+            value={selectedOrderNo} 
+            onChange={(e) => setSelectedOrderNo(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1"
+          >
+            {orderCounts.map(order => (
+              <option key={order.order_no} value={order.order_no}>
+                Order {order.order_no} ({order.period})
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="mt-4 flex justify-center space-x-8 text-sm">
           <div>
             <span className="font-semibold">Total Distribution Order (D.O.):</span>
@@ -101,10 +148,24 @@ const Dashboardtaluka = () => {
           </div>
           <div>
             <span className="font-semibold">Order Number:</span>
-            <span className="ml-2">20</span>
+            <span className="ml-2">{selectedOrderNo}</span>
             <span className="ml-2 text-gray-600">Date : ({currentDate})</span>
           </div>
         </div>
+        
+        {currentOrder && (
+          <div className="mt-2 text-sm text-gray-600">
+            <div className="flex justify-center space-x-6">
+              <span><strong>Period:</strong> {currentOrder.period}</span>
+              <span><strong>Days:</strong> {currentOrder.no_of_days}</span>
+              <span><strong>Financial Year:</strong> {currentOrder.financial_year}</span>
+            </div>
+            <div className="mt-1">
+              <span className="font-semibold">Total Schools with Order {selectedOrderNo}:</span>
+              <span className="ml-2">{currentOrder.total_schools}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -114,7 +175,6 @@ const Dashboardtaluka = () => {
             <tr className="bg-gray-100">
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">अ.क्र</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">तालुका</th>
-              
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">एकूण शाळा</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">एकूण शाळा वाटप</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">बाकी शाळा</th>
@@ -125,8 +185,7 @@ const Dashboardtaluka = () => {
               <tr key={taluka.taluka_id} className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3">{index + 1}</td>
                 <td className="border border-gray-300 px-4 py-3 font-medium">{taluka.name}</td>
-                {/* <td className="border border-gray-300 px-4 py-3">{taluka.date}</td> */}
-                <td className="border border-gray-300 px-4 py-3 text-center">{taluka.total_schools}</td>
+                <td className="border border-gray-300 px-4 py-3 text-center">{taluka.schools_with_orders}</td>
                 <td className="border border-gray-300 px-4 py-3 text-center">{taluka.distributed_schools}</td>
                 <td className="border border-gray-300 px-4 py-3 text-center">{taluka.remaining_schools}</td>
               </tr>
@@ -134,23 +193,41 @@ const Dashboardtaluka = () => {
 
             {/* Total Row */}
             <tr className="bg-gray-200 font-bold">
-              <td className="border border-gray-300 px-4 py-3" colSpan={3}>
+              <td className="border border-gray-300 px-4 py-3" colSpan={2}>
                 <span className="font-bold">एकूण</span>
               </td>
-              <td className="border border-gray-300 px-4 py-3 text-center">{totalSchools}</td>
+              <td className="border border-gray-300 px-4 py-3 text-center">{totalSchoolsWithOrders}</td>
               <td className="border border-gray-300 px-4 py-3 text-center">{totalDistributed}</td>
               <td className="border border-gray-300 px-4 py-3 text-center">{totalRemaining}</td>
+            </tr>
+            {/* Total Row */}
+            <tr className="bg-gray-200 font-bold">
+              <td className="border border-gray-300 px-4 py-3" colSpan={4}>
+                <span className="font-bold">Percentage of Schools Distributed</span>
+              </td>
+              <td className="border border-gray-300 px-4 py-3 text-center">{distributionPercentage}</td>
+            
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Summary */}
-      <div className="mt-6 text-center">
+      {/* <div className="mt-6 text-center">
         <p className="text-lg font-semibold text-gray-700">
-          Percentage of Schools Distributed: {distributionPercentage}%
+          Percentage of Schools Distributed (Order No. {selectedOrderNo}): {distributionPercentage}%
         </p>
-      </div>
+        <div className="mt-2 text-sm text-gray-600">
+          <div className="flex justify-center space-x-6">
+            <p>Total Schools in District: {totalSchools}</p>
+            <p>Schools with Order No. {selectedOrderNo}: {totalSchoolsWithOrders}</p>
+            <p>Schools Dispatched: {totalDistributed}</p>
+            <p>Schools Remaining: {totalRemaining}</p>
+          </div>
+        </div>
+      </div> */}
+
+     
     </div>
   );
 };

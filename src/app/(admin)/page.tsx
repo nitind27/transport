@@ -1,6 +1,6 @@
 // app/ecommerce/page.tsx
 import type { Metadata } from "next";
-import { EcommerceMetrics } from "@/components/ecommerce/EcommerceMetrics";
+// import { EcommerceMetrics } from "@/components/ecommerce/EcommerceMetrics";
 import Dashboardtaluka from "@/components/ecommerce/Dashboardtaluka";
 
 // import Showschemstable from "@/components/ecommerce/Showschemstable";
@@ -21,61 +21,61 @@ export const metadata: Metadata = {
     "MDM",
 };
 
-async function fetchMetrics() {
+// async function fetchMetrics() {
 
-  try {
-    const [schemesRes, usersRes, talukaRes, villageRes, grampanchayatRes, vykatiRes, bhautikapiRes] = await Promise.all([
+//   try {
+//     const [schemesRes, usersRes, talukaRes, villageRes, grampanchayatRes, vykatiRes, bhautikapiRes] = await Promise.all([
 
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schemescrud`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/villages`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/grampanchayt`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vyktikapi`, { cache: 'no-store' }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bhautikapi`, { cache: 'no-store' }),
-    ]);
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schemescrud`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/villages`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/grampanchayt`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vyktikapi`, { cache: 'no-store' }),
+//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bhautikapi`, { cache: 'no-store' }),
+//     ]);
 
-    const [schemes, users, taluka, village, grampanchayat, vyaktidata, bhautikdata] = await Promise.all([
+//     const [schemes, users, taluka, village, grampanchayat, vyaktidata, bhautikdata] = await Promise.all([
 
-      schemesRes.json(),
-      usersRes.json(),
-      talukaRes.json(),
-      villageRes.json(),
-      grampanchayatRes.json(),
-      vykatiRes.json(),
-      bhautikapiRes.json()
-    ]);
+//       schemesRes.json(),
+//       usersRes.json(),
+//       talukaRes.json(),
+//       villageRes.json(),
+//       grampanchayatRes.json(),
+//       vykatiRes.json(),
+//       bhautikapiRes.json()
+//     ]);
 
-    return {
+//     return {
 
-      schemes,
-      users,
-      taluka,
-      village,
-      grampanchayat,
-      vyaktidata,
-      bhautikdata,
-    };
-  } catch (error) {
-    console.error('Error fetching metrics:', error);
-    return {
+//       schemes,
+//       users,
+//       taluka,
+//       village,
+//       grampanchayat,
+//       vyaktidata,
+//       bhautikdata,
+//     };
+//   } catch (error) {
+//     console.error('Error fetching metrics:', error);
+//     return {
 
-      schemes: [],
-      users: [],
-      taluka: [],
-      village: [],
-      grampanchayat: [],
-      vyaktidata: [],
-      bhautikdata: [],
-    };
-  }
-}
+//       schemes: [],
+//       users: [],
+//       taluka: [],
+//       village: [],
+//       grampanchayat: [],
+//       vyaktidata: [],
+//       bhautikdata: [],
+//     };
+//   }
+// }
 
 
 
 
 export default async function Ecommerce() {
-  const metrics = await fetchMetrics();
+  // const metrics = await fetchMetrics();
 
 
   return (
@@ -88,7 +88,7 @@ export default async function Ecommerce() {
         
          
 
-            <EcommerceMetrics metrics={metrics} />
+            {/* <EcommerceMetrics metrics={metrics} /> */}
             <div className="mt-6">
               <Dashboardtaluka />
             </div>
