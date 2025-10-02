@@ -94,6 +94,7 @@ type DispatchListRow = {
   financial_year?: string;
   udaisno?: string;
   patsankhya?: string;
+  action?:string;
   // Add all grain properties as optional string types
   "grain_तांदुळ"?: string;
   "grain_मुंगदाळ"?: string;
@@ -1520,7 +1521,7 @@ const DispatchView = () => {
           filterKey={undefined}
           toolbar={null}
           groupByKey="dispatch_code"
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya","total_weight"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya","total_weight","action"]}
         />
       )}
 
