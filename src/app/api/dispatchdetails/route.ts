@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+// import { db } from '@/lib/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import pool from '@/lib/db';
 
 function generateDispatchCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -122,15 +123,36 @@ export async function PATCH(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await req.json();
-    if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
-    const [res] = await pool.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
-    if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
-    return NextResponse.json({ message: 'Deleted' });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
+    const { searchParams } = new URL(request.url);
+    const dispatchCode = searchParams.get('dispatch_code');
+
+    if (!dispatchCode) {
+      return NextResponse.json({ message: 'Dispatch code is required' }, { status: 400 });
+    }
+
+    // Delete all dispatch records with the given dispatch_code
+    const result = await pool.query(
+      'DELETE FROM dispatch_details WHERE dispatch_code = ?',
+      [dispatchCode]
+    );
+    const [res] = result as [ResultSetHeader, unknown];
+    
+    if (!res || res.affectedRows === 0) {
+      return NextResponse.json({ message: 'Dispatch not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      message: 'Dispatch deleted successfully',
+      deletedRows: res.affectedRows 
+    });
+
+  } catch (error) {
+    console.error('Error deleting dispatch:', error);
+    return NextResponse.json(
+      { message: 'Failed to delete dispatch' },
+      { status: 500 }
+    );
   }
 }

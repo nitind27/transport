@@ -11,6 +11,8 @@ import { toast } from "react-toastify";
 import DefaultModal from "../example/ModalExample/DefaultModal";
 import { FaEdit } from "react-icons/fa";
 import DatePicker from "../form/date-picker";
+import StockTransfer from "./StockTransfer";
+import DamageStock from "./DamageStock";
 
 type StockEntry = {
   id: number;
@@ -55,8 +57,8 @@ interface StockInventoryProps {
 const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
   const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'inventory' | 'addStock'>('inventory');
+  // Tab state - Updated to include new tabs
+  const [activeTab, setActiveTab] = useState<'stockTransfer' | 'damageStock' | 'inventory' | 'addStock'>('stockTransfer');
 
   // Table data
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
@@ -438,8 +440,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
   return (
     <div className="">
-      {/* Tab Navigation */}
+      {/* Tab Navigation - Updated with new tabs */}
       <div className="flex border-b border-gray-200 mb-6">
+       
         <button
           onClick={() => setActiveTab('inventory')}
           className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'inventory'
@@ -458,14 +461,34 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         >
           Add Stock
         </button>
+        <button
+          onClick={() => setActiveTab('stockTransfer')}
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'stockTransfer'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+        >
+          Stock Transfer
+        </button>
+        <button
+          onClick={() => setActiveTab('damageStock')}
+          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'damageStock'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+        >
+          Damage Stock
+        </button>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'inventory' ? (
+      {/* Tab Content - Updated with new tab content */}
+      {activeTab === 'stockTransfer' ? (
+        <StockTransfer />
+      ) : activeTab === 'damageStock' ? (
+        <DamageStock />
+      ) : activeTab === 'inventory' ? (
         // Stock Inventory Tab - Read Only
         <div>
-
-
           {/* Enhanced Table for Current Stock Summary */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
@@ -511,8 +534,6 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       ) : (
         // Add Stock Tab - With Form and Actions
         <div>
-
-
           <ReusableTable
             data={data}
             classname={"h-[650px] overflow-y-auto scrollbar-hide"}

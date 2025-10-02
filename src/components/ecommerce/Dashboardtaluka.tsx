@@ -102,6 +102,7 @@ const Dashboardtaluka = () => {
           <div>
             <span className="font-semibold">Order Number:</span>
             <span className="ml-2">20</span>
+            <span className="ml-2 text-gray-600">Date : ({currentDate})</span>
           </div>
         </div>
       </div>
@@ -113,7 +114,7 @@ const Dashboardtaluka = () => {
             <tr className="bg-gray-100">
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">अ.क्र</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">तालुका</th>
-              <th className="border border-gray-300 px-4 py-3 text-left font-semibold">दिनांक</th>
+              
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">एकूण शाळा</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">एकूण शाळा वाटप</th>
               <th className="border border-gray-300 px-4 py-3 text-left font-semibold">बाकी शाळा</th>
@@ -124,7 +125,7 @@ const Dashboardtaluka = () => {
               <tr key={taluka.taluka_id} className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3">{index + 1}</td>
                 <td className="border border-gray-300 px-4 py-3 font-medium">{taluka.name}</td>
-                <td className="border border-gray-300 px-4 py-3">{taluka.date}</td>
+                {/* <td className="border border-gray-300 px-4 py-3">{taluka.date}</td> */}
                 <td className="border border-gray-300 px-4 py-3 text-center">{taluka.total_schools}</td>
                 <td className="border border-gray-300 px-4 py-3 text-center">{taluka.distributed_schools}</td>
                 <td className="border border-gray-300 px-4 py-3 text-center">{taluka.remaining_schools}</td>

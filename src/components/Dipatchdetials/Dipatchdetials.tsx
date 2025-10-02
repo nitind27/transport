@@ -7,6 +7,7 @@ import { Filterdispached } from "../tables/Filterdispached";
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 import { Modal } from '../ui/modal';
+import { TrashBinIcon } from '@/icons';
 
 interface ZPOrderDetail {
   id: number;
@@ -72,6 +73,7 @@ interface ItemGrain {
 }
 
 // Existing inserted dispatch list row (from API GET)
+
 type DispatchListRow = {
   id: number;
   dispatch_code: string;
@@ -89,6 +91,7 @@ type DispatchListRow = {
   order_no?: string;
   schoolname?: string;
   center_name?: string;
+  total_weight?: string;
   truckNo?: string;
   class_range?: string;
   taluka?: string;
@@ -96,8 +99,26 @@ type DispatchListRow = {
   no_of_days?: number;
   financial_year?: string;
   udaisno?: string;
+  patsankhya?: string;
+  action?: string;
+  grain_तांदुळ?: string;
+  grain_मुंगदाळ?: string;
+  grain_मसूरदाळ?: string;
+  grain_तूरदाळ?: string;
+  grain_हरभरा?: string;
+  grain_चवळी?: string;
+  grain_मटकी?: string;
+  grain_मूग?: string;
+  grain_वाटणा?: string;
+  grain_सोया_वडी?: string;
+  grain_मसाला?: string;
+  grain_सोया_तेल?: string;
+  grain_हळद?: string;
+  grain_मीठ?: string;
+  grain_मोहरी?: string;
+  grain_चना?: string;
+  grain_जीरा?: string;
 };
-
 type DispatchRow = {
   schoolname: string;
   grain: string;
@@ -128,6 +149,7 @@ interface PrintModalProps {
       unit: string;
     }>;
   };
+  initialType?: 'kirana' | 'rice';
 }
 interface TalukaRow {
   taluka_id: number;
@@ -137,7 +159,7 @@ interface TalukaRow {
   status?: string;
 }
 
-const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }) => {
+const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, initialType }) => {
   const [previewType, setPreviewType] = useState<'kirana' | 'rice' | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
@@ -738,6 +760,27 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
     };
   };
 
+  // Reset or seed preview when modal state changes
+  useEffect(() => {
+    if (!isOpen) {
+      setPreviewType(null);
+      setPreviewContent('');
+      setIsPreviewOpen(false);
+      return;
+    }
+    // If an initial type is provided, auto-open that preview
+    if (initialType) {
+      setPreviewType(initialType);
+      const content = generateReceiptContent(initialType);
+      setPreviewContent(content);
+      setIsPreviewOpen(true);
+    } else {
+      setPreviewType(null);
+      setPreviewContent('');
+      setIsPreviewOpen(false);
+    }
+  }, [isOpen, initialType]);
+
   if (!isOpen) return null;
 
   return (
@@ -781,10 +824,10 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
                   </tr>
                 </thead>
                 <tbody>
-                  {dispatchData.items.map((item, index: number) => {
+                  {(previewType === 'rice' ? riceItems : previewType === 'kirana' ? kiranaItems : dispatchData.items).map((item, index: number) => {
                     const isRice = riceItems.some(ri => ri.name === item.name);
                     return (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={`${item.name}-${index}`} className="hover:bg-gray-50">
                         <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
                         <td className="border border-gray-300 px-4 py-2 font-medium">{item.name}</td>
                         <td className="border border-gray-300 px-4 py-2 text-center">{item.qty}</td>
@@ -843,7 +886,8 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
             <div className="flex items-start justify-between mb-4 ">
               <div>
                 <h3 className="text-lg font-semibold">
-                  {previewType === 'rice' ? 'Rice' : 'Kirana'} Receipt Preview
+                  {(previewType === 'rice' ? 'Rice' : 'Kirana')}
+                  {' '}Receipt Preview ({(previewType === 'rice' ? riceItems : kiranaItems).length} items)
                 </h3>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                   <div><strong>Tp No:</strong> {dispatchData.dispatch_code}</div>
@@ -882,6 +926,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData }
 const Dipatchdetials = () => {
   const [loading, setLoading] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [initialPreviewType, setInitialPreviewType] = useState<'kirana' | 'rice' | undefined>(undefined);
   const [lastDispatchData, setLastDispatchData] = useState<{
     dispatch_code: string;
     schoolname: string;
@@ -904,6 +949,10 @@ const Dipatchdetials = () => {
   const [selectedCenterId, setSelectedCenterId] = useState<string>('');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
   const [selectedClassRange, setSelectedClassRange] = useState<string>('');
+
+  // Add these two lines here
+  const [isTruckDropdownOpen, setIsTruckDropdownOpen] = useState(false);
+  const [truckSearchTerm, setTruckSearchTerm] = useState('');
 
   // Masters
   const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
@@ -1029,6 +1078,7 @@ const Dipatchdetials = () => {
       toast.error('Failed to load trucks');
     }
   };
+ 
 
   const fetchCenters = async () => {
     try {
@@ -1110,6 +1160,14 @@ const Dipatchdetials = () => {
     ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
   ], [truckList]);
 
+  // Add this right after truckOptions
+  const filteredTruckOptions = useMemo(() => {
+    if (!truckSearchTerm) return truckOptions;
+    return truckOptions.filter(option =>
+      option.label.toLowerCase().includes(truckSearchTerm.toLowerCase())
+    );
+  }, [truckOptions, truckSearchTerm]);
+
   const talukaOptions = useMemo(() => [
     { value: '', label: 'Select Taluka' },
     ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
@@ -1136,10 +1194,10 @@ const Dipatchdetials = () => {
 
   const schoolOptions = useMemo(() => {
     if (!orderNo) return [{ value: '', label: 'Select School' }];
-  
+
     // Get all schools for this order
     let allSchoolsForOrder = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
-  
+
     // Filter by center if selected
     if (selectedCenterId) {
       allSchoolsForOrder = allSchoolsForOrder.filter(s => {
@@ -1152,7 +1210,7 @@ const Dipatchdetials = () => {
         return sd && String(sd.taluka_id) === String(selectedTalukaId);
       });
     }
-  
+
     // Get unique schools
     const uniqueSchools = new Map<number, SchoolWiseOrder>();
     allSchoolsForOrder.forEach(s => {
@@ -1160,36 +1218,36 @@ const Dipatchdetials = () => {
         uniqueSchools.set(s.school_id, s);
       }
     });
-  
+
     // Check each unique school
     const schoolsToShow = [];
-    
+
     for (const [schoolId, schoolData] of uniqueSchools) {
       // Get all class ranges for this school in this order
       const schoolClassRanges = schoolWiseOrders
         .filter(s => String(s.order_id) === orderNo && s.school_id === schoolId)
         .map(s => s.class_range)
         .filter(Boolean);
-  
+
       // Check if school has both "1-5" and "6-8"
       const has1to5 = schoolClassRanges.includes("1-5");
       const has6to8 = schoolClassRanges.includes("6-8");
       const hasBothRanges = has1to5 && has6to8;
-  
+
       if (hasBothRanges) {
         // Check if both ranges have been dispatched
-        const dispatched1to5 = dispatchList.some(d => 
-          String(d.order_id) === orderNo && 
-          d.school_id === schoolId && 
+        const dispatched1to5 = dispatchList.some(d =>
+          String(d.order_id) === orderNo &&
+          d.school_id === schoolId &&
           String(d.class_range || '') === "1-5"
         );
-        
-        const dispatched6to8 = dispatchList.some(d => 
-          String(d.order_id) === orderNo && 
-          d.school_id === schoolId && 
+
+        const dispatched6to8 = dispatchList.some(d =>
+          String(d.order_id) === orderNo &&
+          d.school_id === schoolId &&
           String(d.class_range || '') === "6-8"
         );
-  
+
         // Debug logging
         console.log(`School ${schoolId}:`, {
           classRanges: schoolClassRanges,
@@ -1199,39 +1257,39 @@ const Dipatchdetials = () => {
           dispatched6to8,
           willHide: dispatched1to5 && dispatched6to8
         });
-  
+
         // Only hide if BOTH are dispatched
         if (dispatched1to5 && dispatched6to8) {
           console.log(`Hiding school ${schoolId} because both class ranges are dispatched`);
           continue; // Skip this school (hide it)
         }
       }
-      
+
       // Show this school
       schoolsToShow.push(schoolData);
     }
-  
+
     // Sort schools by name
     schoolsToShow.sort((a, b) => {
       const nameA = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
       const nameB = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
       return nameA.localeCompare(nameB);
     });
-  
+
     return [
       { value: '', label: 'Select School' },
       ...schoolsToShow.map((s, idx) => {
         const fallback = schoolDataById.get(Number(s.school_id));
         const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
         const ud = s.udaisno || fallback?.udaisno || 'NA';
-        
+
         // Show class ranges for this school
         const classRanges = schoolWiseOrders
           .filter(sw => String(sw.order_id) === orderNo && sw.school_id === s.school_id)
           .map(sw => sw.class_range)
           .filter(Boolean)
           .join(', ');
-  
+
         return {
           value: String(s.school_id),
           label: `${idx + 1}) ${name} (${ud}) ${classRanges ? `[${classRanges}]` : ''}`,
@@ -1378,10 +1436,68 @@ const Dipatchdetials = () => {
 
   // Updated table columns with new structure
   const listColumns: Column<DispatchListRow>[] = [
+    // ACTION first (closest to "Sr No" concept)
+    {
+      key: 'action',
+      label: 'ACTION',
+      render: (r) => {
+        // build items array for this row's school+order+class (same as before)
+        const schoolItems = dispatchList
+          .filter(d =>
+            d.schoolname === r.schoolname &&
+            d.order_no === r.order_no &&
+            String(d.class_range || '') === String(r.class_range || '')
+          )
+          .map(d => ({ name: d.item_name, qty: d.qty_dispatch, unit: d.unit }));
+
+        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
+        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+        const payload = {
+          dispatch_code: r.dispatch_code,
+          schoolname: r.schoolname || '',
+          udaisno: sd?.udaisno || '',
+          taluka: talukaName,
+          center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
+          truckNo: r.truckNo || '',
+          date: new Date(r.created_at).toLocaleDateString('en-GB'),
+          class_range: r.class_range || '',
+          period: r.period || '',
+          no_of_days: r.no_of_days || 0,
+          financial_year: r.financial_year || '',
+          items: schoolItems
+        };
+
+        // classify items
+        const riceItems = schoolItems.filter(i => {
+          const nm = i.name.toLowerCase();
+          return nm.includes('rice') || nm.includes('चावल') || nm.includes('तांदुळ');
+        });
+        const kiranaItems = schoolItems.filter(i => !riceItems.some(ri => ri.name === i.name));
+
+        return (
+          <div className="flex items-center gap-2">
+
+            <TrashBinIcon className='text-red-500' onClick={() => handleDeleteDispatch(r.dispatch_code)} />
+            <button
+              onClick={() => { setLastDispatchData(payload); setInitialPreviewType('kirana'); setShowPrintModal(true); }}
+              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
+              title="Print Kirana"
+              disabled={kiranaItems.length === 0}
+            >Print Kirana</button>
+
+            <button
+              onClick={() => { setLastDispatchData(payload); setInitialPreviewType('rice'); setShowPrintModal(true); }}
+              className="px-2 py-1 rounded bg-green-50 text-green-700 hover:bg-green-100"
+              title="Print Rice"
+              disabled={riceItems.length === 0}
+            >Print Rice</button>
+          </div>
+        );
+      }
+    },
 
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
-    // Taluka (Marathi) resolved via schoolDataById + talukaList
     {
       key: 'taluka',
       label: 'TALUKA',
@@ -1391,7 +1507,6 @@ const Dipatchdetials = () => {
         return <span>{talukaName}</span>;
       }
     },
-    // Center (prefer Marathi name)
     {
       key: 'center_name',
       label: 'CENTER',
@@ -1406,79 +1521,37 @@ const Dipatchdetials = () => {
       key: 'schoolname',
       label: 'SCHOOL',
       accessor: 'schoolname',
-      render: (r) => (
-        <div className="flex items-center justify-between">
-          <span>{r.schoolname || r.schoolname}</span>
-        </div>
-      )
+      render: (r) => <span>{r.schoolname || r.schoolname}</span>
     },
     {
       key: 'udaisno',
       label: 'UDIAS',
       render: (r) => {
         const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-        const udaisno = sd?.udaisno || '';
-        return <span>{udaisno}</span>;
+        return <span>{sd?.udaisno || ''}</span>;
       }
     },
-    // Class Range
-    {
-      key: 'class_range',
-      label: 'CLASS',
-      accessor: 'class_range',
-      render: (r) => <span>{r.class_range || ''}</span>
-    },
+    { key: 'class_range', label: 'CLASS', accessor: 'class_range', render: (r) => <span>{r.class_range || ''}</span> },
     { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
+
+    { key: 'patsankhya', label: 'पट संख्या', render: (r) => <span>{r.patsankhya || 0}</span> },
+    // item columns (same as DispatchView)
+    ...['तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 'मटकी', 'मूग', 'वाटणा', 'सोया_वडी', 'मसाला', 'सोया_तेल', 'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'].map(grain => ({
+      key: `grain_${grain}`, // make each grain column key unique
+      label: grain,
+      render: (r: DispatchListRow) => {
+        const q = grainByDispatch.get(r.dispatch_code) || {};
+        const v = Number(q[grain] || 0);
+        return <span>{v.toFixed(3)}</span>;
+      }
+    })),
     {
-      key: 'truckNo',
-      label: 'ACTION',
-      render: (r) => (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => {
-              // Filter only this school's, order's, and class's items
-              const schoolDispatchItems = dispatchList
-                .filter(d =>
-                  d.schoolname === r.schoolname &&
-                  d.order_no === r.order_no &&
-                  String(d.class_range || '') === String(r.class_range || '')
-                )
-                .map(d => ({
-                  name: d.item_name,
-                  qty: d.qty_dispatch,
-                  unit: d.unit
-                }));
-
-              const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-              const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-              const dispatchData = {
-                dispatch_code: r.dispatch_code,
-                schoolname: r.schoolname || '',
-                udaisno: sd?.udaisno || '',
-                taluka: talukaName,
-                center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
-                truckNo: r.truckNo || '',
-                date: new Date(r.created_at).toLocaleDateString('en-GB'),
-                class_range: r.class_range || '',
-                period: r.period || '',
-                no_of_days: r.no_of_days || 0,
-                financial_year: r.financial_year || '',
-                items: schoolDispatchItems
-              };
-
-              setLastDispatchData(dispatchData);
-              setShowPrintModal(true);
-            }}
-            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded ml-2"
-            title="Print Receipt for this School"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-          </button>
-        </div>
-      )
+      key: 'total_weight',
+      label: 'एकूण वजन',
+      render: (r) => {
+        const q = grainByDispatch.get(r.dispatch_code) || { 'एकूण वजन': 0 };
+        return <span className="font-semibold text-green-600">{Number(q['एकूण वजन'] || 0).toFixed(2)}</span>;
+      }
     },
   ];
 
@@ -1535,15 +1608,63 @@ const Dipatchdetials = () => {
           </select>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col relative">
           <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedTruckId}
-            onChange={(e) => setSelectedTruckId(e.target.value)}
-          >
-            {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-          </select>
+          <div className="relative">
+            <div
+              className="h-10 rounded-md border px-3 text-sm cursor-pointer flex items-center justify-between bg-white"
+              onClick={() => setIsTruckDropdownOpen(!isTruckDropdownOpen)}
+            >
+              <span className={selectedTruckId ? 'text-gray-900' : 'text-gray-500'}>
+                {truckOptions.find(option => option.value === selectedTruckId)?.label || 'Select Truck'}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isTruckDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+
+            {isTruckDropdownOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                <div className="p-2 border-b">
+                  <input
+                    type="text"
+                    placeholder="Search trucks..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={truckSearchTerm}
+                    onChange={(e) => setTruckSearchTerm(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {filteredTruckOptions.length > 0 ? (
+                    filteredTruckOptions.map((option) => (
+                      <div
+                        key={option.value}
+                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${selectedTruckId === option.value ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                          }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTruckId(option.value);
+                          setIsTruckDropdownOpen(false);
+                          setTruckSearchTerm('');
+                        }}
+                      >
+                        {option.label}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col">
@@ -1792,6 +1913,7 @@ const Dipatchdetials = () => {
                 items: dispatchItems
               };
               setLastDispatchData(dispatchData);
+              setInitialPreviewType('kirana');
               setShowPrintModal(true);
 
             } catch (err) {
@@ -1825,6 +1947,64 @@ const Dipatchdetials = () => {
       </div>
     </div>
   );
+
+  // Calculate item columns per dispatch_code (same mapping as DispatchView)
+  const calcGrainQtyFor = (dispatchCode: string) => {
+    const q = {
+      'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
+      'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+      'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
+    } as Record<string, number>;
+
+    dispatchList.filter(d => d.dispatch_code === dispatchCode).forEach(item => {
+      const n = (item.item_name || '').toLowerCase().trim();
+      const v = Number(item.qty_dispatch || 0);
+      if (n.includes('तांदुळ') || n.includes('rice') || n.includes('चावल')) q['तांदुळ'] += v;
+      // else if (n.includes('मुंग') || n.includes('moong')) (n.includes('दाळ') || n.includes('dal') ? q['मुंगदाळ'] : q['मूग']) += v;
+      else if (n.includes('मसूर') || n.includes('masoor')) q['मसूरदाळ'] += v;
+      else if (n.includes('तूर') || n.includes('toor') || n.includes('अरहर')) q['तूरदाळ'] += v;
+      else if (n.includes('हरभरा') || n.includes('chana') || n.includes('gram')) q['हरभरा'] += v;
+      else if (n.includes('चवळी') || n.includes('chawli') || n.includes('लोबिया')) q['चवळी'] += v;
+      else if (n.includes('मटकी') || n.includes('matki')) q['मटकी'] += v;
+      else if (n.includes('वाटाणा') || n.includes('vatana') || n.includes('peas')) q['वाटणा'] += v;
+      else if (n.includes('सोया') || n.includes('soya')) {
+        if (n.includes('वडी') || n.includes('chunks')) q['सोया वडी'] += v;
+        else if (n.includes('तेल') || n.includes('oil')) q['सोया तेल'] += v;
+      } else if (n.includes('मसाला') || n.includes('spices')) q['मसाला'] += v;
+      else if (n.includes('हळद') || n.includes('turmeric') || n.includes('haldi')) q['हळद'] += v;
+      else if (n.includes('मीठ') || n.includes('salt')) q['मीठ'] += v;
+      else if (n.includes('मोहरी') || n.includes('mustard')) q['मोहरी'] += v;
+      else if (n.includes('जीरा') || n.includes('cumin')) q['जीरा'] += v;
+    });
+
+    const total = Object.values(q).reduce((s, x) => s + x, 0);
+    return { ...q, 'एकूण वजन': total };
+  };
+
+  const grainByDispatch = useMemo(() => {
+    const m = new Map<string, Record<string, number>>();
+    [...new Set(filteredDispatchList.map(x => x.dispatch_code))].forEach(dc => {
+      m.set(dc, calcGrainQtyFor(dc));
+    });
+    return m;
+  }, [filteredDispatchList, dispatchList]);
+
+  // DELETE a whole dispatch by dispatch_code
+  const handleDeleteDispatch = async (dispatchCode: string) => {
+    if (!confirm('Are you sure? This will delete this dispatch completely.')) return;
+    try {
+      const res = await fetch(`/api/dispatchdetails?dispatch_code=${dispatchCode}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const er = await res.json().catch(() => ({}));
+        throw new Error(er.message || 'Failed to delete');
+      }
+      setDispatchList(prev => prev.filter(x => x.dispatch_code !== dispatchCode));
+      setFilteredDispatchList(prev => prev.filter(x => x.dispatch_code !== dispatchCode));
+      toast.success('Deleted successfully');
+    } catch{
+      toast.error('Delete failed');
+    }
+  };
 
   return (
     <div className="">
@@ -1910,15 +2090,18 @@ const Dipatchdetials = () => {
           filterKey={undefined}
           toolbar={toolbar}
           groupByKey="dispatch_code"
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo"]}
+
+
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया_वडी", "grain_मसाला", "grain_सोया_तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action"]}
         />
       )}
 
-      {lastDispatchData && (
+{lastDispatchData && (
         <PrintModal
-          isOpen={showPrintModal}
-          onClose={() => setShowPrintModal(false)}
-          dispatchData={lastDispatchData}
+        isOpen={showPrintModal}
+        onClose={() => { setShowPrintModal(false); setInitialPreviewType(undefined); }}
+        dispatchData={lastDispatchData}
+        initialType={initialPreviewType}
         />
       )}
     </div>

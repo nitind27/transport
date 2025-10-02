@@ -9,13 +9,7 @@ import 'flatpickr/dist/flatpickr.css';
 // import { Modal } from '../ui/modal';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-interface ZPOrderDetail {
-  id: number;
-  order_no: string;
-  no_of_days: number;
-  period: string;
-  status: string;
-}
+
 
 interface SchoolWiseOrder {
   id: number;
@@ -57,11 +51,7 @@ declare module 'flatpickr' {
   }
 }
 
-interface TruckRow {
-  id: number;
-  truckNo: string;
-  status?: string;
-}
+
 
 interface CenterRow {
   center_id: number;
@@ -103,6 +93,24 @@ type DispatchListRow = {
   financial_year?: string;
   udaisno?: string;
   patsankhya?: string;
+  // Add all grain properties as optional string types
+  "grain_तांदुळ"?: string;
+  "grain_मुंगदाळ"?: string;
+  "grain_मसूरदाळ"?: string;
+  "grain_तूरदाळ"?: string;
+  "grain_हरभरा"?: string;
+  "grain_चवळी"?: string;
+  "grain_मटकी"?: string;
+  "grain_मूग"?: string;
+  "grain_वाटणा"?: string;
+  "grain_सोया वडी"?: string;
+  "grain_मसाला"?: string;
+  "grain_सोया तेल"?: string;
+  "grain_हळद"?: string;
+  "grain_मीठ"?: string;
+  "grain_मोहरी"?: string;
+  "grain_चना"?: string;
+  "grain_जीरा"?: string;
 };
 
 type DispatchRow = {
@@ -318,7 +326,7 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, di
 const DispatchView = () => {
   // const [loading, setLoading] = useState(false);
   const [showExcelModal, setShowExcelModal] = useState(false);
-  const [lastDispatchData, setLastDispatchData] = useState<{
+  const [lastDispatchData] = useState<{
     dispatch_code: string;
     schoolname: string;
     udaisno: string;
@@ -339,12 +347,12 @@ const DispatchView = () => {
   } | null>(null);
 
   // Filters
-  const [orderNo, setOrderNo] = useState('');
-  const [selectedTruckId, setSelectedTruckId] = useState<string>('');
-  const [selectedTalukaId, setSelectedTalukaId] = useState<string>('');
-  const [selectedCenterId, setSelectedCenterId] = useState<string>('');
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-  const [selectedClassRange, setSelectedClassRange] = useState<string>('');
+  const [orderNo] = useState('');
+  const [selectedTruckId] = useState<string>('');
+  const [selectedTalukaId] = useState<string>('');
+  const [selectedCenterId] = useState<string>('');
+  const [selectedSchoolId] = useState<string>('');
+  const [selectedClassRange] = useState<string>('');
 
   // Date range filters
   const [fromDate, setFromDate] = useState<string>('');
@@ -380,9 +388,9 @@ const DispatchView = () => {
   const flatpickrToInstanceRef = useRef<flatpickr.Instance | null>(null);
 
   // Masters
-  const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
-  const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
-  const [truckList, setTruckList] = useState<TruckRow[]>([]);
+  // const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
+  const [schoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
+  // const [truckList, setTruckList] = useState<TruckRow[]>([]);
 
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
@@ -478,37 +486,6 @@ const DispatchView = () => {
   }, [dispatchList, fromDate, toDate]);
 
   // Fetchers
-  const fetchZpOrders = async () => {
-    try {
-      const response = await fetch('/api/zporderdetails');
-      const data = await response.json();
-      setZpOrders(data);
-    } catch (error) {
-      console.error('Error fetching ZP orders:', error);
-      toast.error('Failed to fetch order details');
-    }
-  };
-
-  const fetchSchoolWiseOrders = async () => {
-    try {
-      const response = await fetch('/api/schoolwiseorders');
-      const data = await response.json();
-      setSchoolWiseOrders(data);
-    } catch (error) {
-      console.error('Error fetching school-wise orders:', error);
-      toast.error('Failed to fetch school-wise orders');
-    }
-  };
-
-  const fetchTrucks = async () => {
-    try {
-      const res = await fetch('/api/truckdata');
-      setTruckList(await res.json());
-    } catch {
-      toast.error('Failed to load trucks');
-    }
-  };
-
   const fetchCenters = async () => {
     try {
       const res = await fetch('/api/centerapi');
@@ -568,9 +545,10 @@ const DispatchView = () => {
   };
 
   useEffect(() => {
-    fetchZpOrders();
-    fetchSchoolWiseOrders();
-    fetchTrucks();
+    // Remove unused fetches
+    // fetchZpOrders();
+    // fetchSchoolWiseOrders();
+    // fetchTrucks();
     fetchTalukas();
     fetchCenters();
     fetchItemMaster();
@@ -579,109 +557,109 @@ const DispatchView = () => {
   }, []);
 
   // Options
-  const orderNoOptions = useMemo(() => [
-    { value: '', label: 'Select Order Number' },
-    ...zpOrders.map(order => ({ value: String(order.id), label: order.order_no }))
-  ], [zpOrders]);
+  // const orderNoOptions = useMemo(() => [
+  //   { value: '', label: 'Select Order Number' },
+  //   ...zpOrders.map(order => ({ value: String(order.id), label: order.order_no }))
+  // ], [zpOrders]);
 
-  const truckOptions = useMemo(() => [
-    { value: '', label: 'Select Truck' },
-    ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
-  ], [truckList]);
+  // const truckOptions = useMemo(() => [
+  //   { value: '', label: 'Select Truck' },
+  //   ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
+  // ], [truckList]);
 
-  const talukaOptions = useMemo(() => [
-    { value: '', label: 'Select Taluka' },
-    ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
-  ], [talukaList]);
+  // const talukaOptions = useMemo(() => [
+  //   { value: '', label: 'Select Taluka' },
+  //   ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
+  // ], [talukaList]);
 
-  const centerOptions = useMemo(() => [
-    { value: '', label: 'Select Center' },
-    ...centerList
-      .filter(c => !selectedTalukaId || String(c.taluka_id || '') === String(selectedTalukaId))
-      .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
-  ], [centerList, selectedTalukaId]);
+  // const centerOptions = useMemo(() => [
+  //   { value: '', label: 'Select Center' },
+  //   ...centerList
+  //     .filter(c => !selectedTalukaId || String(c.taluka_id || '') === String(selectedTalukaId))
+  //     .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
+  // ], [centerList, selectedTalukaId]);
 
-  const classRangeOptions = useMemo(() => {
-    if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
-    const uniq = new Set<string>();
-    schoolWiseOrders
-      .filter(s => String(s.order_id) === orderNo && String(s.school_id) === String(selectedSchoolId))
-      .forEach(s => { if (s.class_range) uniq.add(String(s.class_range)); });
-    const arr = Array.from(uniq.values()).sort();
-    return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
-  }, [orderNo, selectedSchoolId, schoolWiseOrders]);
+  // const classRangeOptions = useMemo(() => {
+  //   if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
+  //   const uniq = new Set<string>();
+  //   schoolWiseOrders
+  //     .filter(s => String(s.order_id) === orderNo && String(s.school_id) === String(selectedSchoolId))
+  //     .forEach(s => { if (s.class_range) uniq.add(String(s.class_range)); });
+  //   const arr = Array.from(uniq.values()).sort();
+  //   return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
+  // }, [orderNo, selectedSchoolId, schoolWiseOrders]);
 
   // Updated school options - exclude schools that have already been dispatched
-  const schoolOptions = useMemo(() => {
-    if (!orderNo) return [{ value: '', label: 'Select School' }];
+  // const schoolOptions = useMemo(() => {
+  //   if (!orderNo) return [{ value: '', label: 'Select School' }];
 
-    let filtered = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
+  //   let filtered = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
 
-    if (selectedCenterId) {
-      filtered = filtered.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.center) === String(selectedCenterId);
-      });
-    } else if (selectedTalukaId) {
-      filtered = filtered.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.taluka_id) === String(selectedTalukaId);
-      });
-    }
+  //   if (selectedCenterId) {
+  //     filtered = filtered.filter(s => {
+  //       const sd = schoolDataById.get(Number(s.school_id));
+  //       return sd && String(sd.center) === String(selectedCenterId);
+  //     });
+  //   } else if (selectedTalukaId) {
+  //     filtered = filtered.filter(s => {
+  //       const sd = schoolDataById.get(Number(s.school_id));
+  //       return sd && String(sd.taluka_id) === String(selectedTalukaId);
+  //     });
+  //   }
 
-    // NEW: Filter out schools that have already been dispatched
-    const dispatchedSchools = new Set<number>();
-    dispatchList.forEach(dispatch => {
-      if (String(dispatch.order_id) === orderNo) {
-        dispatchedSchools.add(dispatch.school_id);
-      }
-    });
+  //   // NEW: Filter out schools that have already been dispatched
+  //   const dispatchedSchools = new Set<number>();
+  //   dispatchList.forEach(dispatch => {
+  //     if (String(dispatch.order_id) === orderNo) {
+  //       dispatchedSchools.add(dispatch.school_id);
+  //     }
+  //   });
 
-    // Remove dispatched schools from the list
-    filtered = filtered.filter(s => !dispatchedSchools.has(s.school_id));
+  //   // Remove dispatched schools from the list
+  //   filtered = filtered.filter(s => !dispatchedSchools.has(s.school_id));
 
-    // De-dup by school_id
-    const seen = new Set<number>();
-    const dedup = filtered.filter(s => {
-      if (seen.has(s.school_id)) return false;
-      seen.add(s.school_id);
-      return true;
-    });
+  //   // De-dup by school_id
+  //   const seen = new Set<number>();
+  //   const dedup = filtered.filter(s => {
+  //     if (seen.has(s.school_id)) return false;
+  //     seen.add(s.school_id);
+  //     return true;
+  //   });
 
-    // Stable sort
-    dedup.sort((a, b) => {
-      const an = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
-      const bn = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
-      return an.localeCompare(bn);
-    });
+  //   // Stable sort
+  //   dedup.sort((a, b) => {
+  //     const an = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
+  //     const bn = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
+  //     return an.localeCompare(bn);
+  //   });
 
-    // Label: SR) Name (UDISE) with fallback from schooldata if missing in API
-    return [
-      { value: '', label: 'Select School' },
-      ...dedup.map((s, idx) => {
-        const fallback = schoolDataById.get(Number(s.school_id));
-        const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
-        const ud = s.udaisno || fallback?.udaisno || 'NA';
-        return {
-          value: String(s.school_id),
-          label: `${idx + 1}) ${name} (${ud})`,
-        };
-      })
-    ];
-  }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById, dispatchList]);
+  //   // Label: SR) Name (UDISE) with fallback from schooldata if missing in API
+  //   return [
+  //     { value: '', label: 'Select School' },
+  //     ...dedup.map((s, idx) => {
+  //       const fallback = schoolDataById.get(Number(s.school_id));
+  //       const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
+  //       const ud = s.udaisno || fallback?.udaisno || 'NA';
+  //       return {
+  //         value: String(s.school_id),
+  //         label: `${idx + 1}) ${name} (${ud})`,
+  //       };
+  //     })
+  //   ];
+  // }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById, dispatchList]);
 
-  const handleOrderChange = (orderId: string) => {
-    setOrderNo(orderId);
-    setSelectedClassRange('');
-    setSelectedSchoolId('');
-  };
+  // const handleOrderChange = (orderId: string) => {
+  //   setOrderNo(orderId);
+  //   setSelectedClassRange('');
+  //   setSelectedSchoolId('');
+  // };
 
-  const handleTalukaChange = (talukaId: string) => {
-    setSelectedTalukaId(talukaId);
-    setSelectedCenterId('');
-    setSelectedSchoolId('');
-    setSelectedClassRange('');
-  };
+  // const handleTalukaChange = (talukaId: string) => {
+  //   setSelectedTalukaId(talukaId);
+  //   setSelectedCenterId('');
+  //   setSelectedSchoolId('');
+  //   setSelectedClassRange('');
+  // };
 
   // Selected target (order + school)
   const selectedOrderSchool = useMemo(() => {
@@ -807,9 +785,290 @@ const DispatchView = () => {
     try { localStorage.setItem(storageKey, JSON.stringify(dispatchInputs)); } catch { }
   }, [dispatchInputs, storageKey]);
 
-  // Updated table columns with new structure
-  const listColumns: Column<DispatchListRow>[] = [
+  // Add function to export filtered data to Excel
+  const exportFilteredDataToExcel = () => {
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Create grain mapping with all required columns
+      const grainColumns = [
+        'पट संख्या', 'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 
+        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल', 
+        'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
+      ];
+
+      // Group data by dispatch_code
+      const groupedData = filteredDispatchList.reduce((acc, item) => {
+        const key = item.dispatch_code;
+        if (!acc[key]) {
+          acc[key] = {
+            dispatch_code: item.dispatch_code,
+            order_no: item.order_no,
+            schoolname: item.schoolname,
+            udaisno: schoolDataById.get(Number(item.school_id))?.udaisno || '',
+            taluka: schoolDataById.get(Number(item.school_id)) ? 
+              (talukaList.find(t => t.taluka_id === schoolDataById.get(Number(item.school_id))?.taluka_id)?.name || '') : '',
+            center_name: centerList.find(cn => String(cn.center_id) === String(item.center_id))?.marathi_name || item.center_name || '',
+            truckNo: item.truckNo || '',
+            class_range: item.class_range || '',
+            patsankhya: item.patsankhya || '',
+            items: {} as Record<string, number>
+          };
+        }
+        
+        // Add item to the group
+        const itemName = item.item_name.trim();
+        if (!acc[key].items[itemName]) {
+          acc[key].items[itemName] = 0;
+        }
+        acc[key].items[itemName] += Number(item.qty_dispatch || 0);
+        
+        return acc;
+      }, {} as Record<string, {
+        dispatch_code: string;
+        order_no?: string;
+        schoolname?: string;
+        udaisno: string;
+        taluka: string;
+        center_name: string;
+        truckNo: string;
+        class_range?: string;
+        patsankhya?: string;
+        items: Record<string, number>;
+      }>);
+
+      // Convert grouped data to worksheet format
+      const worksheetData = [
+        // Headers
+        [
+          'अ. क्र.', 'केंद्र', 'UDISE Code', 'शाळा', 'वर्ग', 'पट संख्या',
+          'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 
+          'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल', 
+          'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
+        ]
+      ];
+
+      // Add data rows
+      Object.values(groupedData).forEach((group) => {
+        // Initialize grain quantities
+        const grainQuantities = {
+          'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
+          'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+          'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
+        };
+
+        // Map dispatch items to grain quantities
+        Object.entries(group.items).forEach(([itemName, qty]) => {
+          const name = (itemName || '').toLowerCase().trim();
+          const quantity = Number(qty) || 0;
+          
+          // Simple mapping based on common names
+          if (name.includes('तांदुळ') || name.includes('rice') || name.includes('चावल')) {
+            grainQuantities['तांदुळ'] += quantity;
+          } else if (name.includes('मुंग') || name.includes('moong')) {
+            if (name.includes('दाळ') || name.includes('dal')) {
+              grainQuantities['मुंगदाळ'] += quantity;
+            } else {
+              grainQuantities['मूग'] += quantity;
+            }
+          } else if (name.includes('मसूर') || name.includes('masoor')) {
+            grainQuantities['मसूरदाळ'] += quantity;
+          } else if (name.includes('तूर') || name.includes('toor') || name.includes('अरहर')) {
+            grainQuantities['तूरदाळ'] += quantity;
+          } else if (name.includes('हरभरा') || name.includes('chana') || name.includes('gram')) {
+            grainQuantities['हरभरा'] += quantity;
+          } else if (name.includes('चवळी') || name.includes('chawli') || name.includes('लोबिया')) {
+            grainQuantities['चवळी'] += quantity;
+          } else if (name.includes('मटकी') || name.includes('matki')) {
+            grainQuantities['मटकी'] += quantity;
+          } else if (name.includes('वाटाणा') || name.includes('वाटणा') || name.includes('vatana') || name.includes('peas')) {
+            grainQuantities['वाटणा'] += quantity;
+          } else if (name.includes('सोया') || name.includes('soya')) {
+            if (name.includes('वडी') || name.includes('chunks')) {
+              grainQuantities['सोया वडी'] += quantity;
+            } else if (name.includes('तेल') || name.includes('oil')) {
+              grainQuantities['सोया तेल'] += quantity;
+            }
+          } else if (name.includes('मसाला') || name.includes('spices')) {
+            grainQuantities['मसाला'] += quantity;
+          } else if (name.includes('हळद') || name.includes('turmeric') || name.includes('haldi')) {
+            grainQuantities['हळद'] += quantity;
+          } else if (name.includes('मीठ') || name.includes('salt')) {
+            grainQuantities['मीठ'] += quantity;
+          } else if (name.includes('मोहरी') || name.includes('mustard')) {
+            grainQuantities['मोहरी'] += quantity;
+          } else if (name.includes('चना') || name.includes('gram')) {
+            grainQuantities['चना'] += quantity;
+          } else if (name.includes('जीरा') || name.includes('cumin')) {
+            grainQuantities['जीरा'] += quantity;
+          }
+        });
+
+        // Calculate total weight
+        const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
+
+        // Add row data
+        worksheetData.push([
+          // index + 1,
+          group.center_name || '',
+          group.udaisno || '',
+          group.schoolname || '',
+          group.class_range || '1-5',
+          group.patsankhya || '',
+          grainQuantities['तांदुळ'].toFixed(3),
+          grainQuantities['मुंगदाळ'].toFixed(3),
+          grainQuantities['मसूरदाळ'].toFixed(3),
+          grainQuantities['तूरदाळ'].toFixed(3),
+          grainQuantities['हरभरा'].toFixed(3),
+          grainQuantities['चवळी'].toFixed(3),
+          grainQuantities['मटकी'].toFixed(3),
+          grainQuantities['मूग'].toFixed(3),
+          grainQuantities['वाटणा'].toFixed(3),
+          grainQuantities['सोया वडी'].toFixed(3),
+          grainQuantities['मसाला'].toFixed(3),
+          grainQuantities['सोया तेल'].toFixed(3),
+          grainQuantities['हळद'].toFixed(3),
+          grainQuantities['मीठ'].toFixed(3),
+          grainQuantities['मोहरी'].toFixed(3),
+          grainQuantities['चना'].toFixed(3),
+          grainQuantities['जीरा'].toFixed(3),
+          totalWeight.toFixed(2)
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },   // अ. क्र.
+        { wch: 25 },  // केंद्र
+        { wch: 15 },  // UDISE Code
+        { wch: 30 },  // शाळा
+        { wch: 10 },  // वर्ग
+        { wch: 12 },  // पट संख्या
+        ...grainColumns.slice(1).map(() => ({ wch: 10 })), // grain columns
+      ];
+      
+      worksheet['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Filtered Dispatch Data');
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const fileName = `Filtered_Dispatch_Data_${fromDate || 'all'}_to_${toDate || 'all'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+      
+      toast.success('Filtered data exported to Excel successfully!');
+    } catch (error) {
+      console.error('Error exporting filtered data to Excel:', error);
+      toast.error('Failed to export filtered data to Excel');
+    }
+  };
+
+
+  // Memoize grain quantities calculation to prevent performance issues
+  const grainQuantitiesByDispatch = useMemo(() => {
+    const quantitiesMap = new Map<string, Record<string, number>>();
     
+    // Get unique dispatch codes from filtered list
+    const uniqueDispatchCodes = [...new Set(filteredDispatchList.map(item => item.dispatch_code))];
+    
+    uniqueDispatchCodes.forEach(dispatchCode => {
+      const grainQuantities = {
+        'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
+        'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+        'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
+      };
+
+      // Get all items for this dispatch code
+      const dispatchItems = dispatchList.filter(d => d.dispatch_code === dispatchCode);
+      
+      dispatchItems.forEach(item => {
+        const itemName = (item.item_name || '').toLowerCase().trim();
+        const quantity = Number(item.qty_dispatch || 0);
+        
+        // Map items to grain quantities
+        if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
+          grainQuantities['तांदुळ'] += quantity;
+        } else if (itemName.includes('मुंग') || itemName.includes('moong')) {
+          if (itemName.includes('दाळ') || itemName.includes('dal')) {
+            grainQuantities['मुंगदाळ'] += quantity;
+          } else {
+            grainQuantities['मूग'] += quantity;
+          }
+        } else if (itemName.includes('मसूर') || itemName.includes('masoor')) {
+          grainQuantities['मसूरदाळ'] += quantity;
+        } else if (itemName.includes('तूर') || itemName.includes('toor') || itemName.includes('अरहर')) {
+          grainQuantities['तूरदाळ'] += quantity;
+        } else if (itemName.includes('हरभरा') || itemName.includes('chana') || itemName.includes('gram')) {
+          grainQuantities['हरभरा'] += quantity;
+        } else if (itemName.includes('चवळी') || itemName.includes('chawli') || itemName.includes('लोबिया')) {
+          grainQuantities['चवळी'] += quantity;
+        } else if (itemName.includes('मटकी') || itemName.includes('matki')) {
+          grainQuantities['मटकी'] += quantity;
+        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटणा') || itemName.includes('vatana') || itemName.includes('peas')) {
+          grainQuantities['वाटणा'] += quantity;
+        } else if (itemName.includes('सोया') || itemName.includes('soya')) {
+          if (itemName.includes('वडी') || itemName.includes('chunks')) {
+            grainQuantities['सोया वडी'] += quantity;
+          } else if (itemName.includes('तेल') || itemName.includes('oil')) {
+            grainQuantities['सोया तेल'] += quantity;
+          }
+        } else if (itemName.includes('मसाला') || itemName.includes('spices')) {
+          grainQuantities['मसाला'] += quantity;
+        } else if (itemName.includes('हळद') || itemName.includes('turmeric') || itemName.includes('haldi')) {
+          grainQuantities['हळद'] += quantity;
+        } else if (itemName.includes('मीठ') || itemName.includes('salt')) {
+          grainQuantities['मीठ'] += quantity;
+        } else if (itemName.includes('मोहरी') || itemName.includes('mustard')) {
+          grainQuantities['मोहरी'] += quantity;
+        } else if (itemName.includes('चना') || itemName.includes('gram')) {
+          grainQuantities['चना'] += quantity;
+        } else if (itemName.includes('जीरा') || itemName.includes('cumin')) {
+          grainQuantities['जीरा'] += quantity;
+        }
+      });
+
+      // Calculate total weight
+      const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
+      quantitiesMap.set(dispatchCode, { ...grainQuantities, 'एकूण वजन': totalWeight });
+    });
+    
+    return quantitiesMap;
+  }, [filteredDispatchList, dispatchList]);
+
+  // Add delete functionality
+  const handleDeleteDispatch = async (dispatchCode: string) => {
+    if (!confirm('Are you sure you want to delete this dispatch? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/dispatchdetails?dispatch_code=${dispatchCode}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        // Remove deleted items from local state
+        setDispatchList(prev => prev.filter(item => item.dispatch_code !== dispatchCode));
+        setFilteredDispatchList(prev => prev.filter(item => item.dispatch_code !== dispatchCode));
+        toast.success('Dispatch deleted successfully!');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to delete dispatch');
+      }
+    } catch (error) {
+      console.error('Error deleting dispatch:', error);
+      toast.error('Failed to delete dispatch');
+    }
+  };
+
+  // Updated table columns with correct keys and action column
+  const listColumns: Column<DispatchListRow>[] = [
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList
@@ -852,7 +1111,6 @@ const DispatchView = () => {
         return <span>{udaisno}</span>;
       }
     },
-  
     {
       key: 'class_range',
       label: 'CLASS',
@@ -860,58 +1118,258 @@ const DispatchView = () => {
       render: (r) => <span>{r.class_range || ''}</span>
     },
     { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
+    
+    // New grain columns with correct keys
     {
-      key: 'truckNo',
+      key: 'patsankhya',
+      label: 'पट संख्या',
+      render: (r) => <span>{r.patsankhya || 0}</span>
+    },
+    {
+      key: 'grain_तांदुळ',
+      label: 'तांदुळ',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'तांदुळ': 0 };
+        return <span>{quantities['तांदुळ'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मुंगदाळ',
+      label: 'मुंगदाळ',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मुंगदाळ': 0 };
+        return <span>{quantities['मुंगदाळ'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मसूरदाळ',
+      label: 'मसूरदाळ',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मसूरदाळ': 0 };
+        return <span>{quantities['मसूरदाळ'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_तूरदाळ',
+      label: 'तूरदाळ',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'तूरदाळ': 0 };
+        return <span>{quantities['तूरदाळ'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_हरभरा',
+      label: 'हरभरा',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'हरभरा': 0 };
+        return <span>{quantities['हरभरा'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_चवळी',
+      label: 'चवळी',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'चवळी': 0 };
+        return <span>{quantities['चवळी'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मटकी',
+      label: 'मटकी',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मटकी': 0 };
+        return <span>{quantities['मटकी'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मूग',
+      label: 'मूग',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मूग': 0 };
+        return <span>{quantities['मूग'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_वाटणा',
+      label: 'वाटणा',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'वाटणा': 0 };
+        return <span>{quantities['वाटणा'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_सोया वडी',
+      label: 'सोया वडी',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'सोया वडी': 0 };
+        return <span>{quantities['सोया वडी'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मसाला',
+      label: 'मसाला',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मसाला': 0 };
+        return <span>{quantities['मसाला'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_सोया तेल',
+      label: 'सोया तेल',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'सोया तेल': 0 };
+        return <span>{quantities['सोया तेल'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_हळद',
+      label: 'हळद',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'हळद': 0 };
+        return <span>{quantities['हळद'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मीठ',
+      label: 'मीठ',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मीठ': 0 };
+        return <span>{quantities['मीठ'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_मोहरी',
+      label: 'मोहरी',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मोहरी': 0 };
+        return <span>{quantities['मोहरी'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_चना',
+      label: 'चना',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'चना': 0 };
+        return <span>{quantities['चना'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'grain_जीरा',
+      label: 'जीरा',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'जीरा': 0 };
+        return <span>{quantities['जीरा'].toFixed(3)}</span>;
+      }
+    },
+    {
+      key: 'total_weight',
+      label: 'एकूण वजन',
+      render: (r) => {
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'एकूण वजन': 0 };
+        return <span className="font-semibold text-green-600">{quantities['एकूण वजन'].toFixed(2)}</span>;
+      }
+    },
+    // Action column with delete functionality
+    {
+      key: 'action',
       label: 'ACTION',
       render: (r) => (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              // Filter only this school's, order's, and class's items
-              const schoolDispatchItems = dispatchList
-                .filter(d =>
-                  d.schoolname === r.schoolname &&
-                  d.order_no === r.order_no &&
-                  String(d.class_range || '') === String(r.class_range || '')
-                )
-                .map(d => ({
-                  name: d.item_name,
-                  qty: d.qty_dispatch,
-                  unit: d.unit
-                }));
-
-              const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-              const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-              const dispatchData = {
-                dispatch_code: r.dispatch_code,
-                schoolname: r.schoolname || '',
-                udaisno: sd?.udaisno || '',
-                taluka: talukaName,
-                center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
-                truckNo: r.truckNo || '',
-                date: new Date(r.created_at).toLocaleDateString('en-GB'),
-                class_range: r.class_range || '',
-                period: r.period || '',
-                no_of_days: r.no_of_days || 0,
-                financial_year: r.financial_year || '',
-                patsankhya: r.patsankhya || '',
-                items: schoolDispatchItems
-              };
-
-              setLastDispatchData(dispatchData);
-              setShowExcelModal(true);
-            }}
-            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded ml-2"
-            title="Export Dispatch Details to Excel"
+            onClick={() => handleDeleteDispatch(r.dispatch_code)}
+            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+            title="Delete Dispatch"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         </div>
       )
-    },
+    }
   ];
+
+  // Updated toolbar section with only From Date and To Date filters
+  const toolbar = (
+    <div className="space-y-4">
+      {/* Date filters and buttons */}
+      <div className="grid grid-cols-4 gap-2 items-center">
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">From Date</span>
+          <div className="relative">
+            <input
+              ref={fromDatePickerRef}
+              type="text"
+              placeholder="Select From Date"
+              className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate('');
+                if (flatpickrFromInstanceRef.current) {
+                  flatpickrFromInstanceRef.current.clear();
+                }
+              }}
+              className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+              title="Clear From Date"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-600 mb-1 text-left">To Date</span>
+          <div className="relative">
+            <input
+              ref={toDatePickerRef}
+              type="text"
+              placeholder="Select To Date"
+              className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setToDate('');
+                if (flatpickrToInstanceRef.current) {
+                  flatpickrToInstanceRef.current.clear();
+                }
+              }}
+              className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+              title="Clear To Date"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
+          onClick={() => {
+            setDidSearch(true);
+          }}
+        >
+          Search
+        </button>
+
+        <button
+          type="button"
+          className="h-10 px-4 rounded-md bg-green-600 text-white text-sm font-medium mt-5"
+          onClick={exportFilteredDataToExcel}
+        >
+          Export to Excel
+        </button>
+      </div>
+    </div>
+  );
 
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
@@ -973,167 +1431,15 @@ const DispatchView = () => {
     };
   }, [showInputMode, fromDate, toDate]);
 
-  // Update the toolbar section with the clear button
-  const toolbar = (
-    <div className="space-y-4">
-      {/* First Row: 5 fields inline */}
-      <div className="grid grid-cols-5 gap-2 items-center">
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={orderNo}
-            onChange={(e) => handleOrderChange(e.target.value)}
-          >
-            {orderNoOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Order Number'}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedTruckId}
-            onChange={(e) => setSelectedTruckId(e.target.value)}
-          >
-            {truckOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Truck'}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Taluka</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedTalukaId}
-            onChange={(e) => handleTalukaChange(e.target.value)}
-          >
-            {talukaOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Taluka'}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedCenterId}
-            onChange={(e) => {
-              setSelectedCenterId(e.target.value);
-              setSelectedSchoolId('');
-            }}
-            disabled={!selectedTalukaId}
-          >
-            {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label || 'Select Center'}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">School</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedSchoolId}
-            onChange={(e) => {
-              setSelectedSchoolId(e.target.value);
-              setSelectedClassRange('');
-            }}
-            disabled={!orderNo || !selectedCenterId}
-          >
-            {schoolOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Second Row: 4 fields inline */}
-      <div className="grid grid-cols-4 gap-2 items-center">
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Class Varg</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedClassRange}
-            onChange={(e) => setSelectedClassRange(e.target.value)}
-            disabled={!orderNo || !selectedSchoolId}
-          >
-            {classRangeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">From Date</span>
-          <div className="relative">
-            <input
-              ref={fromDatePickerRef}
-              type="text"
-              placeholder="Select From Date"
-              className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
-              readOnly
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setFromDate('');
-                if (flatpickrFromInstanceRef.current) {
-                  flatpickrFromInstanceRef.current.clear();
-                }
-              }}
-              className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
-              title="Clear From Date"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">To Date</span>
-          <div className="relative">
-            <input
-              ref={toDatePickerRef}
-              type="text"
-              placeholder="Select To Date"
-              className="h-10 rounded-md border px-3 pr-8 text-sm w-full"
-              readOnly
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setToDate('');
-                if (flatpickrToInstanceRef.current) {
-                  flatpickrToInstanceRef.current.clear();
-                }
-              }}
-              className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
-              title="Clear To Date"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="h-10 px-4 rounded-md bg-gray-600 text-white text-sm font-medium mt-5"
-          onClick={() => {
-            if (!allFiltersSelected) {
-              toast.error('Select Order, Truck, Center, and School');
-              return;
-            }
-            setDidSearch(true);
-          }}
-        >
-          Search
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="">
+      {/* Add toolbar at the top */}
+      <div className="bg-white rounded-2xl shadow-md border p-4 mb-4">
+        {toolbar}
+      </div>
+
       {showInputMode ? (
         <div className="bg-white rounded-2xl shadow-md border p-4">
-          <div className="mb-4">{toolbar}</div>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-200 dark:border-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
@@ -1211,9 +1517,9 @@ const DispatchView = () => {
           columns={listColumns}
           filterOptions={[]}
           filterKey={undefined}
-          toolbar={toolbar}
+          toolbar={null}
           groupByKey="dispatch_code"
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा"]}
         />
       )}
 
@@ -1229,3 +1535,4 @@ const DispatchView = () => {
 };
 
 export default DispatchView;
+
