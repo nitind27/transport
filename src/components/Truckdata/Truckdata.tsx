@@ -18,6 +18,8 @@ type TruckRow = {
 	ownerId: number;
 	ownerName: string;
 	mobileNumber: string;
+	driverName: string;           // new
+	driverMobile: string;         // new
 	status: string;
 };
 type Props = {
@@ -29,6 +31,8 @@ type FormErrors = {
 	truckNo?: string;
 	ownerId?: string;
 	mobileNumber?: string;
+	driverName?: string;          // new
+	driverMobile?: string;        // new
 };
 
 const Truckdata = ({ truckdata }: Props) => {
@@ -37,10 +41,13 @@ const Truckdata = ({ truckdata }: Props) => {
 	const [owners, setOwners] = useState<Owner[]>([]);
 
 	// Form state
+	// Form state
 	const [truckNo, setTruckNo] = useState('');
 	const [ownerId, setOwnerId] = useState<number | ''>('');
 	const [ownerName, setOwnerName] = useState('');
 	const [mobileNumber, setMobileNumber] = useState('');
+	const [driverName, setDriverName] = useState('');        // new
+	const [driverMobile, setDriverMobile] = useState('');    // new
 
 	const [editId, setEditId] = useState<number | null>(null);
 	const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
@@ -84,9 +91,10 @@ const Truckdata = ({ truckdata }: Props) => {
 		setOwnerId('');
 		setOwnerName('');
 		setMobileNumber('');
+		setDriverName('');           // new
+		setDriverMobile('');         // new
 		setEditId(0);
 	};
-
 	useEffect(() => {
 		if (!isEditMode) reset();
 	}, [isEditMode]);
@@ -98,6 +106,8 @@ const Truckdata = ({ truckdata }: Props) => {
 		if (!truckNo) newErrors.truckNo = "Truck No is required";
 		if (!ownerId) newErrors.ownerId = "Owner is required";
 		if (!mobileNumber) newErrors.mobileNumber = "Mobile Number is required";
+		if (!driverName) newErrors.driverName = "Driver Name is required";           // new
+		if (!driverMobile) newErrors.driverMobile = "Driver Mobile is required";     // new
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
@@ -119,6 +129,8 @@ const Truckdata = ({ truckdata }: Props) => {
 					ownerId,
 					ownerName,
 					mobileNumber,
+					driverName,           // new
+					driverMobile,         // new
 					status: "Active",
 				})
 			});
@@ -161,6 +173,8 @@ const Truckdata = ({ truckdata }: Props) => {
 		setOwnerId(row.ownerId);
 		setOwnerName(row.ownerName);
 		setMobileNumber(row.mobileNumber);
+		setDriverName(row.driverName || '');         // new
+		setDriverMobile(row.driverMobile || '');     // new
 	};
 
 	// Owner select change to set both ownerId and ownerName
@@ -175,10 +189,13 @@ const Truckdata = ({ truckdata }: Props) => {
 		}
 	};
 
+
 	const columns: Column<TruckRow>[] = [
 		{ key: 'truckNo', label: 'Truck No', accessor: 'truckNo', render: (row) => <span>{row.truckNo}</span> },
 		{ key: 'ownerName', label: 'Owner', accessor: 'ownerName', render: (row) => <span>{row.ownerName}</span> },
 		{ key: 'mobileNumber', label: 'Mobile', accessor: 'mobileNumber', render: (row) => <span>{row.mobileNumber}</span> },
+		{ key: 'driverName', label: 'Driver Name', accessor: 'driverName', render: (row) => <span>{row.driverName}</span> },           // new
+		{ key: 'driverMobile', label: 'Driver Mobile', accessor: 'driverMobile', render: (row) => <span>{row.driverMobile}</span> },   // new
 		{
 			key: 'actions',
 			label: 'Actions',
@@ -193,6 +210,7 @@ const Truckdata = ({ truckdata }: Props) => {
 				</div>
 			),
 		}
+
 	];
 
 
@@ -202,7 +220,7 @@ const Truckdata = ({ truckdata }: Props) => {
 				data={data}
 				classname={"h-auto overflow-y-auto scrollbar-hide"}
 				inputfiled={
-					<div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
+					<div className="">
 						<div>
 							<Label>Truck No</Label>
 							<input
@@ -223,7 +241,7 @@ const Truckdata = ({ truckdata }: Props) => {
 							/>
 							{error.truckNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.truckNo}</div>}
 						</div>
-
+<div className='grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 mt-5'>
 						<div>
 							<Label>Owner</Label>
 							<select
@@ -248,7 +266,6 @@ const Truckdata = ({ truckdata }: Props) => {
 								placeholder="Enter Mobile Number"
 								className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.mobileNumber ? "border-red-500" : ""}`}
 								value={mobileNumber}
-								// onChange={(e) => setMobileNumber(e.target.value)}
 								onChange={(e) => {
 									if (/^\d{0,10}$/.test(e.target.value)) {
 										setMobileNumber(e.target.value);
@@ -259,6 +276,35 @@ const Truckdata = ({ truckdata }: Props) => {
 								}}
 							/>
 							{error.mobileNumber && <div className="text-red-500 text-sm mt-1 pl-1">{error.mobileNumber}</div>}
+						</div>
+
+						<div>
+							<Label>Driver Name</Label>
+							<input
+								type="text"
+								placeholder="Enter Driver Name"
+								className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.driverName ? "border-red-500" : ""}`}
+								value={driverName}
+								onChange={(e) => setDriverName(e.target.value)}
+							/>
+							{error.driverName && <div className="text-red-500 text-sm mt-1 pl-1">{error.driverName}</div>}
+						</div>
+
+						<div>
+							<Label>Driver Mobile</Label>
+							<input
+								type="tel"
+								placeholder="Enter Driver Mobile"
+								className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.driverMobile ? "border-red-500" : ""}`}
+								value={driverMobile}
+								onChange={(e) => {
+									if (/^\d{0,10}$/.test(e.target.value)) {
+										setDriverMobile(e.target.value);
+									}
+								}}
+							/>
+							{error.driverMobile && <div className="text-red-500 text-sm mt-1 pl-1">{error.driverMobile}</div>}
+						</div>
 						</div>
 					</div>
 				}

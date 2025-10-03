@@ -747,7 +747,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, 
     `;
 
     printWindow.document.write(fourCopiesContent);
-    printWindow.document.close();
+    // printWindow.document.close();
 
     // Wait for content to load before printing
     printWindow.onload = () => {

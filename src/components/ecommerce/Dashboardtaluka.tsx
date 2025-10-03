@@ -123,7 +123,7 @@ const Dashboardtaluka = () => {
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Mid Day Meal</h1>
-        <p className="text-lg text-gray-600">Aug-Sept-2025 (42 days)</p>
+        {/* <p className="text-lg text-gray-600">Aug-Sept-2025 (42 days)</p> */}
         
         {/* Order Selection */}
         <div className="mt-4 mb-4">
@@ -149,7 +149,7 @@ const Dashboardtaluka = () => {
           <div>
             <span className="font-semibold">Order Number:</span>
             <span className="ml-2">{selectedOrderNo}</span>
-            <span className="ml-2 text-gray-600">Date : ({currentDate})</span>
+            <span className="ml-2">   <span className="font-semibold">Date :</span>({currentDate})</span>
           </div>
         </div>
         

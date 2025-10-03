@@ -45,7 +45,7 @@ const StockTransfer = () => {
     const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setErrors] = useState<FormErrors>({});
-    
+
     // Form state
     const [invoiceDate, setInvoiceDate] = useState("");
     const [itemGrain, setItemGrain] = useState("");
@@ -54,7 +54,7 @@ const StockTransfer = () => {
     const [remarks, setRemarks] = useState("");
     const [tpNo, setTpNo] = useState("");
     const [truckNo, setTruckNo] = useState("");
-    
+
     const [editId, setEditId] = useState<number | null>(null);
     const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
 
@@ -212,7 +212,7 @@ const StockTransfer = () => {
     }
 
     const columns: Column<StockTransferEntry>[] = [
-      
+
         {
             key: 'invoiceDate',
             label: 'Date of Invoice',
@@ -267,12 +267,12 @@ const StockTransfer = () => {
                         <FaEdit className="inline-block align-middle text-lg" />
                     </span>
                     <span>
-                        <DefaultModal 
-                            id={row.id} 
-                            fetchData={fetchData} 
-                            endpoint={"stocktransfer"} 
-                            bodyname='id' 
-                            newstatus={row.status || "Active"} 
+                        <DefaultModal
+                            id={row.id}
+                            fetchData={fetchData}
+                            endpoint={"stocktransfer"}
+                            bodyname='id'
+                            newstatus={row.status || "Active"}
                         />
                     </span>
                 </div>
@@ -292,24 +292,27 @@ const StockTransfer = () => {
                 classname={"h-[650px] overflow-y-auto scrollbar-hide"}
                 inputfiled={
                     <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-                        <div>
+                        <div className=''>
                             <Label>Date of Invoice</Label>
-                            <DatePicker
-                                id="invoiceDate"
-                                label=""
-                                placeholder="Select Invoice Date"
-                                defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
-                                onChange={(selectedDates) => {
-                                    if (selectedDates && selectedDates.length > 0) {
-                                        const date = selectedDates[0];
-                                        const year = date.getFullYear();
-                                        const month = String(date.getMonth() + 1).padStart(2, "0");
-                                        const day = String(date.getDate()).padStart(2, "0");
-                                        const formattedDate = `${year}-${month}-${day}`;
-                                        setInvoiceDate(formattedDate);
-                                    }
-                                }}
-                            />
+                            <span className=''>
+
+                                <DatePicker
+                                    id="invoiceDate"
+                                    label=""
+                                    placeholder="Select Invoice Date"
+                                    defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
+                                    onChange={(selectedDates) => {
+                                        if (selectedDates && selectedDates.length > 0) {
+                                            const date = selectedDates[0];
+                                            const year = date.getFullYear();
+                                            const month = String(date.getMonth() + 1).padStart(2, "0");
+                                            const day = String(date.getDate()).padStart(2, "0");
+                                            const formattedDate = `${year}-${month}-${day}`;
+                                            setInvoiceDate(formattedDate);
+                                        }
+                                    }}
+                                />
+                            </span>
                         </div>
 
                         <div>
@@ -368,7 +371,7 @@ const StockTransfer = () => {
                             )}
                         </div>
 
-                        
+
 
                         <div>
                             <Label>Truck No</Label>

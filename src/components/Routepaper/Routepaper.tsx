@@ -1167,11 +1167,11 @@ const Routepaper = ({ onSubmitted }: { onSubmitted?: () => void }) => {
                                                 Remove
                                             </button>
                                         </td>
-                                        <td className="border px-2 py-1">{grp.dispatch_code}</td>
-                                        <td className="border px-2 py-1">{grp.center_name || ''}</td>
-                                        <td className="border px-2 py-1">{udise}</td>
-                                        <td className="border px-2 py-1">{grp.schoolname || ''}</td>
-                                        <td className="border px-2 py-1">{grp.class_range || ''}</td>
+                                        <td className="border px-2 py-1 whitespace-nowrap">{grp.dispatch_code}</td>
+                                        <td className="border px-2 py-1 whitespace-nowrap">{grp.center_name || ''}</td>
+                                        <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
+                                        <td className="border px-2 py-1 whitespace-nowrap">{grp.schoolname || ''}</td>
+                                        <td className="border px-2 py-1 whitespace-nowrap">{grp.class_range || ''}</td>
                                         <td className="border px-2 py-1 text-right">{grp.patsankhya}</td>
                                         {mrGrainColumns.map(c => (
                                             <td key={c.key} className="border px-2 py-1 text-right">

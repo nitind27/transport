@@ -36,7 +36,7 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
   toolbar,
   groupByKey,
   colspanKeys = [],
-  highlightGroups = [], // NEW
+  // highlightGroups = [], // NEW
 }: Props<T>) {
   const [filter] = useState("");
   const [search, setSearch] = useState("");
@@ -279,7 +279,7 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
       </div>
     );
   };
-  const highlightSet = useMemo(() => new Set<string>(highlightGroups.map(String)), [highlightGroups]);
+  // const highlightSet = useMemo(() => new Set<string>(highlightGroups.map(String)), [highlightGroups]);
   // Custom table component for colspan support
   if (groupByKey) {
     return (
@@ -301,56 +301,59 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-              {paginatedData.map((row: ExtendedData<T>, index: number) => (
-                <tr
-                  key={`${row._groupKey}-${index}`}
-                  className={
-                    row._groupKey && highlightSet.has(String(row._groupKey))
-                      ? 'bg-green-100'
-                      : (index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800')
+            {paginatedData.map((row: ExtendedData<T>, index: number) => {
+                // Count how many groups have been displayed before this row
+                let groupCounter = 0;
+                for (let i = 0; i <= index; i++) {
+                  if (paginatedData[i]._isFirstInGroup) {
+                    groupCounter++;
                   }
-                >
-                  {/* Sr No */}
-                  {row._isFirstInGroup ? (
-                    <td
-                      rowSpan={row._groupCount}
-                      className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
-                      style={{ verticalAlign: 'top' }}
-                    >
-                      {(perPage * (currentPage - 1)) + Math.floor(index / (row._groupCount || 1)) + 1}
-                    </td>
-                  ) : null}
-
-                  {/* Other columns */}
-                  {columns.map((col) => {
-                    const isColspanKey = colspanKeys.includes(col.key as keyof T);
-                    const cellValue = col.render ? col.render(row) : (col.accessor ? toStringVal(row[col.accessor]) : "");
-
-                    if (isColspanKey && !row._isFirstInGroup) {
-                      return null;
-                    }
-
-                    if (isColspanKey && row._isFirstInGroup) {
+                }
+                
+                return (
+                  <tr key={`${row._groupKey}-${index}`} className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}>
+                    {/* Sr No */}
+                    {row._isFirstInGroup ? (
+                      <td 
+                        rowSpan={row._groupCount} 
+                        className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
+                        style={{ verticalAlign: 'top' }}
+                      >
+                        {(currentPage - 1) * perPage + groupCounter}
+                      </td>
+                    ) : null}
+                    
+                    {/* Other columns */}
+                    {columns.map((col) => {
+                      const isColspanKey = colspanKeys.includes(col.key as keyof T);
+                      const cellValue = col.render ? col.render(row) : (col.accessor ? toStringVal(row[col.accessor]) : "");
+                      
+                      if (isColspanKey && !row._isFirstInGroup) {
+                        return null;
+                      }
+                      
+                      if (isColspanKey && row._isFirstInGroup) {
+                        return (
+                          <td 
+                            key={String(col.key)}
+                            rowSpan={row._groupCount} 
+                            className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
+                            style={{ verticalAlign: 'top' }}
+                          >
+                            {cellValue}
+                          </td>
+                        );
+                      }
+                      
                       return (
-                        <td
-                          key={String(col.key)}
-                          rowSpan={row._groupCount}
-                          className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
-                          style={{ verticalAlign: 'top' }}
-                        >
+                        <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
                           {cellValue}
                         </td>
                       );
-                    }
-
-                    return (
-                      <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
-                        {cellValue}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

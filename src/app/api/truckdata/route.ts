@@ -29,9 +29,10 @@ export async function GET() {
 export async function POST(req: Request) {
     let connection;
     try {
+    
         const body = await req.json();
-        const { truckNo, ownerId, ownerName, mobileNumber, status } = body;
-
+        const { truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status } = body;
+        
         // Basic Validation
         if (!truckNo || !ownerId) {
             return NextResponse.json(
@@ -39,12 +40,12 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
-
+        
         connection = await pool.getConnection();
-
+        
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO truckdata (truckNo, ownerId, ownerName, mobileNumber, status) VALUES (?, ?, ?, ?, ?)',
-            [truckNo, ownerId, ownerName, mobileNumber, status || 'Active']
+            'INSERT INTO truckdata (truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [truckNo, ownerId, ownerName, mobileNumber, driverName || null, driverMobile || null, status || 'Active']
         );
 
         return NextResponse.json({
@@ -89,16 +90,16 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { id, truckNo, ownerId, ownerName, mobileNumber } = body;
-
+        const { id, truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile } = body;
+        
         if (!id) {
             return NextResponse.json({ message: 'Truck ID is required' }, { status: 400 });
         }
-
+        
         // Build dynamic query parts for only those fields that are provided
         const fieldsToUpdate = [];
         const values = [];
-
+        
         if (truckNo) {
             fieldsToUpdate.push('truckNo = ?');
             values.push(truckNo);
@@ -114,6 +115,14 @@ export async function PUT(req: Request) {
         if (mobileNumber) {
             fieldsToUpdate.push('mobileNumber = ?');
             values.push(mobileNumber);
+        }
+        if (driverName) {
+            fieldsToUpdate.push('driverName = ?');        // new
+            values.push(driverName);
+        }
+        if (driverMobile) {
+            fieldsToUpdate.push('driverMobile = ?');      // new
+            values.push(driverMobile);
         }
 
         if (fieldsToUpdate.length === 0) {

@@ -851,7 +851,7 @@ const DispatchView = () => {
       ];
 
       // Add data rows
-      Object.values(groupedData).forEach((group) => {
+      Object.values(groupedData).forEach((group, index) => {
         // Initialize grain quantities
         const grainQuantities = {
           'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
@@ -911,7 +911,7 @@ const DispatchView = () => {
 
         // Add row data
         worksheetData.push([
-          // index + 1,
+          (index + 1).toString(), // Serial number (अ. क्र.) as string
           group.center_name || '',
           group.udaisno || '',
           group.schoolname || '',
@@ -1071,6 +1071,24 @@ const DispatchView = () => {
 
   // Updated table columns with correct keys and action column
   const listColumns: Column<DispatchListRow>[] = [
+     // Action column with delete functionality
+     {
+      key: 'action',
+      label: 'ACTION',
+      render: (r) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleDeleteDispatch(r.dispatch_code)}
+            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+            title="Delete Dispatch"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      )
+    },
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList
@@ -1271,24 +1289,7 @@ const DispatchView = () => {
         return <span className="font-semibold text-green-600">{quantities['एकूण वजन'].toFixed(2)}</span>;
       }
     },
-    // Action column with delete functionality
-    {
-      key: 'action',
-      label: 'ACTION',
-      render: (r) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleDeleteDispatch(r.dispatch_code)}
-            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-            title="Delete Dispatch"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </div>
-      )
-    }
+   
   ];
 
   // Updated toolbar section with only From Date and To Date filters

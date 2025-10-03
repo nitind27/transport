@@ -32,19 +32,19 @@ type StockEntry = {
   updated_at?: string;
 };
 
-type ItemGrain = {
-  id: number;
-  name: string;
-  Unit: string;
-  status?: string;
-};
+// type ItemGrain = {
+//   id: number;
+//   name: string;
+//   Unit: string;
+//   status?: string;
+// };
 
-type AggregatedStock = {
-  itemId: number;
-  grain: string;
-  units: string;
-  totalQuantity: number;
-};
+// type AggregatedStock = {
+//   itemId: number;
+//   grain: string;
+//   units: string;
+//   totalQuantity: number;
+// };
 
 type FormErrors = Partial<Record<keyof Omit<StockEntry, "id" | "status" | "created_at" | "updated_at">, string>>;
 
@@ -58,13 +58,13 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
   // Tab state - Updated to include new tabs
-  const [activeTab, setActiveTab] = useState<'stockTransfer' | 'damageStock' | 'inventory' | 'addStock'>('stockTransfer');
+  const [activeTab, setActiveTab] = useState<'stockTransfer' | 'damageStock' | 'inventory' | 'addStock'>('inventory');
 
   // Table data
   const [data, setData] = useState<StockEntry[]>(initialStockData || []);
   const [loading, setLoading] = useState(false);
-  const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
-  const [schoolWiseTotals, setSchoolWiseTotals] = useState<Array<{ grain: string; totalQuantity: number; units: string }>>([]);
+  // const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
+  // const [schoolWiseTotals, setSchoolWiseTotals] = useState<Array<{ grain: string; totalQuantity: number; units: string }>>([]);
 
   // Dropdown masters from API
   const dealerOptions = useMemo(
@@ -86,8 +86,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     ],
     [grains]
   );
-
-
+  
+  
+  const [aggregatedTotals, setAggregatedTotals] = useState<Array<{ grain: string; units: string; totalQuantity: number }>>([]);
 
   // Form state
   const [dealer, setDealer] = useState("");
@@ -117,56 +118,57 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   }, [initialStockData]);
 
   // Fetch item grains from API
-  const fetchItemGrains = async () => {
-    try {
-      const response = await fetch('/api/itemgrains');
-      if (response.ok) {
-        const grainsData = await response.json();
-        setItemGrains(grainsData);
-      }
-    } catch (error) {
-      console.error('Error fetching item grains:', error);
-      toast.error('Failed to fetch item grains');
-    }
-  };
+  // const fetchItemGrains = async () => {
+  //   try {
+  //     const response = await fetch('/api/itemgrains');
+  //     if (response.ok) {
+  //       const grainsData = await response.json();
+  //       setItemGrains(grainsData);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching item grains:', error);
+  //     toast.error('Failed to fetch item grains');
+  //   }
+  // };
 
   useEffect(() => {
-    fetchItemGrains();
+    // fetchItemGrains();
+    fetchAggregateTotals();
   }, []);
 
-  useEffect(() => {
-    const fetchSchoolWiseTotals = async () => {
-      try {
-        const res = await fetch('/api/schoolwiseorders/aggregate');
-        if (res.ok) {
-          const json = await res.json();
-          setSchoolWiseTotals(json);
-        }
-      } catch (e) {
-        console.error('Failed to load school-wise totals', e);
-      }
-    };
-    fetchSchoolWiseTotals();
-  }, []);
+  // useEffect(() => {
+  //   const fetchSchoolWiseTotals = async () => {
+  //     try {
+  //       const res = await fetch('/api/schoolwiseorders/aggregate');
+  //       if (res.ok) {
+  //         const json = await res.json();
+  //         setSchoolWiseTotals(json);
+  //       }
+  //     } catch (e) {
+  //       console.error('Failed to load school-wise totals', e);
+  //     }
+  //   };
+  //   fetchSchoolWiseTotals();
+  // }, []);
 
   // Map Marathi item name -> Item (Grain).name in master
-  const MARATHI_TO_GRAIN: Record<string, string> = {
-    'तांदुळ': 'तांदुळ',
-    'मुंगदाळ': 'मुंगदाळ',
-    'मसूरदाळ': 'मसूरदाळ',
-    'तूरदाल': 'तूरदाळ',
-    'हरभरा': 'हरभरा',
-    'चवळी': 'चवळी',
-    'मटकी': 'मटकी',
-    'मुंग': 'मुंग',
-    'वाटाणा': 'वाटाणा',
-    'सोया वडी': 'सोया वडी',
-    'मसाला': 'मसाला',
-    'सोया तेल': 'सोया तेल',
-    'हळद': 'हळद',
-    'मीठ': 'मीठ',
-    'मोहरी': 'मोहरी',
-  };
+  // const MARATHI_TO_GRAIN: Record<string, string> = {
+  //   'तांदुळ': 'तांदुळ',
+  //   'मुंगदाळ': 'मुंगदाळ',
+  //   'मसूरदाळ': 'मसूरदाळ',
+  //   'तूरदाल': 'तूरदाळ',
+  //   'हरभरा': 'हरभरा',
+  //   'चवळी': 'चवळी',
+  //   'मटकी': 'मटकी',
+  //   'मुंग': 'मुंग',
+  //   'वाटाणा': 'वाटाणा',
+  //   'सोया वडी': 'सोया वडी',
+  //   'मसाला': 'मसाला',
+  //   'सोया तेल': 'सोया तेल',
+  //   'हळद': 'हळद',
+  //   'मीठ': 'मीठ',
+  //   'मोहरी': 'मोहरी',
+  // };
 
   function formatDate(dateString: string | undefined | null): string {
     if (!dateString) return 'उपलब्ध नाही';
@@ -179,73 +181,73 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   }
 
   // Enhanced aggregate stock data by grain and units, including item ID
-  const aggregatedStockData = useMemo(() => {
-    const stockMap: { [key: string]: AggregatedStock } = {};
+  // const aggregatedStockData = useMemo(() => {
+  //   const stockMap: { [key: string]: AggregatedStock } = {};
 
-    // Initialize from item master
-    itemGrains.forEach((item, index) => {
-      const key = `${item.name}-${item.Unit}`;
-      stockMap[key] = {
-        itemId: item.id ?? index + 1,
-        grain: item.name,
-        units: item.Unit,
-        totalQuantity: 0,
-      };
-    });
+  //   // Initialize from item master
+  //   itemGrains.forEach((item, index) => {
+  //     const key = `${item.name}-${item.Unit}`;
+  //     stockMap[key] = {
+  //       itemId: item.id ?? index + 1,
+  //       grain: item.name,
+  //       units: item.Unit,
+  //       totalQuantity: 0,
+  //     };
+  //   });
 
-    // Sum existing stock rows
-    data.forEach(item => {
-      const matchingItem = itemGrains.find(g => g.name.toLowerCase().trim() === item.grain.toLowerCase().trim());
-      if (matchingItem) {
-        const key = `${matchingItem.name}-${matchingItem.Unit}`;
-        stockMap[key].totalQuantity += Number(item.weight);
-      } else {
-        const key = `${item.grain}-${item.units}`;
-        if (!stockMap[key]) {
-          stockMap[key] = {
-            itemId: 0,
-            grain: item.grain,
-            units: item.units,
-            totalQuantity: 0,
-          };
-        }
-        stockMap[key].totalQuantity += Number(item.weight);
-      }
-    });
+  //   // Sum existing stock rows
+  //   data.forEach(item => {
+  //     const matchingItem = itemGrains.find(g => g.name.toLowerCase().trim() === item.grain.toLowerCase().trim());
+  //     if (matchingItem) {
+  //       const key = `${matchingItem.name}-${matchingItem.Unit}`;
+  //       stockMap[key].totalQuantity += Number(item.weight);
+  //     } else {
+  //       const key = `${item.grain}-${item.units}`;
+  //       if (!stockMap[key]) {
+  //         stockMap[key] = {
+  //           itemId: 0,
+  //           grain: item.grain,
+  //           units: item.units,
+  //           totalQuantity: 0,
+  //         };
+  //       }
+  //       stockMap[key].totalQuantity += Number(item.weight);
+  //     }
+  //   });
 
-    // Merge School-wise Orders aggregate (Marathi JSON keys)
-    schoolWiseTotals.forEach(sw => {
-      const mappedName = MARATHI_TO_GRAIN[sw.grain] ?? sw.grain; // fall back to the same name
-      // Try to find a matching item in master by name
-      const matchingItem = itemGrains.find(g => g.name.trim() === mappedName.trim());
-      if (matchingItem) {
-        const key = `${matchingItem.name}-${matchingItem.Unit}`;
-        if (!stockMap[key]) {
-          stockMap[key] = {
-            itemId: matchingItem.id,
-            grain: matchingItem.name,
-            units: matchingItem.Unit,
-            totalQuantity: 0,
-          };
-        }
-        stockMap[key].totalQuantity += Number(sw.totalQuantity || 0);
-      } else {
-        // If not in master, still show it
-        const key = `${mappedName}-${sw.units || ''}`;
-        if (!stockMap[key]) {
-          stockMap[key] = {
-            itemId: 0,
-            grain: mappedName,
-            units: sw.units || '',
-            totalQuantity: 0,
-          };
-        }
-        stockMap[key].totalQuantity += Number(sw.totalQuantity || 0);
-      }
-    });
+  //   // Merge School-wise Orders aggregate (Marathi JSON keys)
+  //   schoolWiseTotals.forEach(sw => {
+  //     const mappedName = MARATHI_TO_GRAIN[sw.grain] ?? sw.grain; // fall back to the same name
+  //     // Try to find a matching item in master by name
+  //     const matchingItem = itemGrains.find(g => g.name.trim() === mappedName.trim());
+  //     if (matchingItem) {
+  //       const key = `${matchingItem.name}-${matchingItem.Unit}`;
+  //       if (!stockMap[key]) {
+  //         stockMap[key] = {
+  //           itemId: matchingItem.id,
+  //           grain: matchingItem.name,
+  //           units: matchingItem.Unit,
+  //           totalQuantity: 0,
+  //         };
+  //       }
+  //       stockMap[key].totalQuantity += Number(sw.totalQuantity || 0);
+  //     } else {
+  //       // If not in master, still show it
+  //       const key = `${mappedName}-${sw.units || ''}`;
+  //       if (!stockMap[key]) {
+  //         stockMap[key] = {
+  //           itemId: 0,
+  //           grain: mappedName,
+  //           units: sw.units || '',
+  //           totalQuantity: 0,
+  //         };
+  //       }
+  //        Number(sw.totalQuantity || 0);
+  //     }
+  //   });
 
-    return Object.values(stockMap);
-  }, [data, itemGrains, schoolWiseTotals]);
+  //   return Object.values(stockMap);
+  // }, [data, itemGrains, schoolWiseTotals]);
 
   const resetForm = () => {
     setDealer("");
@@ -279,6 +281,19 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     return Object.keys(newErrors).length === 0;
   };
 
+  const fetchAggregateTotals = async () => {
+    try {
+      const res = await fetch('/api/stockinventory/aggregate');
+      if (res.ok) {
+        const json = await res.json();
+        setAggregatedTotals(json);
+      }
+    } catch (e) {
+      console.error('Error fetching aggregate totals:', e);
+      toast.error('Failed to fetch totals');
+    }
+  };
+
   // Fetch stock data from API
   const fetchStockData = async () => {
     try {
@@ -286,6 +301,8 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       if (response.ok) {
         const stockData = await response.json();
         setData(stockData);
+        // Refresh item-wise totals after list load
+        await fetchAggregateTotals();
       }
     } catch (error) {
       console.error('Error fetching stock data:', error);
@@ -510,22 +527,22 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {aggregatedStockData.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {item.grain}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {item.units}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600 dark:text-green-400">
-                        {item.totalQuantity.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                {aggregatedTotals.map((item, index) => (
+                      <tr key={`${item.grain}-${item.units}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
+                          {index + 1}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {item.grain}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {item.units}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600 dark:text-green-400">
+                          {Number(item.totalQuantity || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -577,7 +594,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
                   />
                 </div>
 
-                <div>
+                <div className="">
                   <Label>Date of Invoice</Label>
                   <DatePicker
                     id="invoiceDate"
