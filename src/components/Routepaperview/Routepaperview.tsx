@@ -229,35 +229,83 @@ const Routepaperview = () => {
         fetchSchoolDataMap();
     }, []);
 
-    // Grain mapping for Marathi names
+    // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
     const mrGrainColumns = [
-        { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल'] },
-        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ'] },
-        { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal'] },
-        { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर'] },
-        { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram'] },
-        { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea'] },
-        { key: 'मटकी', aliases: ['मटकी', 'matki'] },
-        { key: 'मुग', aliases: ['मुग', 'moong'] },
-        { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas'] },
-        { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi'] },
-        { key: 'मसाला', aliases: ['मसाला', 'spices'] },
-        { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल'] },
-        { key: 'हळद', aliases: ['हळद', 'turmeric', 'haldi'] },
-        { key: 'मीठ', aliases: ['मीठ', 'salt'] },
-        { key: 'मोहरी', aliases: ['मोहरी', 'mustard'] },
+        { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल', 'tandul', 'rice grains'] },
+        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ', 'green dal'] },
+        { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal', 'red dal', 'red lentil'] },
+        { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर', 'tur dal'] },
+        { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram', 'bengal gram', 'besan'] },
+        { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
+        { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
+        { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
+        { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas', 'green peas'] },
+        { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
+        { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
+        { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
+        { key: 'हळद', aliases: ['हळद', 'turmeric', 'haldi', 'turmeric powder'] },
+        { key: 'मीठ', aliases: ['मीठ', 'salt', 'common salt'] },
+        { key: 'मोहरी', aliases: ['मोहरी', 'mustard', 'mustard seeds'] },
     ];
 
-    // Calculate grain totals for a dispatch group
+    // Enhanced function to calculate grain totals - includes all items
     const sumGrainsForGroup = (items: Array<{ name: string; qty: number }>) => {
         const sums: Record<string, number> = {};
+        const mappedItems: string[] = [];
+        
         items.forEach(it => {
+            if (!it.name || it.qty === 0) return;
+            
             const nm = (it.name || '').toLowerCase().trim();
             const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-            const key = match ? match.key : it.name;
-            sums[key] = (sums[key] || 0) + Number(it.qty || 0);
+            
+            if (match) {
+                const key = match.key;
+                sums[key] = (sums[key] || 0) + Number(it.qty || 0);
+                mappedItems.push(key);
+            } else {
+                // For unmapped items, keep the original name
+                sums[it.name] = (sums[it.name] || 0) + Number(it.qty || 0);
+            }
         });
+        
         return sums;
+    };
+
+    // Get all unique item names from the data (both mapped and unmapped)
+    const getAllItemNames = (data: DispatchListRow[]) => {
+        const allItems = new Map<string, boolean>();
+        
+        data.forEach(row => {
+            if (row.item_name) {
+                const nm = row.item_name.toLowerCase().trim();
+                const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+                
+                if (match) {
+                    allItems.set(match.key, true);
+                } else {
+                    allItems.set(row.item_name, true);
+                }
+            }
+        });
+        
+        // Create array with mapped items first, then unmapped items
+        const mappedKeys = mrGrainColumns.map(g => g.key);
+        const orderedItems: string[] = [];
+        
+        // Add mapped items in order
+        mappedKeys.forEach(key => {
+            if (allItems.has(key)) {
+                orderedItems.push(key);
+                allItems.delete(key);
+            }
+        });
+        
+        // Add unmapped items alphabetically
+        const unmappedItems = Array.from(allItems.keys()).sort();
+        orderedItems.push(...unmappedItems);
+        
+        return orderedItems;
     };
 
     // Get taluka name by school ID
@@ -476,7 +524,7 @@ const Routepaperview = () => {
             </div>
     
             <div class="total-bar">
-                <span>एकूण ${grandTotal.toFixed(1)}</span>
+                <span>एकूण ${grandTotal.toFixed(2)}</span>
             </div>
             <div class="note">
                 शाळेकडून शालेय पोषण आहार योजनेअंतर्गत माल पोहोच करुन देण्याकरीता तपशिलाप्रमाणे माल बाब्यात मिळाला. 
@@ -503,13 +551,16 @@ const Routepaperview = () => {
         `);
     };
 
-    // Print function for route number
+    // Print function for route number - completely rewritten for proper totals
     const handlePrint = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
         if (routeData.length === 0) {
             toast.error('Route data not found for printing');
             return;
         }
+
+        // Get all unique items in the route
+        const allItemNames = getAllItemNames(routeData);
 
         // Group by school and calculate totals
         const schoolsMap = new Map();
@@ -526,17 +577,16 @@ const Routepaperview = () => {
                     udise_number: udiseNumber,
                     patsankhya: row.patsankhya || '',
                     items: [],
-                    // added: collect unique receipts (dispatch_code)
                     receipts: new Set<string>(),
                 });
             }
-            // add items
+            
             schoolsMap.get(schoolKey).items.push({
                 name: row.item_name,
                 qty: row.qty_dispatch,
                 unit: row.unit
             });
-            // added: collect पावती क्रमांक
+            
             if (row.dispatch_code) {
                 schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
             }
@@ -544,24 +594,27 @@ const Routepaperview = () => {
 
         const schools = Array.from(schoolsMap.values());
 
-        // Calculate grand totals
-        const grandTotals = mrGrainColumns.map(grain => {
-            const total = schools.reduce((sum, school) => {
-                const schoolSums = sumGrainsForGroup(school.items);
-                return sum + (schoolSums[grain.key] || 0);
-            }, 0);
-            return { grain: grain.key, total };
+        // Calculate grand totals for all items
+        const grandTotals: Record<string, number> = {};
+        
+        schools.forEach(school => {
+            const schoolSums = sumGrainsForGroup(school.items);
+            Object.entries(schoolSums).forEach(([itemName, qty]) => {
+                grandTotals[itemName] = (grandTotals[itemName] || 0) + qty;
+            });
         });
 
-        const overallTotal = grandTotals.reduce((sum, item) => sum + item.total, 0);
+        // Calculate overall total
+        const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
 
-        // Prepare print data
-        // const printDate = new Date().toLocaleDateString('en-IN');
-        // const dispatchDate = routeData[0]?.create_at ? formatDate(routeData[0].create_at) : '';
-
-        // Get center name for the route
-        // const centerName = routeData[0]?.center_name || '';
-
+        // Get dynamic data from first route item
+        const firstRouteItem = routeData[0];
+        const dispatchDate = firstRouteItem?.create_at ? formatDate(firstRouteItem.create_at) : '';
+        const orderNo = firstRouteItem?.order_no || '';
+        const dispatchCode = firstRouteItem?.dispatch_code || '';
+        const vehicleNo = firstRouteItem?.truckNo || '';
+        const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
+        const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -602,19 +655,16 @@ const Routepaperview = () => {
                                 text-align: left;
                                 font-size: 12px;
                                 line-height: 1.55;
-                                
                             }
                             .driver-detail {
                                 text-align: right;
                                 font-size: 12px;
                                 line-height: 1.55;
                             }
-                            /* This class is for the location 'तळोदे जि. नंदुरबार' */
                             .header-center { 
                                 font-size: 12px;
                                 font-weight: bold;
                                 text-align: right;
-                                /* FIX 3: Added margin-top to separate it from the Vehicle No, as seen in the image. */
                                 margin-top: 6px; 
                             }
                             .dataflex {
@@ -660,11 +710,6 @@ const Routepaperview = () => {
                                 background-color: #e6e6e6; 
                                 font-weight: bold;
                             }
-                            .school-header {
-                                background-color: #d9edf7;
-                                font-weight: bold;
-                                text-align: left;
-                            }
                             .grain-column {
                                 min-width: 60px;
                             }
@@ -691,13 +736,11 @@ const Routepaperview = () => {
                                 body { margin: 5mm; }
                                 .table { font-size: 10px; }
                             }
-                               
                         </style>
                     </head>
                     <body>
                         <table class="header-table">
                             <tr>
-                           
                                 <td style="width:44%; text-align:center;">
                                     <div class="header-org">
                                         मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
@@ -705,27 +748,26 @@ const Routepaperview = () => {
                                     </div>
                                     <div class="dataflex">
                                         <div>
-                                            Dispatch No. - Aug-Sept-2025/LD 4<br>
-                                        Dispatch date - 17-09-2025<br>
-                                        पुरवठा माहे - Aug-Sept-2025 (42 Days)<br>
-                                        Total Weight - <b>2795.5</b>
+                                            Dispatch No. - ${dispatchCode}<br>
+                                            Dispatch date - ${dispatchDate}<br>
+                                            पुरवठा माहे - ${periodText} (${daysText})<br>
+                                            Order No. - ${orderNo}<br>
+                                            Total Weight - <b>${overallTotal.toFixed(2)}</b>
                                         </div>
                                         <div>
-                                        <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+                                            <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
                                         </div>
                                         <div>
-                                           Driver MOTIRAM PADAVI<br>
-                                        Mob 9022899429<br>
-                                        Vehicle No MH39A01822<br>
-                                        <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                            Driver MOTIRAM PADAVI<br>
+                                            Mob 9022899429<br>
+                                            Vehicle No ${vehicleNo}<br>
+                                            <div class="header-center"> तळोदे जि. नंदुरबार</div>
                                         </div>
                                     </div>
-                                  
                                     <div class="center-title">
                                         मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
                                     </div>
                                 </td>
-                          
                             </tr>
                         </table>
                 
@@ -740,19 +782,19 @@ const Routepaperview = () => {
                                     <th class="left-align">शाळा</th>
                                     <th class="center-align">वर्ग</th>
                                     <th class="center-align">पट संख्या</th>
-                                    ${mrGrainColumns.map(grain =>
-                `<th class="grain-column">${grain.key}</th>`
-            ).join('')}
+                                    ${allItemNames.map(item =>
+                                        `<th class="grain-column">${item}</th>`
+                                    ).join('')}
                                     <th class="center-align">एकूण</th>
                                     <th class="center-align">हेड मास्टर मोबाइल No.</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${schools.map((school, index) => {
-                const grainSums = sumGrainsForGroup(school.items);
-                const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
-                return `
+                                    const grainSums = sumGrainsForGroup(school.items);
+                                    const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+                                    const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+                                    return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
                                             <td class="left-align">${school.taluka_name || '-'}</td>
@@ -762,20 +804,19 @@ const Routepaperview = () => {
                                             <td class="left-align">${school.schoolname}</td>
                                             <td class="center-align">${school.class_range}</td>
                                             <td class="center-align">${school.patsankhya || '-'}</td>
-                                            ${mrGrainColumns.map(grain =>
-                    `<td class="right-align">${grainSums[grain.key] ? grainSums[grain.key].toFixed(2) : '0.00'}</td>`
-                ).join('')}
+                                            ${allItemNames.map(item =>
+                                                `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
+                                            ).join('')}
                                             <td class="right-align">${schoolTotal.toFixed(2)}</td>
                                             <td class="center-align">-</td>
                                         </tr>
                                     `;
-            }).join('')}
+                                }).join('')}
                                 <tr class="total-row">
-                                    <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
-                                    <td class="center-align"></td>
-                                    ${grandTotals.map(item =>
-                `<td class="right-align"><strong>${item.total.toFixed(2)}</strong></td>`
-            ).join('')}
+                                    <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
+                                    ${allItemNames.map(item =>
+                                        `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
+                                    ).join('')}
                                     <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
                                     <td class="center-align"></td>
                                 </tr>
@@ -800,6 +841,7 @@ const Routepaperview = () => {
                                 </tr>
                             </table>
                             <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
+                            <p style="margin-top: 5px;">Route: ${routeNumber} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
                         </div>
                 
                         <script>
@@ -812,9 +854,7 @@ const Routepaperview = () => {
                         </script>
                     </body>
                 </html>
-                `);
-
-            // printWindow.document.close();
+            `);
         }
     };
 
