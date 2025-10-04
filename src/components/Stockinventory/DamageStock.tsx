@@ -66,7 +66,7 @@ const DamageStock = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/damagestock');
+            const response = await fetch('/api/stockmanage');
             if (response.ok) {
                 const result = await response.json();
                 setData(result);
@@ -131,7 +131,7 @@ const DamageStock = () => {
                 remarks: remarks || undefined,
             };
 
-            const url = '/api/damagestock';
+            const url = '/api/stockmanage';
             const method = editId ? 'PUT' : 'POST';
             const body = editId ? { ...damageStockData, id: editId } : damageStockData;
 
@@ -243,7 +243,7 @@ const DamageStock = () => {
         <div className="mt-5">
             <ReusableTable
                 data={data}
-                classname={"h-[650px] overflow-y-auto scrollbar-hide"}
+                classname={"h-auto overflow-y-auto scrollbar-hide"}
                 inputfiled={
                     <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                         <div>

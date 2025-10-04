@@ -36,8 +36,12 @@ type FormErrors = {
     itemGrain?: string;
     weight?: string;
     destination?: string;
-    tpNo?: string;
     truckNo?: string;
+};
+
+type StockInfo = {
+    availableWeight: number;
+    message: string;
 };
 
 const StockTransfer = () => {
@@ -45,6 +49,8 @@ const StockTransfer = () => {
     const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setErrors] = useState<FormErrors>({});
+    const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
+    const [checkingStock, setCheckingStock] = useState(false);
 
     // Form state
     const [invoiceDate, setInvoiceDate] = useState("");
@@ -52,7 +58,6 @@ const StockTransfer = () => {
     const [weight, setWeight] = useState<number | "">("");
     const [destination, setDestination] = useState("");
     const [remarks, setRemarks] = useState("");
-    const [tpNo, setTpNo] = useState("");
     const [truckNo, setTruckNo] = useState("");
 
     const [editId, setEditId] = useState<number | null>(null);
@@ -89,6 +94,33 @@ const StockTransfer = () => {
         }
     };
 
+    // Check stock availability for selected item
+    const checkStockAvailability = async (selectedItemGrain: string) => {
+        if (!selectedItemGrain) {
+            setStockInfo(null);
+            return;
+        }
+
+        setCheckingStock(true);
+        try {
+            const response = await fetch(`/api/stocktransfer?itemGrain=${encodeURIComponent(selectedItemGrain)}`);
+            if (response.ok) {
+                const stockData = await response.json();
+                setStockInfo({
+                    availableWeight: stockData.availableWeight,
+                    message: stockData.message
+                });
+            } else {
+                setStockInfo(null);
+            }
+        } catch (error) {
+            console.error('Error checking stock:', error);
+            setStockInfo(null);
+        } finally {
+            setCheckingStock(false);
+        }
+    };
+
     useEffect(() => {
         fetchData();
         fetchItemGrains();
@@ -100,15 +132,24 @@ const StockTransfer = () => {
         }
     }, [isvalidation]);
 
+    // Check stock when item grain changes
+    useEffect(() => {
+        if (itemGrain) {
+            checkStockAvailability(itemGrain);
+        } else {
+            setStockInfo(null);
+        }
+    }, [itemGrain]);
+
     const reset = () => {
         setInvoiceDate("");
         setItemGrain("");
         setWeight("");
         setDestination("");
         setRemarks("");
-        setTpNo("");
         setTruckNo("");
         setEditId(null);
+        setStockInfo(null);
     };
 
     useEffect(() => {
@@ -124,15 +165,19 @@ const StockTransfer = () => {
         if (!itemGrain) {
             newErrors.itemGrain = "Item/Grain is required";
         }
+        
         if (weight === "" || Number.isNaN(Number(weight))) {
             newErrors.weight = "Weight is required";
+        } else if (Number(weight) <= 0) {
+            newErrors.weight = "Weight must be greater than 0";
+        } else if (stockInfo && Number(weight) > stockInfo.availableWeight) {
+            newErrors.weight = `Weight exceeds available stock. Available: ${stockInfo.availableWeight}`;
         }
+        
         if (!destination) {
             newErrors.destination = "Destination is required";
         }
-        if (!tpNo) {
-            newErrors.tpNo = "TP No is required";
-        }
+        
         if (!truckNo) {
             newErrors.truckNo = "Truck No is required";
         }
@@ -152,7 +197,6 @@ const StockTransfer = () => {
                 weight: Number(weight),
                 destination,
                 remarks: remarks || undefined,
-                tpNo,
                 truckNo,
             };
 
@@ -169,7 +213,11 @@ const StockTransfer = () => {
             });
 
             if (response.ok) {
+                const result = await response.json();
                 toast.success(editId ? 'Stock transfer updated successfully!' : 'Stock transfer added successfully!');
+                if (result.tpNo) {
+                    toast.info(`TP Number: ${result.tpNo}`);
+                }
                 reset();
                 setEditId(null);
                 fetchData();
@@ -178,6 +226,11 @@ const StockTransfer = () => {
             } else {
                 const errorData = await response.json();
                 toast.error(errorData.message || 'Failed to save');
+                
+                // Show detailed error for stock validation
+                if (errorData.availableWeight !== undefined) {
+                    toast.error(`Available stock: ${errorData.availableWeight}, Requested: ${errorData.requestedWeight}`);
+                }
             }
         } catch (error) {
             console.error('Error saving stock transfer:', error);
@@ -197,7 +250,6 @@ const StockTransfer = () => {
         setWeight(item.weight);
         setDestination(item.destination);
         setRemarks(item.remarks || "");
-        setTpNo(item.tpNo);
         setTruckNo(item.truckNo);
     };
 
@@ -212,7 +264,6 @@ const StockTransfer = () => {
     }
 
     const columns: Column<StockTransferEntry>[] = [
-
         {
             key: 'invoiceDate',
             label: 'Date of Invoice',
@@ -289,13 +340,12 @@ const StockTransfer = () => {
         <div className="mt-5">
             <ReusableTable
                 data={data}
-                classname={"h-[650px] overflow-y-auto scrollbar-hide"}
+                classname={"h-auto overflow-y-auto scrollbar-hide"}
                 inputfiled={
                     <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                         <div className=''>
                             <Label>Date of Invoice</Label>
                             <span className=''>
-
                                 <DatePicker
                                     id="invoiceDate"
                                     label=""
@@ -353,6 +403,19 @@ const StockTransfer = () => {
                                     {error.weight}
                                 </div>
                             )}
+                            
+                            {/* Stock Information Display */}
+                            {stockInfo && (
+                                <div className={`text-sm mt-1 pl-1 ${stockInfo.availableWeight > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {checkingStock ? (
+                                        <span className="text-blue-600">Checking stock...</span>
+                                    ) : (
+                                        <span>
+                                            Available Stock: <strong>{stockInfo.availableWeight}</strong>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div>
@@ -370,8 +433,6 @@ const StockTransfer = () => {
                                 </div>
                             )}
                         </div>
-
-
 
                         <div>
                             <Label>Truck No</Label>
@@ -414,7 +475,7 @@ const StockTransfer = () => {
                         type='button'
                         onClick={handleSave}
                         className='bg-blue-700 text-white py-2 p-2 rounded'
-                        disabled={loading}
+                        disabled={loading || checkingStock}
                     >
                         {loading ? 'Submitting...' : (editId ? 'Update' : 'Submit')}
                     </button>

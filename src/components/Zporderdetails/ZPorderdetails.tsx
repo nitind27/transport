@@ -6,9 +6,10 @@ import { ReusableTable } from "../tables/BasicTableOne";
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
-import DefaultModal from '../example/ModalExample/DefaultModal';
+// import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
 import { ZPOrderDetail, FormErrors } from './ZPOrderDetailsType';
+import DeleteZapmodel from '../example/ModalExample/DeleteZapmodel';
 
 type Props = {
   zpOrderDetails: ZPOrderDetail[];
@@ -173,7 +174,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
           <span>
-            <DefaultModal 
+            <DeleteZapmodel 
               id={row.id} 
               fetchData={fetchData} 
               endpoint="zporderdetails" 

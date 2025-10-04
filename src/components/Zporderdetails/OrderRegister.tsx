@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-
-
 import Label from "../form/Label";
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
-// import { useToggleContext } from '@/context/ToggleContext';
 import { Modal } from '../ui/modal';
 import { ColumnSearchTable } from '../tables/ColumnSearchTable';
 import Loader from '../../common/Loader';
-
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaFileExcel } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 // Types
 interface ZPOrderDetail {
@@ -66,64 +64,38 @@ type ExtendedSWO = SchoolWiseOrder & {
   _groupKey?: string;
 };
 
-// interface ParsedExcelRow {
-//   _schoolName: string;
-//   _udise: string;
-//   _centerName: string;
-//   _classRange: string;
-//   _patSankhya: number;
-//   _totalWeight: number;
-//   _items: Record<string, number>;
-// }
-
-
-
 const OrderRegisterWithColumnSearch = () => {
-  // const { isEditMode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading] = useState(false);
   const [error] = useState<FormErrors>({});
-  // const [editId, setEditId] = useState<number | null>(null);
-
+  
   // Global UI busy (overlay loader)
   const [uiBusy] = useState(false);
   
   // Form fields
   const [orderNo, setOrderNo] = useState('');
-  // const [noOfDays, setNoOfDays] = useState<number | null>(null);
-  // const [period, setPeriod] = useState('');
-  // const [financialYear, setFinancialYear] = useState('');
-  // const [selectedClass, setSelectedClass] = useState('');
-  // const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  // const [excelData, setExcelData] = useState<ParsedExcelRow[]>([]);
 
   // Data states
   const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
 
-  // View modal state
-  // const [viewOpen, setViewOpen] = useState(false);
-  // const [viewItem, setViewItem] = useState<SchoolWiseOrder | null>(null);
-  // const [uniqId, setUniqId] = useState<string | null>(null);
-  
-  // Group modal state
-  // const [setGroupOpen] = useState(false);
-  // const [setGroupRows] = useState<SchoolWiseOrder[]>([]);
-  // const [setGroupMeta] = useState<{
-  //   order_no: string;
-  //   class_range: string;
-  //   no_of_days: number;
-  //   period: string;
-  //   financial_year: string;
-  // } | null>(null);
-
-  // const [reopenGroupOnItemsClose, setReopenGroupOnItemsClose] = useState<boolean>(false);
-
   // Group delete confirm
   const [confirmGroupOpen, setConfirmGroupOpen] = useState(false);
   const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
-  // Fetch data functions (same as original)
+  // School details modal state
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false);
+  const [selectedGroupData, setSelectedGroupData] = useState<SchoolWiseOrder[]>([]);
+  const [selectedGroupMeta, setSelectedGroupMeta] = useState<{
+    order_no: string;
+    class_range: string;
+    no_of_days: number;
+    period: string;
+    financial_year: string;
+    total_schools: number;
+  } | null>(null);
+
+  // Fetch data functions
   const fetchZpOrders = async () => {
     try {
       const response = await fetch('/api/zporderdetails');
@@ -173,6 +145,214 @@ const OrderRegisterWithColumnSearch = () => {
     });
   }, [schoolWiseOrders, schools]);
 
+  // Group data by uniq_id for modal display
+  const groupedData = useMemo(() => {
+    const groups: Record<string, SchoolWiseOrder[]> = {};
+    dataWithTaluka.forEach(item => {
+      const key = item.uniq_id || 'default';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+    });
+    return groups;
+  }, [dataWithTaluka]);
+
+  const openGroup = (row: ExtendedSWO) => {
+    const key = row._groupKey || row.uniq_id;
+    if (key && groupedData[key]) {
+      const groupRows = groupedData[key];
+      setSelectedGroupData(groupRows);
+      
+      // Set group metadata
+      if (groupRows.length > 0) {
+        const firstRow = groupRows[0];
+        setSelectedGroupMeta({
+          order_no: firstRow.order_no,
+          class_range: firstRow.class_range,
+          no_of_days: firstRow.no_of_days,
+          period: firstRow.period,
+          financial_year: firstRow.financial_year,
+          total_schools: groupRows.length
+        });
+      }
+      
+      setSchoolModalOpen(true);
+    }
+  };
+
+  // Export to Excel function for direct download
+  const exportGroupToExcel = (row: ExtendedSWO) => {
+    const key = row._groupKey || row.uniq_id;
+    if (!key || !groupedData[key]) {
+      toast.error('No data found to export');
+      return;
+    }
+
+    const groupRows = groupedData[key];
+    if (groupRows.length === 0) {
+      toast.error('No data found to export');
+      return;
+    }
+
+    const firstRow = groupRows[0];
+    const groupMeta = {
+      order_no: firstRow.order_no,
+      class_range: firstRow.class_range,
+      no_of_days: firstRow.no_of_days,
+      period: firstRow.period,
+      financial_year: firstRow.financial_year,
+      total_schools: groupRows.length
+    };
+
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Create worksheet data
+      const worksheetData = [
+        // Headers
+        ['Order Details'],
+        [`Order No: ${groupMeta.order_no}`],
+        [`Class Range: ${groupMeta.class_range}`],
+        [`Period: ${groupMeta.period}`],
+        [`Financial Year: ${groupMeta.financial_year}`],
+        [`No of Days: ${groupMeta.no_of_days}`],
+        [`Total Schools: ${groupMeta.total_schools}`],
+        [], // Empty row
+        // School data headers
+        ['Sr No', 'School Name', 'UDISE Code', 'Taluka', 'Class Range', 'Patsankhya', 'Total Weight']
+      ];
+
+      // Add school data rows
+      groupRows.forEach((school, index) => {
+        const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+        worksheetData.push([
+          (index + 1).toString(),
+          school.schoolname || '',
+          school.udaisno || '',
+          schoolDetails?.talukaname || '-',
+          school.class_range || '',
+          (school.patsankhya || 0).toString(),
+          (school.total_weight || 0).toString()
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      
+      // Merge header cells for better formatting
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      worksheet['!merges'].push(
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 } },
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 } }
+      );
+
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 }
+      ];
+      
+      worksheet['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'School Details');
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const fileName = `Order_${groupMeta.order_no}_Class_${groupMeta.class_range}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+      
+      toast.success('Excel file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
+  // Export to Excel function for modal
+  const exportToExcel = () => {
+    if (!selectedGroupData.length || !selectedGroupMeta) return;
+
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Create worksheet data
+      const worksheetData = [
+        ['Order Details'],
+        [`Order No: ${selectedGroupMeta.order_no}`],
+        [`Class Range: ${selectedGroupMeta.class_range}`],
+        [`Period: ${selectedGroupMeta.period}`],
+        [`Financial Year: ${selectedGroupMeta.financial_year}`],
+        [`No of Days: ${selectedGroupMeta.no_of_days}`],
+        [`Total Schools: ${selectedGroupMeta.total_schools}`],
+        [],
+        ['Sr No', 'School Name', 'UDISE Code', 'Taluka', 'Class Range', 'Patsankhya', 'Total Weight']
+      ];
+
+      // Add school data rows
+      selectedGroupData.forEach((school, index) => {
+        const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+        worksheetData.push([
+          (index + 1).toString(),
+          school.schoolname || '',
+          school.udaisno || '',
+          schoolDetails?.talukaname || '-',
+          school.class_range || '',
+          (school.patsankhya || 0).toString(),
+          (school.total_weight || 0).toString()
+        ]);
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      worksheet['!merges'].push(
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 } },
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 } }
+      );
+
+      const colWidths = [
+        { wch: 8 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 }
+      ];
+      
+      worksheet['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'School Details');
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const fileName = `Order_${selectedGroupMeta.order_no}_Class_${selectedGroupMeta.class_range}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+      
+      toast.success('Excel file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
   const columns: Column<SWOWithTaluka>[] = [
     {
       key: 'delete',
@@ -207,25 +387,33 @@ const OrderRegisterWithColumnSearch = () => {
     { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
     {
       key: 'total_schools',
-      label: 'Total Number of Schools',
+      label: 'Total Schools',
       render: (row) => {
         const r = row as ExtendedSWO;
         if (!r._isFirstInGroup) return null;
-        return <span className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
-          onClick={() => openGroup(r)}>{r._groupCount || 0}</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <span 
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              onClick={() => openGroup(r)}
+            >
+              {r._groupCount || 0}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent opening modal
+                exportGroupToExcel(r);
+              }}
+              className="text-green-600 hover:text-green-800"
+              title="Export to Excel"
+            >
+              <FaFileExcel className="text-lg" />
+            </button>
+          </div>
+        );
       }
     },
   ];
-
-  const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
-    const key = row._groupKey;
-    if (key && key.length > 0) {
-      // const rows = schoolWiseOrders.filter(r => (r).uniq_id === key);
-      // setGroupRows(rows);
-    
-      return;
-    }
-  };
 
   const confirmGroupDelete = async () => {
     if (!pendingGroupId) return;
@@ -296,7 +484,111 @@ const OrderRegisterWithColumnSearch = () => {
         colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools']}
       />
 
-      {/* Modals remain the same as original */}
+      {/* School Details Modal */}
+      <Modal
+        isOpen={schoolModalOpen}
+        onClose={() => setSchoolModalOpen(false)}
+        className="max-w-6xl p-6"
+      >
+        <div className="space-y-6 h-[550px] overflow-y-auto scrollbar-hide">
+          <div className="flex justify-between items-center">
+            <h4 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+              School Details
+            </h4>
+            <div className="flex gap-3">
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors mr-16"
+              >
+                <FaFileExcel className="text-lg" />
+                Export to Excel
+              </button>
+              {/* <button
+                onClick={() => setSchoolModalOpen(false)}
+                className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button> */}
+            </div>
+          </div>
+
+          {selectedGroupMeta && (
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div><strong>Order No:</strong> {selectedGroupMeta.order_no}</div>
+                <div><strong>Class Range:</strong> {selectedGroupMeta.class_range}</div>
+                <div><strong>Period:</strong> {selectedGroupMeta.period}</div>
+                <div><strong>Financial Year:</strong> {selectedGroupMeta.financial_year}</div>
+                <div><strong>No of Days:</strong> {selectedGroupMeta.no_of_days}</div>
+                <div><strong>Total Schools:</strong> {selectedGroupMeta.total_schools}</div>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300 border-collapse dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-700">
+  <thead className="bg-gray-50 dark:bg-gray-700">
+    <tr>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        Sr No
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        School Name
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        UDISE Code
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        Taluka
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        Class Range
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+        Patsankhya
+      </th>
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
+        Total Weight
+      </th>
+    </tr>
+  </thead>
+  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+    {selectedGroupData.map((school, index) => {
+      const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+      return (
+        <tr key={school.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {index + 1}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+            {school.schoolname}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {school.udaisno}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {schoolDetails?.talukaname || '-'}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {school.class_range}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+            {school.patsankhya || 0}
+          </td>
+          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
+            {school.total_weight}
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
+
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
       <Modal
         isOpen={confirmGroupOpen}
         onClose={() => { setConfirmGroupOpen(false); setPendingGroupId(null); }}

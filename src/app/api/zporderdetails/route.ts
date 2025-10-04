@@ -5,7 +5,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 // GET - Fetch all ZP order details
 export async function GET() {
     try {
-      const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM zp_order_details where status = "Active"');
+      const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM zp_order_details');
       return NextResponse.json(rows);
     } catch (error) {
       console.error('Fetch error:', error);

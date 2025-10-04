@@ -10,6 +10,15 @@ import 'flatpickr/dist/flatpickr.css';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
+// Loader Component
+const Loader = () => {
+  return (
+    <div className="flex justify-center items-center py-8">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <span className="ml-3 text-gray-600">Loading dispatch data...</span>
+    </div>
+  );
+};
 
 interface SchoolWiseOrder {
   id: number;
@@ -50,8 +59,6 @@ declare module 'flatpickr' {
     };
   }
 }
-
-
 
 interface CenterRow {
   center_id: number;
@@ -155,10 +162,6 @@ interface TalukaRow {
   dist_id?: number;
   status?: string;
 }
-
-
-
-
 
 const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, dispatchData }) => {
     const exportToExcel = () => {
@@ -326,7 +329,7 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, di
   };
 
 const DispatchView = () => {
-  // const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Add loading state
   const [showExcelModal, setShowExcelModal] = useState(false);
   const [lastDispatchData] = useState<{
     dispatch_code: string;
@@ -506,10 +509,16 @@ const DispatchView = () => {
 
   const fetchDispatchList = async () => {
     try {
+      setLoading(true); // Start loading
       const res = await fetch('/api/dispatchdetails');
-      if (res.ok) setDispatchList(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setDispatchList(data);
+      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false); // Stop loading regardless of success/error
     }
   };
 
@@ -557,111 +566,6 @@ const DispatchView = () => {
     fetchDispatchList();
     fetchSchoolDataMap();
   }, []);
-
-  // Options
-  // const orderNoOptions = useMemo(() => [
-  //   { value: '', label: 'Select Order Number' },
-  //   ...zpOrders.map(order => ({ value: String(order.id), label: order.order_no }))
-  // ], [zpOrders]);
-
-  // const truckOptions = useMemo(() => [
-  //   { value: '', label: 'Select Truck' },
-  //   ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
-  // ], [truckList]);
-
-  // const talukaOptions = useMemo(() => [
-  //   { value: '', label: 'Select Taluka' },
-  //   ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
-  // ], [talukaList]);
-
-  // const centerOptions = useMemo(() => [
-  //   { value: '', label: 'Select Center' },
-  //   ...centerList
-  //     .filter(c => !selectedTalukaId || String(c.taluka_id || '') === String(selectedTalukaId))
-  //     .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
-  // ], [centerList, selectedTalukaId]);
-
-  // const classRangeOptions = useMemo(() => {
-  //   if (!orderNo || !selectedSchoolId) return [{ value: '', label: 'Class Varg (Select)' }];
-  //   const uniq = new Set<string>();
-  //   schoolWiseOrders
-  //     .filter(s => String(s.order_id) === orderNo && String(s.school_id) === String(selectedSchoolId))
-  //     .forEach(s => { if (s.class_range) uniq.add(String(s.class_range)); });
-  //   const arr = Array.from(uniq.values()).sort();
-  //   return [{ value: '', label: 'Class Varg (All)' }, ...arr.map(v => ({ value: v, label: v }))];
-  // }, [orderNo, selectedSchoolId, schoolWiseOrders]);
-
-  // Updated school options - exclude schools that have already been dispatched
-  // const schoolOptions = useMemo(() => {
-  //   if (!orderNo) return [{ value: '', label: 'Select School' }];
-
-  //   let filtered = schoolWiseOrders.filter(s => String(s.order_id) === orderNo);
-
-  //   if (selectedCenterId) {
-  //     filtered = filtered.filter(s => {
-  //       const sd = schoolDataById.get(Number(s.school_id));
-  //       return sd && String(sd.center) === String(selectedCenterId);
-  //     });
-  //   } else if (selectedTalukaId) {
-  //     filtered = filtered.filter(s => {
-  //       const sd = schoolDataById.get(Number(s.school_id));
-  //       return sd && String(sd.taluka_id) === String(selectedTalukaId);
-  //     });
-  //   }
-
-  //   // NEW: Filter out schools that have already been dispatched
-  //   const dispatchedSchools = new Set<number>();
-  //   dispatchList.forEach(dispatch => {
-  //     if (String(dispatch.order_id) === orderNo) {
-  //       dispatchedSchools.add(dispatch.school_id);
-  //     }
-  //   });
-
-  //   // Remove dispatched schools from the list
-  //   filtered = filtered.filter(s => !dispatchedSchools.has(s.school_id));
-
-  //   // De-dup by school_id
-  //   const seen = new Set<number>();
-  //   const dedup = filtered.filter(s => {
-  //     if (seen.has(s.school_id)) return false;
-  //     seen.add(s.school_id);
-  //     return true;
-  //   });
-
-  //   // Stable sort
-  //   dedup.sort((a, b) => {
-  //     const an = a.schoolname || schoolDataById.get(a.school_id)?.schoolname || '';
-  //     const bn = b.schoolname || schoolDataById.get(b.school_id)?.schoolname || '';
-  //     return an.localeCompare(bn);
-  //   });
-
-  //   // Label: SR) Name (UDISE) with fallback from schooldata if missing in API
-  //   return [
-  //     { value: '', label: 'Select School' },
-  //     ...dedup.map((s, idx) => {
-  //       const fallback = schoolDataById.get(Number(s.school_id));
-  //       const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
-  //       const ud = s.udaisno || fallback?.udaisno || 'NA';
-  //       return {
-  //         value: String(s.school_id),
-  //         label: `${idx + 1}) ${name} (${ud})`,
-  //       };
-  //     })
-  //   ];
-  // }, [orderNo, selectedTalukaId, selectedCenterId, schoolWiseOrders, schoolDataById, dispatchList]);
-
-  // const handleOrderChange = (orderId: string) => {
-  //   setOrderNo(orderId);
-  //   setSelectedClassRange('');
-  //   setSelectedSchoolId('');
-  // };
-
-  // const handleTalukaChange = (talukaId: string) => {
-  //   setSelectedTalukaId(talukaId);
-  //   setSelectedCenterId('');
-  //   setSelectedSchoolId('');
-  //   setSelectedClassRange('');
-  // };
 
   // Selected target (order + school)
   const selectedOrderSchool = useMemo(() => {
@@ -968,7 +872,6 @@ const DispatchView = () => {
     }
   };
 
-
   // Memoize grain quantities calculation to prevent performance issues
   const grainQuantitiesByDispatch = useMemo(() => {
     const quantitiesMap = new Map<string, Record<string, number>>();
@@ -1047,6 +950,7 @@ const DispatchView = () => {
     }
 
     try {
+      setLoading(true); // Start loading when deleting
       const response = await fetch(`/api/dispatchdetails?dispatch_code=${dispatchCode}`, {
         method: 'DELETE',
         headers: {
@@ -1066,6 +970,8 @@ const DispatchView = () => {
     } catch (error) {
       console.error('Error deleting dispatch:', error);
       toast.error('Failed to delete dispatch');
+    } finally {
+      setLoading(false); // Stop loading after delete operation
     }
   };
 
@@ -1434,6 +1340,18 @@ const DispatchView = () => {
     };
   }, [showInputMode, fromDate, toDate]);
 
+  // Show loader while data is loading
+  if (loading) {
+    return (
+      <div className="">
+        <div className="bg-white rounded-2xl shadow-md border p-4 mb-4">
+          {toolbar}
+        </div>
+        <Loader />
+      </div>
+    );
+  }
+
   return (
     <div className="">
       {/* Add toolbar at the top */}
@@ -1538,4 +1456,3 @@ const DispatchView = () => {
 };
 
 export default DispatchView;
-
