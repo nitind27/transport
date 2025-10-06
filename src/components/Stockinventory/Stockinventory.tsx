@@ -362,9 +362,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
       {/* Tab Content - Updated with new tab content */}
       {activeTab === 'stockTransfer' ? (
-        <StockTransfer />
+        <StockTransfer onDataChanged={fetchEnhancedStockData}/>
       ) : activeTab === 'damageStock' ? (
-        <DamageStock />
+        <DamageStock onDataChanged={fetchEnhancedStockData} />
       ) : activeTab === 'inventory' ? (
         // Stock Inventory Tab - Enhanced with new columns
         <div>

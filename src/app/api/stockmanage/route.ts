@@ -152,20 +152,25 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
-
-        const [result] = await connection.query<ResultSetHeader>(
-            `INSERT INTO stockmanage 
-            (invoiceDate, itemGrain, quantity, remarks, status, created_at) 
-            VALUES (?, ?, ?, ?, ?, NOW())`,
-            [
-                invoiceDate || null, 
-                itemGrain, 
-                Number(quantity), 
-                remarks || null, 
-                'Active'
-            ]
-        );
-
+// Get max tpNo for the table
+const [tpNoRows] = await connection.query<RowDataPacket[]>(
+    `SELECT COALESCE(MAX(tpNo), 0) AS maxTpNo FROM stockmanage`
+  );
+  const nextTpNo = (tpNoRows[0]?.maxTpNo || 0) + 1;
+  
+  const [result] = await connection.query<ResultSetHeader>(
+    `INSERT INTO stockmanage 
+     (invoiceDate, itemGrain, quantity, remarks, status, tpNo, created_at) 
+     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      invoiceDate || null, 
+      itemGrain, 
+      Number(quantity), 
+      remarks || null, 
+      'Active',
+      nextTpNo        // <--- This is the next tpNo
+    ]
+  )
         return NextResponse.json({
             message: 'Stock management entry added successfully',
             id: result.insertId,

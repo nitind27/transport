@@ -43,8 +43,10 @@ type StockInfo = {
     availableWeight: number;
     message: string;
 };
-
-const StockTransfer = () => {
+type StockTransferProps = {
+    onDataChanged?: () => void;
+}
+const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
     const [data, setData] = useState<StockTransferEntry[]>([]);
     const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
     const [loading, setLoading] = useState(false);
@@ -218,6 +220,7 @@ const StockTransfer = () => {
                 if (result.tpNo) {
                     toast.info(`TP Number: ${result.tpNo}`);
                 }
+                if (onDataChanged) onDataChanged();
                 reset();
                 setEditId(null);
                 fetchData();
@@ -320,7 +323,10 @@ const StockTransfer = () => {
                     <span>
                         <DefaultModal
                             id={row.id}
-                            fetchData={fetchData}
+                            fetchData={async () => {
+                                await fetchData();          // Refresh this table's data
+                                if (onDataChanged) onDataChanged(); // Refresh parent summary or enhanced data
+                              }}
                             endpoint={"stocktransfer"}
                             bodyname='id'
                             newstatus={row.status || "Active"}
@@ -342,7 +348,7 @@ const StockTransfer = () => {
                 data={data}
                 classname={"h-auto overflow-y-auto scrollbar-hide"}
                 inputfiled={
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="">
                         <div className=''>
                             <Label>Date of Invoice</Label>
                             <span className=''>
@@ -364,7 +370,7 @@ const StockTransfer = () => {
                                 />
                             </span>
                         </div>
-
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 mt-5">
                         <div>
                             <Label>Item/Grain</Label>
                             <select
@@ -465,6 +471,7 @@ const StockTransfer = () => {
                                 onChange={(e) => setRemarks(e.target.value)}
                             />
                         </div>
+                    </div>
                     </div>
                 }
                 columns={columns}

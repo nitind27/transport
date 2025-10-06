@@ -32,19 +32,21 @@ type FormErrors = {
     itemGrain?: string;
     quantity?: string;
 };
-
-const DamageStock = () => {
+type DamageStockProps = {
+    onDataChanged?: () => void;
+}
+const DamageStock = ({ onDataChanged }: DamageStockProps) => {
     const [data, setData] = useState<DamageStockEntry[]>([]);
     const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setErrors] = useState<FormErrors>({});
-    
+
     // Form state
     const [invoiceDate, setInvoiceDate] = useState("");
     const [itemGrain, setItemGrain] = useState("");
     const [quantity, setQuantity] = useState<number | "">("");
     const [remarks, setRemarks] = useState("");
-    
+
     const [editId, setEditId] = useState<number | null>(null);
     const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
 
@@ -144,6 +146,8 @@ const DamageStock = () => {
             });
 
             if (response.ok) {
+                fetchData();
+                if (onDataChanged) onDataChanged();
                 toast.success(editId ? 'Damage stock updated successfully!' : 'Damage stock added successfully!');
                 reset();
                 setEditId(null);
@@ -184,7 +188,7 @@ const DamageStock = () => {
     }
 
     const columns: Column<DamageStockEntry>[] = [
-       
+
         {
             key: 'invoiceDate',
             label: 'Invoice Date',
@@ -221,12 +225,15 @@ const DamageStock = () => {
                         <FaEdit className="inline-block align-middle text-lg" />
                     </span>
                     <span>
-                        <DefaultModal 
-                            id={row.id} 
-                            fetchData={fetchData} 
-                            endpoint={"damagestock"} 
-                            bodyname='id' 
-                            newstatus={row.status || "Active"} 
+                        <DefaultModal
+                            id={row.id}
+                            fetchData={async () => {
+                                await fetchData();          // Refresh this table's data
+                                if (onDataChanged) onDataChanged(); // Refresh parent summary or enhanced data
+                              }}
+                            endpoint={"stockmanage"}
+                            bodyname='id'
+                            newstatus={row.status || "Active"}
                         />
                     </span>
                 </div>
@@ -245,7 +252,7 @@ const DamageStock = () => {
                 data={data}
                 classname={"h-auto overflow-y-auto scrollbar-hide"}
                 inputfiled={
-                    <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="">
                         <div>
                             <Label>Invoice Date</Label>
                             <DatePicker
@@ -265,56 +272,57 @@ const DamageStock = () => {
                                 }}
                             />
                         </div>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 mt-5">
+                            <div>
+                                <Label>Item/Grain</Label>
+                                <select
+                                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.itemGrain ? "border-red-500" : ""}`}
+                                    value={itemGrain}
+                                    onChange={(e) => setItemGrain(e.target.value)}
+                                >
+                                    <option value="">Select Item/Grain</option>
+                                    {grainOptions.map((grain) => (
+                                        <option key={grain.value} value={grain.value}>
+                                            {grain.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                {error.itemGrain && (
+                                    <div className="text-red-500 text-sm mt-1 pl-1">
+                                        {error.itemGrain}
+                                    </div>
+                                )}
+                            </div>
 
-                        <div>
-                            <Label>Item/Grain</Label>
-                            <select
-                                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.itemGrain ? "border-red-500" : ""}`}
-                                value={itemGrain}
-                                onChange={(e) => setItemGrain(e.target.value)}
-                            >
-                                <option value="">Select Item/Grain</option>
-                                {grainOptions.map((grain) => (
-                                    <option key={grain.value} value={grain.value}>
-                                        {grain.label}
-                                    </option>
-                                ))}
-                            </select>
-                            {error.itemGrain && (
-                                <div className="text-red-500 text-sm mt-1 pl-1">
-                                    {error.itemGrain}
-                                </div>
-                            )}
-                        </div>
+                            <div>
+                                <Label>Quantity</Label>
+                                <input
+                                    type="number"
+                                    placeholder="Enter Quantity"
+                                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.quantity ? "border-red-500" : ""}`}
+                                    value={quantity}
+                                    onChange={(e) => {
+                                        const newQuantity = e.target.value === "" ? "" : Number(e.target.value);
+                                        setQuantity(newQuantity);
+                                    }}
+                                />
+                                {error.quantity && (
+                                    <div className="text-red-500 text-sm mt-1 pl-1">
+                                        {error.quantity}
+                                    </div>
+                                )}
+                            </div>
 
-                        <div>
-                            <Label>Quantity</Label>
-                            <input
-                                type="number"
-                                placeholder="Enter Quantity"
-                                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.quantity ? "border-red-500" : ""}`}
-                                value={quantity}
-                                onChange={(e) => {
-                                    const newQuantity = e.target.value === "" ? "" : Number(e.target.value);
-                                    setQuantity(newQuantity);
-                                }}
-                            />
-                            {error.quantity && (
-                                <div className="text-red-500 text-sm mt-1 pl-1">
-                                    {error.quantity}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="sm:col-span-2">
-                            <Label>Remarks</Label>
-                            <textarea
-                                placeholder="Enter Remarks"
-                                rows={3}
-                                className="w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                                value={remarks}
-                                onChange={(e) => setRemarks(e.target.value)}
-                            />
+                            <div className="sm:col-span-2">
+                                <Label>Remarks</Label>
+                                <textarea
+                                    placeholder="Enter Remarks"
+                                    rows={3}
+                                    className="w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                    value={remarks}
+                                    onChange={(e) => setRemarks(e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
                 }
