@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import DataTable from "react-data-table-component";
 import { Column, FilterOption } from "./tabletype";
 // import FormInModal from "../example/ModalExample/FormInModal";
@@ -50,37 +50,31 @@ export function ColumnSearchTable<T extends object>({
   const [perPage, setPerPage] = useState(10);
 
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
-  const [activeSearchColumn, setActiveSearchColumn] = useState<string | null>(null);
-  const [tempSearchValue, setTempSearchValue] = useState<string>("");
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const headerRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
+  // Remove tempSearchValue state since we'll use columnSearches directly for real-time filtering
+  const searchInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const isGrouped = useMemo(() => !!groupByKey || (groupByKeys && groupByKeys.length > 0), [groupByKey, groupByKeys]);
 
   const isSearchable = (key: string) =>
     !searchableKeys || searchableKeys.map(String).includes(String(key));
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (activeSearchColumn) {
-        const target = event.target as HTMLElement;
-        const isClickInsideSearch = searchInputRef.current?.contains(target);
-        const isClickInsideHeader = headerRefs.current[activeSearchColumn]?.contains(target);
-        if (!isClickInsideSearch && !isClickInsideHeader) {
-          if (tempSearchValue.trim()) {
-            handleColumnSearch(activeSearchColumn, tempSearchValue);
-          } else {
-            clearColumnSearch(activeSearchColumn);
-          }
-          setActiveSearchColumn(null);
-          setTempSearchValue("");
-        }
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [activeSearchColumn, tempSearchValue]);
+  // Debounce function for better performance
+  // const useDebounce = (value: string, delay: number) => {
+  //   const [debouncedValue, setDebouncedValue] = useState(value);
+
+  //   useEffect(() => {
+  //     const handler = setTimeout(() => {
+  //       setDebouncedValue(value);
+  //     }, delay);
+
+  //     return () => {
+  //       clearTimeout(handler);
+  //     };
+  //   }, [value, delay]);
+
+  //   return debouncedValue;
+  // };
 
   const groupedData = useMemo((): GroupedData<T>[] => {
     const hasMulti = Array.isArray(groupByKeys) && groupByKeys.length > 0;
@@ -101,6 +95,15 @@ export function ColumnSearchTable<T extends object>({
     }));
   }, [data, groupByKey, groupByKeys]);
 
+  // Use debounced column searches for better performance
+  const debouncedColumnSearches = useMemo(() => {
+    const debounced: Record<string, string> = {};
+    Object.entries(columnSearches).forEach(([key, value]) => {
+      debounced[key] = value;
+    });
+    return debounced;
+  }, [columnSearches]);
+
   const groupedFiltered = useMemo(() => {
     let list = groupedData;
     if (filter && filterKey) {
@@ -110,11 +113,8 @@ export function ColumnSearchTable<T extends object>({
       const s = search.toLowerCase();
       list = list.filter(g => g.items.some(it => Object.values(it).some(v => String(v).toLowerCase().includes(s))));
     }
-    const allSearches: Record<string, string> = { ...columnSearches };
-    if (activeSearchColumn && tempSearchValue.trim() && isSearchable(activeSearchColumn)) {
-      allSearches[activeSearchColumn] = tempSearchValue;
-    }
-    Object.entries(allSearches).forEach(([columnKey, searchValue]) => {
+    
+    Object.entries(debouncedColumnSearches).forEach(([columnKey, searchValue]) => {
       if (!isSearchable(columnKey)) return;
       if (searchValue.trim()) {
         const s = searchValue.toLowerCase();
@@ -131,7 +131,7 @@ export function ColumnSearchTable<T extends object>({
       }
     });
     return list;
-  }, [groupedData, filter, filterKey, search, columnSearches, columns, activeSearchColumn, tempSearchValue]);
+  }, [groupedData, filter, filterKey, search, debouncedColumnSearches, columns]);
 
   const totalGroups = groupedFiltered.length;
 
@@ -200,11 +200,8 @@ export function ColumnSearchTable<T extends object>({
       const s = search.toLowerCase();
       tempData = tempData.filter(row => Object.values(row).some(value => String(value).toLowerCase().includes(s)));
     }
-    const allSearches: Record<string, string> = { ...columnSearches };
-    if (activeSearchColumn && tempSearchValue.trim() && isSearchable(activeSearchColumn)) {
-      allSearches[activeSearchColumn] = tempSearchValue;
-    }
-    Object.entries(allSearches).forEach(([columnKey, searchValue]) => {
+    
+    Object.entries(debouncedColumnSearches).forEach(([columnKey, searchValue]) => {
       if (!isSearchable(columnKey)) return;
       if (searchValue.trim()) {
         const s = searchValue.toLowerCase();
@@ -215,10 +212,18 @@ export function ColumnSearchTable<T extends object>({
       }
     });
     return tempData;
-  }, [displayData, data, filter, filterKey, search, isGrouped, columnSearches, columns, activeSearchColumn, tempSearchValue]);
+  }, [displayData, data, filter, filterKey, search, isGrouped, debouncedColumnSearches, columns]);
 
   const handleColumnSearch = (columnKey: string, value: string) => {
-    setColumnSearches(prev => ({ ...prev, [columnKey]: value }));
+    setColumnSearches(prev => {
+      const newSearches = { ...prev };
+      if (value.trim()) {
+        newSearches[columnKey] = value;
+      } else {
+        delete newSearches[columnKey];
+      }
+      return newSearches;
+    });
     setCurrentPage(1);
   };
 
@@ -231,25 +236,14 @@ export function ColumnSearchTable<T extends object>({
     setCurrentPage(1);
   };
 
-  const handleHeaderClick = (columnKey: string) => {
-    if (!isSearchable(columnKey)) return;
-    if (activeSearchColumn === columnKey) {
-      setActiveSearchColumn(null);
-      setTempSearchValue("");
-    } else {
-      setActiveSearchColumn(columnKey);
-      setTempSearchValue(columnSearches[columnKey] || "");
-    }
+  const handleSearchChange = (columnKey: string, value: string) => {
+    // Real-time filtering - update immediately
+    handleColumnSearch(columnKey, value);
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, columnKey: string) => {
-    if (e.key === "Enter") {
-      handleColumnSearch(columnKey, tempSearchValue);
-      setActiveSearchColumn(null);
-      setTempSearchValue("");
-    } else if (e.key === "Escape") {
-      setActiveSearchColumn(null);
-      setTempSearchValue("");
+    if (e.key === "Escape") {
+      clearColumnSearch(columnKey);
     }
   };
 
@@ -292,7 +286,6 @@ export function ColumnSearchTable<T extends object>({
   );
 
   if (groupByKey || (groupByKeys && groupByKeys.length)) {
-    // const totalPages = Math.max(1, Math.ceil(totalGroups / perPage));
     return (
       <div className="bg-white rounded-2xl shadow-md border p-4">
         {SubHeaderComponent}
@@ -306,58 +299,48 @@ export function ColumnSearchTable<T extends object>({
                 {columns.map((col) => {
                   const columnKey = String(col.key);
                   const searchable = isSearchable(columnKey);
-                  const isSearchActive = searchable && activeSearchColumn === columnKey;
                   const hasSearchValue = searchable && columnSearches[columnKey];
-                  const isFiltering = isSearchActive && tempSearchValue.trim();
+                  
                   return (
                     <th
                       key={columnKey}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border border-gray-200 dark:border-gray-700 relative"
                     >
-                      <div
-                        ref={(el) => {
-                          headerRefs.current[columnKey] = el;
-                        }}
-                        className={`flex items-center justify-between ${searchable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" : ""
-                          } rounded px-2 py-1 -mx-2 -my-1`}
-                        onClick={() => searchable && handleHeaderClick(columnKey)}
-                      >
-                        {isSearchActive ? (
-                          <div className="flex items-center gap-2 flex-1">
+                      <div className="flex flex-col gap-1">
+                        {/* Column Label */}
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{col.label}</span>
+                          {searchable && hasSearchValue && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                              Filtered
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Search Input - Always visible for searchable columns */}
+                        {searchable && (
+                          <div className="flex items-center gap-1">
                             <input
-                              ref={searchInputRef}
+                              ref={(el) => {
+                                searchInputRefs.current[columnKey] = el;
+                              }}
                               type="text"
-                              placeholder={`Search in ${col.label}...`}
-                              value={tempSearchValue}
-                              onChange={(e) => setTempSearchValue(e.target.value)}
+                              placeholder={`Search ${col.label}...`}
+                              value={columnSearches[columnKey] || ""}
+                              onChange={(e) => handleSearchChange(columnKey, e.target.value)}
                               onKeyDown={(e) => handleSearchKeyPress(e, columnKey)}
-                              className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                              autoFocus
+                              className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full"
                             />
-                            {(hasSearchValue || isFiltering) && (
+                            {hasSearchValue && (
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  clearColumnSearch(columnKey);
-                                  setActiveSearchColumn(null);
-                                  setTempSearchValue("");
-                                }}
-                                className="text-red-500 hover:text-red-700 text-xs"
+                                onClick={() => clearColumnSearch(columnKey)}
+                                className="text-red-500 hover:text-red-700 text-xs p-1"
                                 title="Clear search"
+                                type="button"
                               >
                                 ✕
                               </button>
                             )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 flex-1">
-                            <span className="flex-1">{col.label}</span>
-                            {searchable && (hasSearchValue || isFiltering) && (
-                              <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
-                                {isFiltering ? "Filtering..." : "Filtered"}
-                              </span>
-                            )}
-                            {searchable && <span className="text-gray-400 text-xs">🔍</span>}
                           </div>
                         )}
                       </div>

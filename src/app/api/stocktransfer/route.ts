@@ -76,53 +76,74 @@ async function generateNextTpNo(): Promise<string> {
 // Function to check available stock for an item
 async function checkAvailableStock(itemGrain: string, requestedWeight: number): Promise<{available: boolean, availableWeight: number, message: string}> {
     try {
-        // Get total stock weight for the item from stockinventory
-        const [stockRows] = await pool.query<RowDataPacket[]>(
-            `SELECT COALESCE(SUM(weight), 0) as totalStock 
-             FROM stockinventory 
-             WHERE grain = ? AND status = "Active"`,
+        // Query balanceQty using joined aggregations
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `
+            SELECT 
+                ig.id,
+                ig.name AS grain,
+                ig.Unit AS units,
+                COALESCE(si.inwardQty, 0) AS inwardQty,
+                COALESCE(dd.dispatchQty, 0) AS dispatchQty,
+                COALESCE(st.transferQty, 0) AS transferQty,
+                COALESCE(sm.damageQty, 0) AS damageQty,
+                (COALESCE(si.inwardQty, 0) - COALESCE(dd.dispatchQty, 0) - COALESCE(st.transferQty, 0) - COALESCE(sm.damageQty, 0)) AS balanceQty
+            FROM itemsgrains ig
+            LEFT JOIN (
+                SELECT grain, SUM(weight) AS inwardQty
+                FROM stockinventory
+                WHERE status = 'Active'
+                GROUP BY grain
+            ) si ON LOWER(TRIM(si.grain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
+            LEFT JOIN (
+                SELECT item_name, SUM(qty_dispatch) AS dispatchQty
+                FROM dispatch_details
+                WHERE status = 'Active'
+                GROUP BY item_name
+            ) dd ON LOWER(TRIM(dd.item_name)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
+            LEFT JOIN (
+                SELECT itemGrain, SUM(weight) AS transferQty
+                FROM stocktransfer
+                WHERE status = 'Active'
+                GROUP BY itemGrain
+            ) st ON LOWER(TRIM(st.itemGrain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
+            LEFT JOIN (
+                SELECT itemGrain, SUM(quantity) AS damageQty
+                FROM stockmanage
+                WHERE status = 'Active'
+                GROUP BY itemGrain
+            ) sm ON LOWER(TRIM(sm.itemGrain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
+            WHERE LOWER(TRIM(ig.name)) = LOWER(TRIM(?)) COLLATE utf8mb4_unicode_ci
+            `,
             [itemGrain]
         );
-        
-        const totalStock = stockRows[0]?.totalStock || 0;
-        
-        // Get total transferred weight for the item from stocktransfer
-        const [transferRows] = await pool.query<RowDataPacket[]>(
-            `SELECT COALESCE(SUM(weight), 0) as totalTransferred 
-             FROM stocktransfer 
-             WHERE itemGrain = ? AND status = "Active"`,
-            [itemGrain]
-        );
-        
-        const totalTransferred = transferRows[0]?.totalTransferred || 0;
-        
-        // Calculate available weight
-        const availableWeight = totalStock - totalTransferred;
-        
-        console.log(`Stock Check for ${itemGrain}: Total Stock: ${totalStock}, Transferred: ${totalTransferred}, Available: ${availableWeight}`);
-        
-        if (availableWeight <= 0) {
+
+        const balanceQty = rows[0]?.balanceQty ?? 0;
+
+        console.log(`Stock Check for ${itemGrain}: Balance Quantity: ${balanceQty}`);
+
+        if (balanceQty <= 0) {
             return {
                 available: false,
                 availableWeight: 0,
-                message: `No stock available for ${itemGrain}. Total stock: ${totalStock}, Already transferred: ${totalTransferred}`
+                message: `No stock available for ${itemGrain}.`
             };
         }
-        
-        if (requestedWeight > availableWeight) {
+
+        if (requestedWeight > balanceQty) {
             return {
                 available: false,
-                availableWeight: availableWeight,
-                message: `Insufficient stock for ${itemGrain}. Available: ${availableWeight}, Requested: ${requestedWeight}`
+                availableWeight: balanceQty,
+                message: `Insufficient stock for ${itemGrain}. Available: ${balanceQty}, Requested: ${requestedWeight}`
             };
         }
-        
+
         return {
             available: true,
-            availableWeight: availableWeight,
-            message: `Stock available for ${itemGrain}. Available: ${availableWeight}, Requested: ${requestedWeight}`
+            availableWeight: balanceQty,
+            message: `Stock available for ${itemGrain}. Available: ${balanceQty}, Requested: ${requestedWeight}`
         };
-        
+
     } catch (error) {
         console.error('Error checking stock:', error);
         return {
@@ -132,6 +153,7 @@ async function checkAvailableStock(itemGrain: string, requestedWeight: number): 
         };
     }
 }
+
 
 // POST - Create new stock transfer entry
 export async function POST(req: Request) {

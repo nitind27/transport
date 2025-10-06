@@ -36,11 +36,17 @@ type FormErrors = {
 type DamageStockProps = {
     onDataChanged?: () => void;
 }
+type StockInfo = {
+    availableWeight: number;
+    message: string;
+};
 const DamageStock = ({ onDataChanged }: DamageStockProps) => {
     const [data, setData] = useState<DamageStockEntry[]>([]);
     const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setErrors] = useState<FormErrors>({});
+    const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
+    const [checkingStock, setCheckingStock] = useState(false);
 
     // Form state
     const [invoiceDate, setInvoiceDate] = useState("");
@@ -50,7 +56,15 @@ const DamageStock = ({ onDataChanged }: DamageStockProps) => {
 
     const [editId, setEditId] = useState<number | null>(null);
     const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
-
+    useEffect(() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const formattedDate = `${year}-${month}-${day}`;
+        setInvoiceDate(formattedDate);
+    }, []);
+    
     // Fetch item grains from API
     const fetchItemGrains = async () => {
         try {
@@ -64,7 +78,38 @@ const DamageStock = ({ onDataChanged }: DamageStockProps) => {
             toast.error('Failed to fetch item grains');
         }
     };
+    const checkStockAvailability = async (selectedItemGrain: string) => {
+        if (!selectedItemGrain) {
+            setStockInfo(null);
+            return;
+        }
 
+        setCheckingStock(true);
+        try {
+            const response = await fetch(`/api/stocktransfer?itemGrain=${encodeURIComponent(selectedItemGrain)}`);
+            if (response.ok) {
+                const stockData = await response.json();
+                setStockInfo({
+                    availableWeight: stockData.availableWeight,
+                    message: stockData.message
+                });
+            } else {
+                setStockInfo(null);
+            }
+        } catch (error) {
+            console.error('Error checking stock:', error);
+            setStockInfo(null);
+        } finally {
+            setCheckingStock(false);
+        }
+    };
+    useEffect(() => {
+        if (itemGrain) {
+            checkStockAvailability(itemGrain);
+        } else {
+            setStockInfo(null);
+        }
+    }, [itemGrain]);
     // Fetch damage stock data from API
     const fetchData = async () => {
         setLoading(true);
@@ -94,10 +139,16 @@ const DamageStock = ({ onDataChanged }: DamageStockProps) => {
     }, [isvalidation]);
 
     const reset = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const formattedDate = `${year}-${month}-${day}`;
         setInvoiceDate("");
         setItemGrain("");
         setQuantity("");
         setRemarks("");
+        setInvoiceDate(formattedDate);
         setEditId(null);
     };
 
@@ -318,6 +369,18 @@ const DamageStock = ({ onDataChanged }: DamageStockProps) => {
                                         {error.quantity}
                                     </div>
                                 )}
+                                {/* Stock Information Display */}
+                            {stockInfo && (
+                                <div className={`text-sm mt-1 pl-1 ${stockInfo.availableWeight > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {checkingStock ? (
+                                        <span className="text-blue-600">Checking stock...</span>
+                                    ) : (
+                                        <span>
+                                            Available Stock: <strong>{stockInfo.availableWeight}</strong>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                             </div>
 
                             <div className="sm:col-span-2">

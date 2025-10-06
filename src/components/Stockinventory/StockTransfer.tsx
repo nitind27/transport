@@ -65,6 +65,16 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
     const [editId, setEditId] = useState<number | null>(null);
     const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
 
+    // Set current date as default when component mounts
+    useEffect(() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const formattedDate = `${year}-${month}-${day}`;
+        setInvoiceDate(formattedDate);
+    }, []);
+
     // Fetch item grains from API
     const fetchItemGrains = async () => {
         try {
@@ -144,7 +154,14 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
     }, [itemGrain]);
 
     const reset = () => {
-        setInvoiceDate("");
+        // Set current date when resetting form
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const formattedDate = `${year}-${month}-${day}`;
+        
+        setInvoiceDate(formattedDate);
         setItemGrain("");
         setWeight("");
         setDestination("");
@@ -281,7 +298,7 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
         },
         {
             key: 'weight',
-            label: 'Weight',
+            label: 'Quantity',
             accessor: 'weight',
             render: (row) => <span>{row.weight}</span>
         },
@@ -356,7 +373,7 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
                                     id="invoiceDate"
                                     label=""
                                     placeholder="Select Invoice Date"
-                                    defaultDate={invoiceDate ? new Date(invoiceDate) : undefined}
+                                    defaultDate={invoiceDate ? new Date(invoiceDate) : new Date()} // Set current date as default
                                     onChange={(selectedDates) => {
                                         if (selectedDates && selectedDates.length > 0) {
                                             const date = selectedDates[0];
@@ -393,10 +410,10 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
                         </div>
 
                         <div>
-                            <Label>Weight</Label>
+                            <Label>Quantity</Label>
                             <input
                                 type="number"
-                                placeholder="Enter Weight"
+                                placeholder="Enter Quantity"
                                 className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 ${error.weight ? "border-red-500" : ""}`}
                                 value={weight}
                                 onChange={(e) => {

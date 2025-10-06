@@ -13,15 +13,6 @@ import { saveAs } from 'file-saver';
 import BreadcrumbsBtn from '../common/BreadcrumbsBtn';
 
 // Types
-// interface ZPOrderDetail {
-//   id: number;
-//   order_no: string;
-//   no_of_days: number;
-//   period: string;
-//   financial_year: string;
-//   status: string;
-// }
-
 interface School {
   id: number;
   schoolid: number;
@@ -53,11 +44,26 @@ interface SchoolWiseOrder {
   uniq_id?: string;
 }
 
-// type FormErrors = {
-//   orderNo?: string;
-//   selectedClass?: string;
-//   file?: string;
-// };
+interface ItemsData {
+  तांदुळ?: number;
+  मुंगदाळ?: number;
+  मसूरदाळ?: number;
+  तूरदाळ?: number;
+  हरभरा?: number;
+  चवळी?: number;
+  मटकी?: number;
+  मूग?: number;
+  वाटणा?: number;
+  सोया_वडी?: number;
+  मसाला?: number;
+  सोया_तेल?: number;
+  हळद?: number;
+  मीठ?: number;
+  मोहरी?: number;
+  चना?: number;
+  जीरा?: number;
+  'एकूण वजन'?: number;
+}
 
 type ExtendedSWO = SchoolWiseOrder & {
   _isFirstInGroup?: boolean;
@@ -67,17 +73,12 @@ type ExtendedSWO = SchoolWiseOrder & {
 
 const OrderRegisterWithColumnSearch = () => {
   const [loading] = useState(false);
-  // const [error] = useState<FormErrors>({});
-
-  // Global UI busy (overlay loader)
   const [uiBusy] = useState(false);
 
   // Form fields
-  // const [orderNo, setOrderNo] = useState('');
   const [selectedOrderFilter, setSelectedOrderFilter] = useState('');
 
   // Data states
-  // const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
 
@@ -97,17 +98,8 @@ const OrderRegisterWithColumnSearch = () => {
     total_schools: number;
   } | null>(null);
 
-  // Fetch data functions
-  // const fetchZpOrders = async () => {
-  //   try {
-  //     const response = await fetch('/api/zporderdetails');
-  //     const data = await response.json();
-  //     // setZpOrders(data);
-  //   } catch (error) {
-  //     console.error('Error fetching ZP orders:', error);
-  //     toast.error('Failed to fetch order details');
-  //   }
-  // };
+  // All grain items for table headers
+  const [allGrainItems, setAllGrainItems] = useState<string[]>([]);
 
   const fetchSchools = async () => {
     try {
@@ -125,6 +117,26 @@ const OrderRegisterWithColumnSearch = () => {
       const response = await fetch('/api/schoolwiseorders');
       const data = await response.json();
       setSchoolWiseOrders(data);
+      
+      // Extract all grain items from items_data
+      const grainItemsSet = new Set<string>();
+      data.forEach((order: SchoolWiseOrder) => {
+        if (order.items_data) {
+          try {
+            const itemsData: ItemsData = JSON.parse(order.items_data);
+            Object.keys(itemsData).forEach(key => {
+              if (key !== 'एकूण वजन') { // Exclude total weight as it's already a separate column
+                grainItemsSet.add(key);
+              }
+            });
+          } catch (e) {
+            console.error('Error parsing items_data:', e);
+          }
+        }
+      });
+      
+      // Convert set to array and set state
+      setAllGrainItems(Array.from(grainItemsSet));
     } catch (error) {
       console.error('Error fetching school-wise orders:', error);
       toast.error('Failed to fetch school-wise orders');
@@ -132,27 +144,39 @@ const OrderRegisterWithColumnSearch = () => {
   };
 
   useEffect(() => {
-    // fetchZpOrders();
     fetchSchools();
     fetchSchoolWiseOrders();
   }, []);
 
-  type SWOWithTaluka = SchoolWiseOrder & { taluka: string; _groupKey?: string };
+  type SWOWithTaluka = SchoolWiseOrder & { 
+    taluka: string; 
+    _groupKey?: string;
+    parsedItems?: ItemsData;
+  };
 
   // Filter data based on selected order filter
   const filteredSchoolWiseOrders = useMemo(() => {
     if (!selectedOrderFilter) return schoolWiseOrders;
-
-    return schoolWiseOrders.filter(order =>
-      order.order_no === selectedOrderFilter
-    );
+    return schoolWiseOrders.filter(order => order.order_no === selectedOrderFilter);
   }, [schoolWiseOrders, selectedOrderFilter]);
 
   const dataWithTaluka: SWOWithTaluka[] = useMemo(() => {
     if (!filteredSchoolWiseOrders.length) return [];
     return filteredSchoolWiseOrders.map(r => {
       const s = schools.find(sc => sc.schoolid === r.school_id);
-      return { ...r, taluka: s?.talukaname || '-' };
+      let parsedItems: ItemsData = {};
+      try {
+        if (r.items_data) {
+          parsedItems = JSON.parse(r.items_data);
+        }
+      } catch (e) {
+        console.error('Error parsing items_data:', e);
+      }
+      return { 
+        ...r, 
+        taluka: s?.talukaname || '-',
+        parsedItems 
+      };
     });
   }, [filteredSchoolWiseOrders, schools]);
 
@@ -198,6 +222,16 @@ const OrderRegisterWithColumnSearch = () => {
     }
   };
 
+  // Parse items data function
+  const parseItemsData = (itemsData: string): ItemsData => {
+    try {
+      return JSON.parse(itemsData);
+    } catch (e) {
+      console.error('Error parsing items_data:', e);
+      return {};
+    }
+  };
+
   // Export to Excel function for direct download
   const exportGroupToExcel = (row: ExtendedSWO) => {
     const key = row._groupKey || row.uniq_id;
@@ -237,46 +271,68 @@ const OrderRegisterWithColumnSearch = () => {
         [`Total Schools: ${groupMeta.total_schools}`],
         [], // Empty row
         // School data headers
-        ['Sr No', 'School Name', 'UDISE Code', 'Taluka', 'Class Range', 'Patsankhya', 'Total Weight']
+        [
+          'Sr No', 
+          'School Name', 
+          'UDISE Code', 
+          'Taluka', 
+          'Class Range', 
+          'Patsankhya',
+          ...allGrainItems,
+          'Total Weight'
+        ]
       ];
 
       // Add school data rows
       groupRows.forEach((school, index) => {
         const schoolDetails = schools.find(s => s.schoolid === school.school_id);
-        worksheetData.push([
+        const itemsData = parseItemsData(school.items_data);
+        
+        const rowData = [
           (index + 1).toString(),
           school.schoolname || '',
           school.udaisno || '',
           schoolDetails?.talukaname || '-',
           school.class_range || '',
-          (school.patsankhya || 0).toString(),
-          (school.total_weight || 0).toString()
-        ]);
+          (school.patsankhya || 0).toString()
+        ];
+
+        // Add grain items data
+        allGrainItems.forEach(grain => {
+          rowData.push((itemsData[grain as keyof ItemsData] || 0).toString());
+        });
+
+        // Add total weight
+        rowData.push((school.total_weight || 0).toString());
+
+        worksheetData.push(rowData);
       });
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
       // Merge header cells for better formatting
       if (!worksheet['!merges']) worksheet['!merges'] = [];
-      worksheet['!merges'].push(
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
-        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } },
-        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 } },
-        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 } }
-      );
+      const mergeRanges = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 + allGrainItems.length } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 + allGrainItems.length } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 + allGrainItems.length } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 + allGrainItems.length } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 + allGrainItems.length } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 + allGrainItems.length } },
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 + allGrainItems.length } }
+      ];
+      worksheet['!merges'] = mergeRanges;
 
       // Set column widths
       const colWidths = [
-        { wch: 8 },
-        { wch: 30 },
-        { wch: 15 },
-        { wch: 20 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 15 }
+        { wch: 8 },  // Sr No
+        { wch: 30 }, // School Name
+        { wch: 15 }, // UDISE Code
+        { wch: 20 }, // Taluka
+        { wch: 12 }, // Class Range
+        { wch: 12 }, // Patsankhya
+        ...allGrainItems.map(() => ({ wch: 12 })), // Grain items
+        { wch: 15 }  // Total Weight
       ];
 
       worksheet['!cols'] = colWidths;
@@ -313,35 +369,56 @@ const OrderRegisterWithColumnSearch = () => {
         [`No of Days: ${selectedGroupMeta.no_of_days}`],
         [`Total Schools: ${selectedGroupMeta.total_schools}`],
         [],
-        ['Sr No', 'School Name', 'UDISE Code', 'Taluka', 'Class Range', 'Patsankhya', 'Total Weight']
+        [
+          'Sr No', 
+          'School Name', 
+          'UDISE Code', 
+          'Taluka', 
+          'Class Range', 
+          'Patsankhya',
+          ...allGrainItems,
+          'Total Weight'
+        ]
       ];
 
       // Add school data rows
       selectedGroupData.forEach((school, index) => {
         const schoolDetails = schools.find(s => s.schoolid === school.school_id);
-        worksheetData.push([
+        const itemsData = parseItemsData(school.items_data);
+        
+        const rowData = [
           (index + 1).toString(),
           school.schoolname || '',
           school.udaisno || '',
           schoolDetails?.talukaname || '-',
           school.class_range || '',
-          (school.patsankhya || 0).toString(),
-          (school.total_weight || 0).toString()
-        ]);
+          (school.patsankhya || 0).toString()
+        ];
+
+        // Add grain items data
+        allGrainItems.forEach(grain => {
+          rowData.push((itemsData[grain as keyof ItemsData] || 0).toString());
+        });
+
+        // Add total weight
+        rowData.push((school.total_weight || 0).toString());
+
+        worksheetData.push(rowData);
       });
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
       if (!worksheet['!merges']) worksheet['!merges'] = [];
-      worksheet['!merges'].push(
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
-        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } },
-        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 } },
-        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 } }
-      );
+      const mergeRanges = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 + allGrainItems.length } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 + allGrainItems.length } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 + allGrainItems.length } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 6 + allGrainItems.length } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 6 + allGrainItems.length } },
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 6 + allGrainItems.length } },
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 6 + allGrainItems.length } }
+      ];
+      worksheet['!merges'] = mergeRanges;
 
       const colWidths = [
         { wch: 8 },
@@ -350,6 +427,7 @@ const OrderRegisterWithColumnSearch = () => {
         { wch: 20 },
         { wch: 12 },
         { wch: 12 },
+        ...allGrainItems.map(() => ({ wch: 12 })),
         { wch: 15 }
       ];
 
@@ -418,7 +496,7 @@ const OrderRegisterWithColumnSearch = () => {
             </span>
             <button
               onClick={(e) => {
-                e.stopPropagation(); // Prevent opening modal
+                e.stopPropagation();
                 exportGroupToExcel(r);
               }}
               className="text-green-600 hover:text-green-800"
@@ -456,39 +534,21 @@ const OrderRegisterWithColumnSearch = () => {
   const clearFilter = () => {
     setSelectedOrderFilter('');
   };
+
   const breadcrumbItems = [
     { label: 'Home', href: '/' },
     { label: 'Order Register', href: '/orderregister' },
-
   ];
+
   return (
     <div className="">
       <div className='mb-6'>
-
         <BreadcrumbsBtn
           title="Order Register"
           datafiled={<div className="">
-            {/* <div>
-              <Label>Order Number</Label>
-              <select
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
-                value={orderNo}
-                onChange={(e) => setOrderNo(e.target.value)}
-              >
-                <option value="">Select Order Number</option>
-                {zpOrders.map(order => (
-                  <option key={order.id} value={order.id.toString()}>
-                    {order.order_no} ({order.financial_year})
-                  </option>
-                ))}
-              </select>
-              {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
-            </div> */}
-
-            {/* Order Number Filter */}
             <div>
               <div className="flex gap-2">
-              <Label>Order No</Label>
+                <Label>Order No</Label>
                 <select
                   className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
                   value={selectedOrderFilter}
@@ -510,11 +570,6 @@ const OrderRegisterWithColumnSearch = () => {
                   </button>
                 )}
               </div>
-              {/* {selectedOrderFilter && (
-                <div className="text-sm text-green-600 dark:text-green-400 mt-1 pl-1">
-                  Showing orders for: {selectedOrderFilter}
-                </div>
-              )} */}
             </div>
           </div>}
           breadcrumbs={breadcrumbItems}
@@ -527,7 +582,6 @@ const OrderRegisterWithColumnSearch = () => {
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="space-y-6">
-
           </div>
         }
         columns={columns}
@@ -554,7 +608,7 @@ const OrderRegisterWithColumnSearch = () => {
       <Modal
         isOpen={schoolModalOpen}
         onClose={() => setSchoolModalOpen(false)}
-        className="max-w-6xl p-6"
+        className="max-w-[95vw] p-6"
       >
         <div className="space-y-6 h-[550px] overflow-y-auto scrollbar-hide">
           <div className="flex justify-between items-center">
@@ -607,6 +661,17 @@ const OrderRegisterWithColumnSearch = () => {
                   <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Patsankhya
                   </th>
+                  
+                  {/* Dynamic grain items headers */}
+                  {allGrainItems.map((grain) => (
+                    <th 
+                      key={grain} 
+                      className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      {grain}
+                    </th>
+                  ))}
+                  
                   <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
                     Total Weight
                   </th>
@@ -615,6 +680,8 @@ const OrderRegisterWithColumnSearch = () => {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {selectedGroupData.map((school, index) => {
                   const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+                  const itemsData = parseItemsData(school.items_data);
+                  
                   return (
                     <tr key={school.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -635,6 +702,17 @@ const OrderRegisterWithColumnSearch = () => {
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {school.patsankhya || 0}
                       </td>
+                      
+                      {/* Dynamic grain items data */}
+                      {allGrainItems.map((grain) => (
+                        <td 
+                          key={grain} 
+                          className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+                        >
+                          {itemsData[grain as keyof ItemsData] || 0}
+                        </td>
+                      ))}
+                      
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
                         {school.total_weight}
                       </td>

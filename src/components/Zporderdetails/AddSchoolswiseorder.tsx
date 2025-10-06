@@ -9,11 +9,8 @@ import { toast } from 'react-toastify';
 import { useToggleContext } from '@/context/ToggleContext';
 import { Modal } from '../ui/modal';
 import { Schoolwisetable } from '../tables/Schoolwisetable';
-import Loader from '../../common/Loader'; // <-- add
-
+import Loader from '../../common/Loader';
 import { FaTrash } from 'react-icons/fa';
-
-// Types
 
 // Types
 interface ZPOrderDetail {
@@ -34,7 +31,7 @@ interface School {
   status: string;
   center?: number;
   centername?: string;
-  talukaname?: string; // add
+  talukaname?: string;
 }
 
 interface SchoolWiseOrder {
@@ -50,10 +47,10 @@ interface SchoolWiseOrder {
   financial_year: string;
   schoolname: string;
   udaisno: string;
-  patsankhya?: number; // added
+  patsankhya?: number;
   status: string;
   created_at: string;
-  uniq_id?: string; // <-- added
+  uniq_id?: string;
 }
 
 type FormErrors = {
@@ -67,8 +64,6 @@ type ExtendedSWO = SchoolWiseOrder & {
   _groupCount?: number;
   _groupKey?: string;
 };
-
-
 
 interface ParsedExcelRow {
   _schoolName: string;
@@ -91,7 +86,8 @@ const AddSchoolswiseorder = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   // Global UI busy (overlay loader)
-  const [uiBusy, setUiBusy] = useState(false); // <-- add
+  const [uiBusy, setUiBusy] = useState(false);
+  
   // Form fields
   const [orderNo, setOrderNo] = useState('');
   const [noOfDays, setNoOfDays] = useState<number | null>(null);
@@ -106,10 +102,6 @@ const AddSchoolswiseorder = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
 
-  // View modal state
-  const [viewOpen, setViewOpen] = useState(false);
-  const [viewItem, setViewItem] = useState<SchoolWiseOrder | null>(null);
-  const [uniqId, setUniqId] = useState<string | null>(null);
   // Group modal state
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupRows, setGroupRows] = useState<SchoolWiseOrder[]>([]);
@@ -121,12 +113,12 @@ const AddSchoolswiseorder = () => {
     financial_year: string;
   } | null>(null);
 
-  const [reopenGroupOnItemsClose, setReopenGroupOnItemsClose] = useState<boolean>(false);
+  // All grain items for table headers
+  const [allGrainItems, setAllGrainItems] = useState<string[]>([]);
 
-  // const handleView = (row: SchoolWiseOrder) => {
-  //   setViewItem(row);
-  //   setViewOpen(true);
-  // };
+  // Group delete confirm
+  const [confirmGroupOpen, setConfirmGroupOpen] = useState(false);
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
   const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
     const key = row._groupKey;
@@ -167,6 +159,7 @@ const AddSchoolswiseorder = () => {
     });
     setGroupOpen(true);
   };
+
   // Fetch ZP Orders
   const fetchZpOrders = async () => {
     try {
@@ -207,6 +200,26 @@ const AddSchoolswiseorder = () => {
       const response = await fetch('/api/schoolwiseorders');
       const data = await response.json();
       setSchoolWiseOrders(data);
+      
+      // Extract all grain items from items_data
+      const grainItemsSet = new Set<string>();
+      data.forEach((order: SchoolWiseOrder) => {
+        if (order.items_data) {
+          try {
+            const itemsData: ItemsData = JSON.parse(order.items_data);
+            Object.keys(itemsData).forEach(key => {
+              if (key !== 'एकूण वजन') {
+                grainItemsSet.add(key);
+              }
+            });
+          } catch (e) {
+            console.error('Error parsing items_data:', e);
+          }
+        }
+      });
+      
+      // Convert set to array and set state
+      setAllGrainItems(Array.from(grainItemsSet));
     } catch (error) {
       console.error('Error fetching school-wise orders:', error);
       toast.error('Failed to fetch school-wise orders');
@@ -230,13 +243,7 @@ const AddSchoolswiseorder = () => {
     });
     return options;
   }, [zpOrders]);
-  const handleItemsClose = () => {
-    setViewOpen(false);
-    if (reopenGroupOnItemsClose) {
-      setGroupOpen(true);
-      setReopenGroupOnItemsClose(false);
-    }
-  };
+
   // Handle order number selection
   const handleOrderChange = (orderId: string) => {
     setOrderNo(orderId);
@@ -271,10 +278,8 @@ const AddSchoolswiseorder = () => {
   };
 
   // Parse Excel file
-  // Parse Excel file
-  // Parse Excel file
   const parseExcelFile = (file: File) => {
-    setUiBusy(true); // <-- start overlay
+    setUiBusy(true);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -289,7 +294,7 @@ const AddSchoolswiseorder = () => {
         const rowsNormalized = raw.map((r) => {
           const out: Record<string, unknown> = {};
           Object.entries(r).forEach(([k, v]) => {
-            const trimmedKey = String(k).replace(/\s+$/, ""); // trim end only
+            const trimmedKey = String(k).replace(/\s+$/, "");
             out[trimmedKey] = v;
           });
           return out;
@@ -354,7 +359,6 @@ const AddSchoolswiseorder = () => {
 
         // Generate and store a group uniq ID for this Excel import
         const newGroupId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
-        setUniqId(newGroupId);
         fetch('/api/uniqid', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -369,12 +373,13 @@ const AddSchoolswiseorder = () => {
         console.error('Error parsing Excel file:', error);
         toast.error('Error parsing Excel file. Please check the format.');
       } finally {
-        setUiBusy(false); // <-- stop overlay
+        setUiBusy(false);
       }
     };
-    reader.onerror = () => setUiBusy(false); // <-- ensure stop on error
+    reader.onerror = () => setUiBusy(false);
     reader.readAsArrayBuffer(file);
   };
+
   useEffect(() => {
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
@@ -388,25 +393,12 @@ const AddSchoolswiseorder = () => {
     setSelectedFile(null);
     setExcelData([]);
     setEditId(null);
-    setUniqId(null); // <-- added
   };
 
   useEffect(() => {
     if (!isEditMode) reset();
   }, [isEditMode]);
 
-  // const validateInputs = () => {
-  //   const newErrors: FormErrors = {};
-  //   setisvalidation(true);
-
-  //   if (!orderNo) newErrors.orderNo = "Order number is required";
-  //   const hasClassInExcel = excelData.some((r) => r._classRange);
-  //   if (!selectedClass && !hasClassInExcel) newErrors.selectedClass = "Class selection is required (in dropdown or Excel)";
-  //   if (!selectedFile && excelData.length === 0) newErrors.file = "Excel file is required";
-
-  //   setErrors(newErrors);
-  //   return Object.keys(newErrors).length === 0;
-  // };
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
@@ -457,7 +449,7 @@ const AddSchoolswiseorder = () => {
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
-    setUiBusy(true); // <-- start overlay
+    setUiBusy(true);
 
     try {
       const orderId = parseInt(orderNo);
@@ -508,7 +500,6 @@ const AddSchoolswiseorder = () => {
           items_data: itemsData,
           total_weight: totalWeight,
           patsankhya: row._patSankhya || 0,
-          uniq_id: uniqId || null,
           ...(editId && { id: editId })
         };
         const url = '/api/schoolwiseorders';
@@ -534,7 +525,6 @@ const AddSchoolswiseorder = () => {
 
           successCount += 1;
         } catch (e) {
-          // failedRows.push('Network/Server error');
           console.log(e);
           continue;
         }
@@ -562,88 +552,6 @@ const AddSchoolswiseorder = () => {
       setIsmodelopen(false);
     }
   };
-  // const handleSave = async () => {
-  //   if (!validateInputs()) return;
-  //   setLoading(true);
-  //   setUiBusy(true); // <-- start overlay
-
-  //   try {
-  //     const orderId = parseInt(orderNo);
-
-  //     for (const row of excelData) {
-  //       const udise = row._udise.trim();
-  //       const rowSchoolName = row._schoolName.trim();
-  //       const rowCenterName = row._centerName.trim();
-  //       const rowClass = row._classRange.trim();
-
-  //       let school = udise
-  //         ? schools.find(s => String(s.udaisno || '').trim() === udise)
-  //         : undefined;
-
-  //       if (!school && rowSchoolName) {
-  //         school = schools.find(s => {
-  //           const byName = String(s.schoolname || '').trim().toLowerCase() === rowSchoolName.toLowerCase();
-  //           if (!byName) return false;
-  //           if (rowCenterName && s.centername) {
-  //             return String(s.centername).trim() === rowCenterName;
-  //           }
-  //           return true;
-  //         });
-  //       }
-
-  //       if (!school) {
-  //         toast.warning(`School not found: ${udise ? `UDISE ${udise}` : rowSchoolName || '(no name)'}`);
-  //         continue;
-  //       }
-
-  //       const itemsData: ItemsData = {
-  //         ...row._items,
-  //       };
-
-  //       const totalWeight = row._totalWeight || 0;
-
-  //       const payload = {
-  //         order_id: orderId,
-  //         school_id: school.schoolid,
-  //         class_range: rowClass || selectedClass,
-  //         items_data: itemsData,
-  //         total_weight: totalWeight,
-  //         patsankhya: row._patSankhya || 0,
-  //         uniq_id: uniqId || null,   // <-- use uniq_id
-  //         ...(editId && { id: editId })
-  //       };
-  //       const url = '/api/schoolwiseorders';
-  //       const method = editId ? 'PUT' : 'POST';
-
-  //       const response = await fetch(url, {
-  //         method,
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify(payload),
-  //       });
-
-  //       if (!response.ok) {
-  //         throw new Error(`Failed to ${editId ? 'update' : 'create'} order for school ${school.schoolname}`);
-  //       }
-  //     }
-
-  //     toast.success(editId ? 'Order updated successfully!' : 'Orders created successfully!');
-  //     reset();
-  //     setEditId(null);
-  //     fetchSchoolWiseOrders();
-  //   } catch (error) {
-  //     console.error('Error saving orders:', error);
-  //     toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
-  //   } finally {
-  //     setLoading(false);
-  //     setUiBusy(false);
-  //     setIsmodelopen(false);
-  //   }
-  // };
-
-
-  // New: group delete confirm
-  const [confirmGroupOpen, setConfirmGroupOpen] = useState(false);
-  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
   const confirmGroupDelete = async () => {
     if (!pendingGroupId) return;
@@ -651,7 +559,7 @@ const AddSchoolswiseorder = () => {
       const res = await fetch('/api/schoolwiseorders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uniq_id: pendingGroupId, status: 'Inactive' }), // <-- uniq_id
+        body: JSON.stringify({ uniq_id: pendingGroupId, status: 'Inactive' }),
       });
       if (!res.ok) throw new Error('Failed to delete group');
       toast.success('Group deleted (soft) successfully');
@@ -662,6 +570,16 @@ const AddSchoolswiseorder = () => {
     } finally {
       setConfirmGroupOpen(false);
       setPendingGroupId(null);
+    }
+  };
+
+  // Parse items data function
+  const parseItemsData = (itemsData: string): ItemsData => {
+    try {
+      return JSON.parse(itemsData);
+    } catch (e) {
+      console.error('Error parsing items_data:', e);
+      return {};
     }
   };
 
@@ -708,28 +626,11 @@ const AddSchoolswiseorder = () => {
           onClick={() => openGroup(r)}>{r._groupCount || 0}</span>;
       }
     },
-    // {
-    //   key: 'actions',
-    //   label: 'Action',
-    //   render: (row) => {
-    //     const r = row as ExtendedSWO;
-    //     if (!r._isFirstInGroup) return null;
-    //     return (
-    //       <button
-    //         type="button"
-    //         className="text-blue-600 hover:text-blue-800 underline"
-    //         onClick={() => openGroup(r)}
-    //       >
-    //         View Schools
-    //       </button>
-    //     );
-    //   }
-    // }
   ];
-  return (
 
+  return (
     <div className="">
-      {uiBusy && <Loader />} {/* <-- add overlay */}
+      {uiBusy && <Loader />}
 
       <Schoolwisetable
         data={dataWithTaluka}
@@ -845,71 +746,84 @@ const AddSchoolswiseorder = () => {
             </a>
           </div>
         }
-
         searchKey="schoolname"
         groupByKeys={['uniq_id']}
-        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools', 'actions']}
+        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools']}
       />
 
-      {/* View Details Modal */}
+      {/* Group Details Modal with All Grain Items */}
       <Modal
-        isOpen={viewOpen}
-        onClose={handleItemsClose}
-        className="max-w-[550px] p-6"
+        isOpen={groupOpen}
+        onClose={() => setGroupOpen(false)}
+        className="max-w-[95vw] p-6"
       >
-        {viewItem && (
-          <div className="space-y-3 h-[550px] overflow-scroll z-99999">
+        {groupMeta && (
+          <div className="space-y-4 h-[550px] overflow-y-auto scrollbar-hide">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              {viewItem.schoolname}
-              <span className="ml-2 text-sm font-normal text-gray-500 dark:text-white/60">
-                (UDISE: {viewItem.udaisno})
-              </span>
+              Order {groupMeta.order_no} • Class {groupMeta.class_range}
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 text-sm">
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Order No: </span>{viewItem.order_no}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{viewItem.no_of_days}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{viewItem.period}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Financial Year: </span>{viewItem.financial_year}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Class: </span>{viewItem.class_range}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Total Weight: </span>{viewItem.total_weight} kg</div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+              <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{groupMeta.no_of_days}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{groupMeta.period}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Year: </span>{groupMeta.financial_year}</div>
+              <div><span className="font-medium text-gray-600 dark:text-white/70">Total Schools: </span>{groupRows.length}</div>
             </div>
 
-            <div>
-              <h5 className="font-medium mb-3 text-gray-800 dark:text-white/90">Items</h5>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 border-collapse">
-                  <thead className="bg-gray-100 dark:bg-gray-800">
-                    <tr>
-                      <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 w-5">Sr</th>
-                      <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">Item</th>
-                      <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Quantity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(
-                      typeof viewItem.items_data === 'string'
-                        ? JSON.parse(viewItem.items_data) as ItemsData
-                        : (viewItem.items_data as unknown as ItemsData || {})
-                    )
-                      .filter(([, val]) => Number(val) > 0)
-                      .map(([key, val], index) => (
-                        <tr key={key} className="border-t border-gray-200 dark:border-gray-700">
-                          <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{index + 1}</td>
-                          <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{key}</td>
-                          <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{val}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 border-collapse">
+                <thead className="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 w-10">Sr</th>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">School Name</th>
+                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">UDAIS No</th>
+                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Patsankhya</th>
+                    
+                    {/* Dynamic grain items headers */}
+                    {allGrainItems.map((grain) => (
+                      <th 
+                        key={grain} 
+                        className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700"
+                      >
+                        {grain}
+                      </th>
+                    ))}
+                    
+                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Total Weight</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupRows.map((r, idx) => {
+                    const itemsData = parseItemsData(r.items_data);
+                    return (
+                      <tr key={r.id}>
+                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{idx + 1}</td>
+                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.schoolname}</td>
+                        <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.udaisno}</td>
+                        <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.patsankhya ?? '-'}</td>
+                        
+                        {/* Dynamic grain items data */}
+                        {allGrainItems.map((grain) => (
+                          <td 
+                            key={grain} 
+                            className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700"
+                          >
+                            {itemsData[grain] || 0}
+                          </td>
+                        ))}
+                        
+                        <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.total_weight} kg</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
       </Modal>
 
-
-
+      {/* Delete Confirmation Modal */}
       <Modal
         isOpen={confirmGroupOpen}
         onClose={() => { setConfirmGroupOpen(false); setPendingGroupId(null); }}
@@ -935,61 +849,6 @@ const AddSchoolswiseorder = () => {
             </button>
           </div>
         </div>
-      </Modal>
-      <Modal
-        isOpen={groupOpen}
-        onClose={() => setGroupOpen(false)}
-        className="max-w-[800px] p-6"
-      >
-        {groupMeta && (
-          <div className="space-y-4 h-96 overflow-scroll">
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-              Order {groupMeta.order_no} • Class {groupMeta.class_range}
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-              <div><span className="font-medium text-gray-600 dark:text-white/70">No. of Days: </span>{groupMeta.no_of_days}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Period: </span>{groupMeta.period}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Year: </span>{groupMeta.financial_year}</div>
-              <div><span className="font-medium text-gray-600 dark:text-white/70">Total Schools: </span>{groupRows.length}</div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700 border-collapse">
-                <thead className="bg-gray-100 dark:bg-gray-800">
-                  <tr>
-                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700 w-10">Sr</th>
-                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">School Name</th>
-                    <th className="px-3 py-2 text-left border border-gray-200 dark:border-gray-700">UDAIS No</th>
-                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Patsankhya</th>
-                    <th className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">Total Weight</th>
-                    <th className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupRows.map((r, idx) => (
-                    <tr key={r.id}>
-                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{idx + 1}</td>
-                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.schoolname}</td>
-                      <td className="px-3 py-2 border border-gray-200 dark:border-gray-700">{r.udaisno}</td>
-                      <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.patsankhya ?? '-'}</td>
-                      <td className="px-3 py-2 text-right border border-gray-200 dark:border-gray-700">{r.total_weight} kg</td>
-                      <td className="px-3 py-2 text-center border border-gray-200 dark:border-gray-700">
-                        <button
-                          type="button"
-                          className="text-blue-600 hover:text-blue-800 underline"
-                          onClick={() => { setReopenGroupOnItemsClose(true); setGroupOpen(false); setViewItem(r); setViewOpen(true) }}
-                        >
-                          View Items
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );
