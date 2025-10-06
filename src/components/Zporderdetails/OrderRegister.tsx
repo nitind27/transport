@@ -10,16 +10,17 @@ import Loader from '../../common/Loader';
 import { FaTrash, FaFileExcel } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import BreadcrumbsBtn from '../common/BreadcrumbsBtn';
 
 // Types
-interface ZPOrderDetail {
-  id: number;
-  order_no: string;
-  no_of_days: number;
-  period: string;
-  financial_year: string;
-  status: string;
-}
+// interface ZPOrderDetail {
+//   id: number;
+//   order_no: string;
+//   no_of_days: number;
+//   period: string;
+//   financial_year: string;
+//   status: string;
+// }
 
 interface School {
   id: number;
@@ -52,11 +53,11 @@ interface SchoolWiseOrder {
   uniq_id?: string;
 }
 
-type FormErrors = {
-  orderNo?: string;
-  selectedClass?: string;
-  file?: string;
-};
+// type FormErrors = {
+//   orderNo?: string;
+//   selectedClass?: string;
+//   file?: string;
+// };
 
 type ExtendedSWO = SchoolWiseOrder & {
   _isFirstInGroup?: boolean;
@@ -66,16 +67,17 @@ type ExtendedSWO = SchoolWiseOrder & {
 
 const OrderRegisterWithColumnSearch = () => {
   const [loading] = useState(false);
-  const [error] = useState<FormErrors>({});
-  
+  // const [error] = useState<FormErrors>({});
+
   // Global UI busy (overlay loader)
   const [uiBusy] = useState(false);
-  
+
   // Form fields
-  const [orderNo, setOrderNo] = useState('');
+  // const [orderNo, setOrderNo] = useState('');
+  const [selectedOrderFilter, setSelectedOrderFilter] = useState('');
 
   // Data states
-  const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
+  // const [zpOrders, setZpOrders] = useState<ZPOrderDetail[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
 
@@ -96,16 +98,16 @@ const OrderRegisterWithColumnSearch = () => {
   } | null>(null);
 
   // Fetch data functions
-  const fetchZpOrders = async () => {
-    try {
-      const response = await fetch('/api/zporderdetails');
-      const data = await response.json();
-      setZpOrders(data);
-    } catch (error) {
-      console.error('Error fetching ZP orders:', error);
-      toast.error('Failed to fetch order details');
-    }
-  };
+  // const fetchZpOrders = async () => {
+  //   try {
+  //     const response = await fetch('/api/zporderdetails');
+  //     const data = await response.json();
+  //     // setZpOrders(data);
+  //   } catch (error) {
+  //     console.error('Error fetching ZP orders:', error);
+  //     toast.error('Failed to fetch order details');
+  //   }
+  // };
 
   const fetchSchools = async () => {
     try {
@@ -130,20 +132,35 @@ const OrderRegisterWithColumnSearch = () => {
   };
 
   useEffect(() => {
-    fetchZpOrders();
+    // fetchZpOrders();
     fetchSchools();
     fetchSchoolWiseOrders();
   }, []);
 
   type SWOWithTaluka = SchoolWiseOrder & { taluka: string; _groupKey?: string };
 
+  // Filter data based on selected order filter
+  const filteredSchoolWiseOrders = useMemo(() => {
+    if (!selectedOrderFilter) return schoolWiseOrders;
+
+    return schoolWiseOrders.filter(order =>
+      order.order_no === selectedOrderFilter
+    );
+  }, [schoolWiseOrders, selectedOrderFilter]);
+
   const dataWithTaluka: SWOWithTaluka[] = useMemo(() => {
-    if (!schoolWiseOrders.length) return [];
-    return schoolWiseOrders.map(r => {
+    if (!filteredSchoolWiseOrders.length) return [];
+    return filteredSchoolWiseOrders.map(r => {
       const s = schools.find(sc => sc.schoolid === r.school_id);
       return { ...r, taluka: s?.talukaname || '-' };
     });
-  }, [schoolWiseOrders, schools]);
+  }, [filteredSchoolWiseOrders, schools]);
+
+  // Get unique order numbers for filter dropdown
+  const uniqueOrderNumbers = useMemo(() => {
+    const orders = schoolWiseOrders.map(order => order.order_no);
+    return Array.from(new Set(orders)).sort();
+  }, [schoolWiseOrders]);
 
   // Group data by uniq_id for modal display
   const groupedData = useMemo(() => {
@@ -163,7 +180,7 @@ const OrderRegisterWithColumnSearch = () => {
     if (key && groupedData[key]) {
       const groupRows = groupedData[key];
       setSelectedGroupData(groupRows);
-      
+
       // Set group metadata
       if (groupRows.length > 0) {
         const firstRow = groupRows[0];
@@ -176,7 +193,7 @@ const OrderRegisterWithColumnSearch = () => {
           total_schools: groupRows.length
         });
       }
-      
+
       setSchoolModalOpen(true);
     }
   };
@@ -207,7 +224,7 @@ const OrderRegisterWithColumnSearch = () => {
 
     try {
       const workbook = XLSX.utils.book_new();
-      
+
       // Create worksheet data
       const worksheetData = [
         // Headers
@@ -238,7 +255,7 @@ const OrderRegisterWithColumnSearch = () => {
       });
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      
+
       // Merge header cells for better formatting
       if (!worksheet['!merges']) worksheet['!merges'] = [];
       worksheet['!merges'].push(
@@ -261,17 +278,17 @@ const OrderRegisterWithColumnSearch = () => {
         { wch: 12 },
         { wch: 15 }
       ];
-      
+
       worksheet['!cols'] = colWidths;
 
       XLSX.utils.book_append_sheet(workbook, worksheet, 'School Details');
-      
+
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
       const fileName = `Order_${groupMeta.order_no}_Class_${groupMeta.class_range}_${new Date().toISOString().split('T')[0]}.xlsx`;
       saveAs(data, fileName);
-      
+
       toast.success('Excel file exported successfully!');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -285,7 +302,7 @@ const OrderRegisterWithColumnSearch = () => {
 
     try {
       const workbook = XLSX.utils.book_new();
-      
+
       // Create worksheet data
       const worksheetData = [
         ['Order Details'],
@@ -314,7 +331,7 @@ const OrderRegisterWithColumnSearch = () => {
       });
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      
+
       if (!worksheet['!merges']) worksheet['!merges'] = [];
       worksheet['!merges'].push(
         { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
@@ -335,17 +352,17 @@ const OrderRegisterWithColumnSearch = () => {
         { wch: 12 },
         { wch: 15 }
       ];
-      
+
       worksheet['!cols'] = colWidths;
 
       XLSX.utils.book_append_sheet(workbook, worksheet, 'School Details');
-      
+
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
       const fileName = `Order_${selectedGroupMeta.order_no}_Class_${selectedGroupMeta.class_range}_${new Date().toISOString().split('T')[0]}.xlsx`;
       saveAs(data, fileName);
-      
+
       toast.success('Excel file exported successfully!');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -393,7 +410,7 @@ const OrderRegisterWithColumnSearch = () => {
         if (!r._isFirstInGroup) return null;
         return (
           <div className="flex items-center gap-2">
-            <span 
+            <span
               className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
               onClick={() => openGroup(r)}
             >
@@ -435,8 +452,74 @@ const OrderRegisterWithColumnSearch = () => {
     }
   };
 
+  // Clear filter function
+  const clearFilter = () => {
+    setSelectedOrderFilter('');
+  };
+  const breadcrumbItems = [
+    { label: 'Home', href: '/' },
+    { label: 'Order Register', href: '/orderregister' },
+
+  ];
   return (
     <div className="">
+      <div className='mb-6'>
+
+        <BreadcrumbsBtn
+          title="Order Register"
+          datafiled={<div className="">
+            {/* <div>
+              <Label>Order Number</Label>
+              <select
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
+                value={orderNo}
+                onChange={(e) => setOrderNo(e.target.value)}
+              >
+                <option value="">Select Order Number</option>
+                {zpOrders.map(order => (
+                  <option key={order.id} value={order.id.toString()}>
+                    {order.order_no} ({order.financial_year})
+                  </option>
+                ))}
+              </select>
+              {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
+            </div> */}
+
+            {/* Order Number Filter */}
+            <div>
+              <div className="flex gap-2">
+              <Label>Order No</Label>
+                <select
+                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                  value={selectedOrderFilter}
+                  onChange={(e) => setSelectedOrderFilter(e.target.value)}
+                >
+                  <option value="">All Orders</option>
+                  {uniqueOrderNumbers.map((orderNo, index) => (
+                    <option key={index} value={orderNo}>
+                      {orderNo}
+                    </option>
+                  ))}
+                </select>
+                {selectedOrderFilter && (
+                  <button
+                    onClick={clearFilter}
+                    className="h-11 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {/* {selectedOrderFilter && (
+                <div className="text-sm text-green-600 dark:text-green-400 mt-1 pl-1">
+                  Showing orders for: {selectedOrderFilter}
+                </div>
+              )} */}
+            </div>
+          </div>}
+          breadcrumbs={breadcrumbItems}
+        />
+      </div>
       {uiBusy && <Loader />}
 
       <ColumnSearchTable
@@ -444,24 +527,7 @@ const OrderRegisterWithColumnSearch = () => {
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-5">
-              <div>
-                <Label>Select Order Number</Label>
-                <select
-                  className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.orderNo ? "border-red-500" : ""}`}
-                  value={orderNo}
-                  onChange={(e) => setOrderNo(e.target.value)}
-                >
-                  <option value="">Select Order Number</option>
-                  {zpOrders.map(order => (
-                    <option key={order.id} value={order.id.toString()}>
-                      {order.order_no} ({order.financial_year})
-                    </option>
-                  ))}
-                </select>
-                {error.orderNo && <div className="text-red-500 text-sm mt-1 pl-1">{error.orderNo}</div>}
-              </div>
-            </div>
+
           </div>
         }
         columns={columns}
@@ -503,12 +569,6 @@ const OrderRegisterWithColumnSearch = () => {
                 <FaFileExcel className="text-lg" />
                 Export to Excel
               </button>
-              {/* <button
-                onClick={() => setSchoolModalOpen(false)}
-                className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                Close
-              </button> */}
             </div>
           </div>
 
@@ -526,64 +586,63 @@ const OrderRegisterWithColumnSearch = () => {
           )}
 
           <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-300 border-collapse dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-700">
-  <thead className="bg-gray-50 dark:bg-gray-700">
-    <tr>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        Sr No
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        School Name
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        UDISE Code
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        Taluka
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        Class Range
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-        Patsankhya
-      </th>
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
-        Total Weight
-      </th>
-    </tr>
-  </thead>
-  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-    {selectedGroupData.map((school, index) => {
-      const schoolDetails = schools.find(s => s.schoolid === school.school_id);
-      return (
-        <tr key={school.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-            {index + 1}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-            {school.schoolname}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-            {school.udaisno}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-            {schoolDetails?.talukaname || '-'}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-            {school.class_range}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-            {school.patsankhya || 0}
-          </td>
-          <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
-            {school.total_weight}
-          </td>
-        </tr>
-      );
-    })}
-  </tbody>
-</table>
-
+            <table className="min-w-full border border-gray-300 border-collapse dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Sr No
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    School Name
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    UDISE Code
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Taluka
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Class Range
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Patsankhya
+                  </th>
+                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
+                    Total Weight
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {selectedGroupData.map((school, index) => {
+                  const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+                  return (
+                    <tr key={school.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {index + 1}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {school.schoolname}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {school.udaisno}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {schoolDetails?.talukaname || '-'}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {school.class_range}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {school.patsankhya || 0}
+                      </td>
+                      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
+                        {school.total_weight}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </Modal>

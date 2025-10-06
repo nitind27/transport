@@ -17,6 +17,7 @@ type DamageStockEntry = {
     quantity: number;
     remarks: string;
     status?: string;
+    tpNo?: string;
     created_at?: string;
     updated_at?: string;
 };
@@ -212,6 +213,12 @@ const DamageStock = ({ onDataChanged }: DamageStockProps) => {
             label: 'Remarks',
             accessor: 'remarks',
             render: (row) => <span>{row.remarks || '-'}</span>
+        },
+        {
+            key: 'tpNo',
+            label: 'TP No',
+            accessor: 'tpNo',
+            render: (row) => <span>{row.tpNo || '-'}</span>
         },
         {
             key: 'actions',

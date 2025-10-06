@@ -98,6 +98,7 @@ type DispatchListRow = {
     period?: string;
     no_of_days?: number;
     financial_year?: string;
+    taluka_name?: string;
     patsankhya?: string;
     group_id?: number | null;
     route_number?: string;
@@ -339,9 +340,20 @@ const Routepaperview = () => {
     const getDataByRouteNumber = (routeNumber: string) => {
         return filteredDispatchList.filter(item => item.route_number === routeNumber);
     };
+
+    function formatDateToDDMMYYYY(dateString: string | undefined | null): string {
+        if (!dateString) return '';
+        const date: Date = new Date(dateString);   // `Date` type here
+        if (isNaN(date.getTime())) return '';      // Invalid date check
+        const day: string = String(date.getDate()).padStart(2, '0');
+        const month: string = String(date.getMonth() + 1).padStart(2, '0');
+        const year: number = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      }
+      
     const handlePrintDc = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
-        console.log("routeData", routeData);
+      
         if (routeData.length === 0) {
             toast.error('Route data not found for DC printing');
             return;
@@ -353,11 +365,12 @@ const Routepaperview = () => {
 
         // Top meta from first row
         const first = routeData[0];
-        const talukaName = first?.taluka || '';
+        console.log("first", first);
+        const talukaName = first?.taluka_name || '';
         const orderNo = first?.order_no || '';
         const dcNo = first?.dispatch_code || '';
         const vehicleNo = first?.truckNo || '';
-        const dateStr = first?.create_at ? formatDate(first.create_at) : '';
+        const dateStr = first?.create_at ? formatDateToDDMMYYYY(first.create_at) : '';
         const periodText = first?.period || 'Aug-Sept-2025';
         const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
 
@@ -497,7 +510,7 @@ const Routepaperview = () => {
                     <td style="text-align:right;">Date ${dateStr}</td>
                 </tr>
                 <tr>
-                    <td>पावती क्रमांक: ${dcNo}</td>
+                    <td>DC पावती क्रमांक: ${dcNo}</td>
                     <td style="text-align:right;">गाडी नं. ${vehicleNo}</td>
                 </tr>
             </table>

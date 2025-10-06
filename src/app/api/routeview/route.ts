@@ -14,8 +14,9 @@ SELECT d.*,
        z.period,
        z.no_of_days,
        z.financial_year,
+       tl.name AS taluka_name,
        s.schoolname,
-       c.name AS center_name,
+       c.marathi_name AS center_name,
        t.truckNo,
        sh.patsankhya,
        r.route_number,
@@ -23,13 +24,15 @@ SELECT d.*,
 FROM dispatch_details d
 LEFT JOIN zp_order_details z ON d.order_id = z.id
 LEFT JOIN schooldata s ON d.school_id = s.schoolid
+LEFT JOIN taluka tl ON s.taluka_id = tl.taluka_id      -- Join taluka by taluka_id in schooldata
 LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 LEFT JOIN route_paper r ON d.dispatch_code = r.dispatch_code
 WHERE d.status = 'Active'
-   AND r.dispatch_code = d.dispatch_code
-   AND r.route_number IS NOT NULL;
+  AND r.dispatch_code = d.dispatch_code
+  AND r.route_number IS NOT NULL;
+
 
     `);
     return NextResponse.json(rows);

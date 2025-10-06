@@ -8,10 +8,11 @@ interface BreadcrumbItem {
 
 interface BreadcrumbsProps {
     title: string;
+    datafiled?: React.ReactNode;
     breadcrumbs: BreadcrumbItem[];
 }
 
-const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs }) => {
+const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs, datafiled }) => {
     return (
         <div className="p-4 bg-white rounded-lg w-full  mx-auto border">
             <div className='flex items-center justify-between'>
@@ -37,12 +38,14 @@ const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs }) => {
 
                     </nav>
                 </div>
-                <div>
+                <div className="items-center flex gap-2">
 
-                    <button
-                        type="button"
-                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg shadow hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-300 border border-green-600 transition-all duration-200"
-                    >
+                    <div>
+                        {datafiled}
+
+                    </div>
+
+                    <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg shadow hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200 whitespace-nowrap">
                         Export Excel
                     </button>
                 </div>

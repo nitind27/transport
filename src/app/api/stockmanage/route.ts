@@ -8,31 +8,24 @@ export async function GET(req: Request) {
     try {
         const url = new URL(req.url);
         const itemGrain = url.searchParams.get('itemGrain');
-        
+
         connection = await pool.getConnection();
-        
+
         // If itemGrain parameter is provided, check stock availability
         if (itemGrain) {
             const stockCheck = await checkAvailableStock(itemGrain, 0);
-            
+
             return NextResponse.json({
                 itemGrain: itemGrain,
                 availableQuantity: stockCheck.availableQuantity,
                 message: stockCheck.message
             });
         }
-        
+
         // Otherwise, fetch all stock management entries
         const [rows] = await connection.query<RowDataPacket[]>(
             `SELECT 
-                id,
-                invoiceDate,
-                itemGrain,
-                quantity,
-                remarks,
-                status,
-                created_at,
-                updated_at
+                *
             FROM stockmanage 
             WHERE status = "Active" 
             ORDER BY created_at DESC`
@@ -50,7 +43,7 @@ export async function GET(req: Request) {
 }
 
 // Function to check available stock for an item
-async function checkAvailableStock(itemGrain: string, requestedQuantity: number): Promise<{available: boolean, availableQuantity: number, message: string}> {
+async function checkAvailableStock(itemGrain: string, requestedQuantity: number): Promise<{ available: boolean, availableQuantity: number, message: string }> {
     try {
         // Get total stock quantity for the item from stockinventory
         const [stockRows] = await pool.query<RowDataPacket[]>(
@@ -59,9 +52,9 @@ async function checkAvailableStock(itemGrain: string, requestedQuantity: number)
              WHERE grain = ? AND status = "Active"`,
             [itemGrain]
         );
-        
+
         const totalStock = stockRows[0]?.totalStock || 0;
-        
+
         // Get total damaged quantity for the item from stockmanage
         const [damageRows] = await pool.query<RowDataPacket[]>(
             `SELECT COALESCE(SUM(quantity), 0) as totalDamaged 
@@ -69,14 +62,14 @@ async function checkAvailableStock(itemGrain: string, requestedQuantity: number)
              WHERE itemGrain = ? AND status = "Active"`,
             [itemGrain]
         );
-        
+
         const totalDamaged = damageRows[0]?.totalDamaged || 0;
-        
+
         // Calculate available quantity
         const availableQuantity = totalStock - totalDamaged;
-        
+
         console.log(`Stock Check for ${itemGrain}: Total Stock: ${totalStock}, Damaged: ${totalDamaged}, Available: ${availableQuantity}`);
-        
+
         if (availableQuantity <= 0) {
             return {
                 available: false,
@@ -84,7 +77,7 @@ async function checkAvailableStock(itemGrain: string, requestedQuantity: number)
                 message: `No stock available for ${itemGrain}. Total stock: ${totalStock}, Already damaged: ${totalDamaged}`
             };
         }
-        
+
         if (requestedQuantity > availableQuantity) {
             return {
                 available: false,
@@ -92,13 +85,13 @@ async function checkAvailableStock(itemGrain: string, requestedQuantity: number)
                 message: `Insufficient stock for ${itemGrain}. Available: ${availableQuantity}, Requested: ${requestedQuantity}`
             };
         }
-        
+
         return {
             available: true,
             availableQuantity: availableQuantity,
             message: `Stock available for ${itemGrain}. Available: ${availableQuantity}, Requested: ${requestedQuantity}`
         };
-        
+
     } catch (error) {
         console.error('Error checking stock:', error);
         return {
@@ -114,11 +107,11 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { 
-            invoiceDate, 
-            itemGrain, 
-            quantity, 
-            remarks 
+        const {
+            invoiceDate,
+            itemGrain,
+            quantity,
+            remarks
         } = body;
 
         // Basic Validation
@@ -138,13 +131,13 @@ export async function POST(req: Request) {
         }
 
         connection = await pool.getConnection();
-        
+
         // Check stock availability before proceeding
         const stockCheck = await checkAvailableStock(itemGrain, Number(quantity));
-        
+
         if (!stockCheck.available) {
             return NextResponse.json(
-                { 
+                {
                     message: stockCheck.message,
                     availableQuantity: stockCheck.availableQuantity,
                     requestedQuantity: Number(quantity)
@@ -152,25 +145,25 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
-// Get max tpNo for the table
-const [tpNoRows] = await connection.query<RowDataPacket[]>(
-    `SELECT COALESCE(MAX(tpNo), 0) AS maxTpNo FROM stockmanage`
-  );
-  const nextTpNo = (tpNoRows[0]?.maxTpNo || 0) + 1;
-  
-  const [result] = await connection.query<ResultSetHeader>(
-    `INSERT INTO stockmanage 
+        // Get max tpNo for the table
+        const [tpNoRows] = await connection.query<RowDataPacket[]>(
+            `SELECT COALESCE(MAX(tpNo), 0) AS maxTpNo FROM stockmanage`
+        );
+        const nextTpNo = (tpNoRows[0]?.maxTpNo || 0) + 1;
+
+        const [result] = await connection.query<ResultSetHeader>(
+            `INSERT INTO stockmanage 
      (invoiceDate, itemGrain, quantity, remarks, status, tpNo, created_at) 
      VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-    [
-      invoiceDate || null, 
-      itemGrain, 
-      Number(quantity), 
-      remarks || null, 
-      'Active',
-      nextTpNo        // <--- This is the next tpNo
-    ]
-  )
+            [
+                invoiceDate || null,
+                itemGrain,
+                Number(quantity),
+                remarks || null,
+                'Active',
+                nextTpNo        // <--- This is the next tpNo
+            ]
+        )
         return NextResponse.json({
             message: 'Stock management entry added successfully',
             id: result.insertId,
@@ -192,12 +185,12 @@ export async function PUT(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { 
-            id, 
-            invoiceDate, 
-            itemGrain, 
-            quantity, 
-            remarks 
+        const {
+            id,
+            invoiceDate,
+            itemGrain,
+            quantity,
+            remarks
         } = body;
 
         if (!id) {
@@ -213,7 +206,7 @@ export async function PUT(req: Request) {
         }
 
         connection = await pool.getConnection();
-        
+
         // If quantity or itemGrain is being updated, check stock availability
         if (quantity !== undefined || itemGrain !== undefined) {
             // Get current record to determine what values to use for stock check
@@ -221,10 +214,10 @@ export async function PUT(req: Request) {
                 'SELECT itemGrain, quantity FROM stockmanage WHERE id = ?',
                 [id]
             );
-            
+
             const currentItemGrain = itemGrain || currentRecord[0]?.itemGrain;
             const currentQuantity = quantity !== undefined ? Number(quantity) : currentRecord[0]?.quantity;
-            
+
             // For updates, we need to exclude the current record's quantity from damaged calculation
             // Get total stock quantity for the item from stockinventory
             const [stockRows] = await connection.query<RowDataPacket[]>(
@@ -233,9 +226,9 @@ export async function PUT(req: Request) {
                  WHERE grain = ? AND status = "Active"`,
                 [currentItemGrain]
             );
-            
+
             const totalStock = stockRows[0]?.totalStock || 0;
-            
+
             // Get total damaged quantity excluding current record
             const [damageRows] = await connection.query<RowDataPacket[]>(
                 `SELECT COALESCE(SUM(quantity), 0) as totalDamaged 
@@ -243,15 +236,15 @@ export async function PUT(req: Request) {
                  WHERE itemGrain = ? AND status = "Active" AND id != ?`,
                 [currentItemGrain, id]
             );
-            
+
             const totalDamaged = damageRows[0]?.totalDamaged || 0;
             const availableQuantity = totalStock - totalDamaged;
-            
+
             console.log(`Update Stock Check for ${currentItemGrain}: Total Stock: ${totalStock}, Damaged (excluding current): ${totalDamaged}, Available: ${availableQuantity}, Requested: ${currentQuantity}`);
-            
+
             if (availableQuantity <= 0) {
                 return NextResponse.json(
-                    { 
+                    {
                         message: `No stock available for ${currentItemGrain}. Total stock: ${totalStock}, Already damaged: ${totalDamaged}`,
                         availableQuantity: 0,
                         requestedQuantity: currentQuantity
@@ -259,10 +252,10 @@ export async function PUT(req: Request) {
                     { status: 400 }
                 );
             }
-            
+
             if (currentQuantity > availableQuantity) {
                 return NextResponse.json(
-                    { 
+                    {
                         message: `Insufficient stock for ${currentItemGrain}. Available: ${availableQuantity}, Requested: ${currentQuantity}`,
                         availableQuantity: availableQuantity,
                         requestedQuantity: currentQuantity
@@ -315,7 +308,7 @@ export async function DELETE(req: Request) {
             'UPDATE stockmanage SET status = "Inactive", updated_at = NOW() WHERE id = ?',
             [id]
         );
-        
+
         return NextResponse.json({ message: 'Stock management entry deleted successfully' });
     } catch (error) {
         console.error('Deletion failed:', error);
@@ -344,9 +337,9 @@ export async function PATCH(request: Request) {
             'UPDATE stockmanage SET status = ?, updated_at = NOW() WHERE id = ?',
             [status, id]
         );
-        
-        return NextResponse.json({ 
-            message: `Stock management entry ${status === 'Active' ? 'activated' : 'deactivated'} successfully` 
+
+        return NextResponse.json({
+            message: `Stock management entry ${status === 'Active' ? 'activated' : 'deactivated'} successfully`
         });
     } catch (error) {
         console.error('Status update error:', error);
