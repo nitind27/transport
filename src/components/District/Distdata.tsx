@@ -214,7 +214,7 @@ const Distdata = ({ district }: Props) => {
     ];
 
     return (
-        <div className="mt-5">
+        <div className="">
             <div className="flex justify-end">
                 {/* <button
                     onClick={handleDownloadExcel}

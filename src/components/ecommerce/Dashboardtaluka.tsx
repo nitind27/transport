@@ -40,7 +40,7 @@ interface OrderCount {
 const Dashboardtaluka = () => {
   const [talukaData, setTalukaData] = useState<TalukaData[]>([]);
   const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
-  const [selectedOrderNo, setSelectedOrderNo] = useState('20');
+  const [selectedOrderNo] = useState('20');
   const [loading, setLoading] = useState(true);
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
@@ -119,53 +119,38 @@ const Dashboardtaluka = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-white rounded-lg shadow-lg p-3">
       {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Mid Day Meal</h1>
-        {/* <p className="text-lg text-gray-600">Aug-Sept-2025 (42 days)</p> */}
+      <div className="text-center mb-2">
+        <h4 className="text-2xl font-bold mb-2"> <span className="font-semibold">Order Number:</span>
+        <span className="ml-2">{selectedOrderNo}</span></h4>
         
-        {/* Order Selection */}
-        <div className="mt-4 mb-4">
-          <label className="font-semibold mr-2">Select Order Number:</label>
-          <select 
-            value={selectedOrderNo} 
-            onChange={(e) => setSelectedOrderNo(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-1"
-          >
-            {orderCounts.map(order => (
-              <option key={order.order_no} value={order.order_no}>
-                Order {order.order_no} ({order.period})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="mt-4 flex justify-center space-x-8 text-sm">
-          <div>
-            <span className="font-semibold">Total Distribution Order (D.O.):</span>
-            <span className="ml-2">1022 metric tons</span>
-          </div>
-          <div>
-            <span className="font-semibold">Order Number:</span>
-            <span className="ml-2">{selectedOrderNo}</span>
-            <span className="ml-2">   <span className="font-semibold">Date :</span>({currentDate})</span>
-          </div>
-        </div>
-        
-        {currentOrder && (
-          <div className="mt-2 text-sm text-gray-600">
-            <div className="flex justify-center space-x-6">
-              <span><strong>Period:</strong> {currentOrder.period}</span>
-              <span><strong>Days:</strong> {currentOrder.no_of_days}</span>
-              <span><strong>Financial Year:</strong> {currentOrder.financial_year}</span>
+        {/* Reorganized layout with justify-between */}
+        <div className="mt-4 flex justify-between items-center text-sm">
+          {/* Left side - Date with days */}
+          <div className="text-left">
+            <div>
+              <span className="font-semibold">Date:</span> {currentDate}
             </div>
-            <div className="mt-1">
-              <span className="font-semibold">Total Schools with Order {selectedOrderNo}:</span>
-              <span className="ml-2">{currentOrder.total_schools}</span>
-            </div>
+            {currentOrder && (
+              <div className="mt-1 ">
+                <span className="font-semibold">Days:</span> {currentOrder.no_of_days} days
+              </div>
+            )}
           </div>
-        )}
+          
+          {/* Right side - Period and Financial Year */}
+          {currentOrder && (
+            <div className="text-right ">
+              <div>
+                <span className="font-semibold">Period:</span> {currentOrder.period}
+              </div>
+              <div className="mt-1">
+                <span className="font-semibold">Financial Year:</span> {currentOrder.financial_year}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}

@@ -19,15 +19,17 @@ const page = async () => {
         // getgrampanchayat()
     ]);
 
-  const breadcrumbItems = [
-    { label: 'Home', href: '/' },
-    { label: 'District', href: '/distdata' },
-  ];
+    const breadcrumbItems = [
+        { label: 'Home', href: '/' },
+        { label: 'District', href: '/distdata' },
+    ];
 
     return (
-        <div>
-             <Breadcrumbs title="District" breadcrumbs={breadcrumbItems} />
+        <div className="grid grid-cols-6 gap-4 md:gap-2">
+      <div className="col-span-12 space-y-3 xl:col-span-7">
+            <Breadcrumbs title="District" breadcrumbs={breadcrumbItems} />
             <Distdata district={taluka} />
+        </div>
         </div>
     )
 }

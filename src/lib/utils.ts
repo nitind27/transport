@@ -24,3 +24,15 @@ export const formatDate = (dateString: string): string => {
     // Return the formatted date as a string
     return date.toLocaleDateString('en-IN', options);
 };
+
+
+export const formatDateToDDMMYYYY = (dateString: string | undefined | null): string =>{
+    if (!dateString) return '';
+    const date: Date = new Date(dateString);   // `Date` type here
+    if (isNaN(date.getTime())) return '';      // Invalid date check
+    const day: string = String(date.getDate()).padStart(2, '0');
+    const month: string = String(date.getMonth() + 1).padStart(2, '0');
+    const year: number = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  

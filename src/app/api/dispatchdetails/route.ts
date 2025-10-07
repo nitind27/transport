@@ -10,24 +10,28 @@ function generateDispatchCode() {
 export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(`
-      SELECT d.*,
-             z.order_no,
-             z.period,
-             z.no_of_days,
-             z.financial_year,
-             s.schoolname,
-             c.name AS center_name,
-             t.truckNo,
-              sh.patsankhya
-      FROM dispatch_details d
-      LEFT JOIN zp_order_details z ON d.order_id = z.id
-      LEFT JOIN schooldata s ON d.school_id = s.schoolid
-      LEFT JOIN centerdata c ON d.center_id = c.center_id
-      LEFT JOIN truckdata t ON d.truck_id = t.id
-      LEFT JOIN school_wise_order_details sh 
-         ON d.school_id = sh.school_id
-      WHERE d.status = 'Active'
-      ORDER BY d.created_at DESC
+  SELECT d.*,
+       z.order_no,
+       z.period,
+       z.no_of_days,
+       z.financial_year,
+       s.schoolname,
+       s.taluka_id,   
+       s.udaisno,         -- taluka_id from schooldata table
+       ta.name AS taluka_name, -- taluka name from taluka table
+       c.marathi_name	 AS center_name,
+       t.truckNo,
+       sh.patsankhya
+FROM dispatch_details d
+LEFT JOIN zp_order_details z ON d.order_id = z.id
+LEFT JOIN schooldata s ON d.school_id = s.schoolid
+LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id   -- join taluka table on schooldata's taluka_id
+LEFT JOIN centerdata c ON d.center_id = c.center_id
+LEFT JOIN truckdata t ON d.truck_id = t.id
+LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
+WHERE d.status = 'Active'
+ORDER BY d.created_at DESC;
+
     `);
     return NextResponse.json(rows);
   } catch (e) {
@@ -138,14 +142,14 @@ export async function DELETE(request: NextRequest) {
       [dispatchCode]
     );
     const [res] = result as [ResultSetHeader, unknown];
-    
+
     if (!res || res.affectedRows === 0) {
       return NextResponse.json({ message: 'Dispatch not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Dispatch deleted successfully',
-      deletedRows: res.affectedRows 
+      deletedRows: res.affectedRows
     });
 
   } catch (error) {

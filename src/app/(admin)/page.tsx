@@ -89,7 +89,7 @@ export default async function Ecommerce() {
          
 
             {/* <EcommerceMetrics metrics={metrics} /> */}
-            <div className="mt-6">
+            <div className="">
               <Dashboardtaluka />
             </div>
 

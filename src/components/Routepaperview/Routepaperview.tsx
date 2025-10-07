@@ -351,21 +351,20 @@ const Routepaperview = () => {
         return `${day}-${month}-${year}`;
       }
       
-    const handlePrintDc = (routeNumber: string) => {
+      const handlePrintDc = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
       
         if (routeData.length === 0) {
             toast.error('Route data not found for DC printing');
             return;
         }
-
+    
         // Aggregate items across all schools in the route
         const allItems = routeData.map(r => ({ name: r.item_name, qty: r.qty_dispatch }));
         const sums = sumGrainsForGroup(allItems);
-
+    
         // Top meta from first row
         const first = routeData[0];
-        console.log("first", first);
         const talukaName = first?.taluka_name || '';
         const orderNo = first?.order_no || '';
         const dcNo = first?.dispatch_code || '';
@@ -373,122 +372,157 @@ const Routepaperview = () => {
         const dateStr = first?.create_at ? formatDateToDDMMYYYY(first.create_at) : '';
         const periodText = first?.period || 'Aug-Sept-2025';
         const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
-
-        // Prepare rows
-        const knownKeys = mrGrainColumns.map(g => g.key);
-        // Prepare rows: fixed list in exact order + "एकूण"
-        const ordered: Array<{ name: string; qty: number }> = mrGrainColumns.map(g => ({
-            name: g.key,
-            qty: Number(sums[g.key] || 0),
-        }));
-
-        // Grand total across all listed items
-
-        // Final rows include "एकूण" as the last row
-        // Prepare rows: fixed 15 items only (no "इतर", no "एकूण" in the table)
-        const rows: Array<{ name: string; qty: number }> = mrGrainColumns.map(g => ({
-            name: g.key,
-            qty: Number(sums[g.key] || 0),
-        }));
-
-        // Grand total kept for the total bar (not a table row)
-        const grandTotal = rows.reduce((a, r) => a + (r.qty || 0), 0);
-
+    
+        // Prepare rows with only items that have quantity > 0
+        const rows: Array<{ name: string; qty: number }> = [];
+        
+        // Add mapped grains that have quantity > 0
         mrGrainColumns.forEach(g => {
-            const q = Number(sums[g.key] || 0);
-            if (q > 0) ordered.push({ name: g.key, qty: q });
-        });
-        Object.keys(sums)
-            .filter(k => !knownKeys.includes(k))
-            .sort()
-            .forEach(k => ordered.push({ name: k, qty: Number(sums[k] || 0) }));
-
-        const MAX_ROWS = 15;
-        // const rows = ordered.slice(0, MAX_ROWS);
-        const overflow = ordered.slice(MAX_ROWS);
-        if (overflow.length > 0) {
-            // const extra = overflow.reduce((a, r) => a + (r.qty || 0), 0);
-            if (rows.length === MAX_ROWS) {
-                const last = rows[MAX_ROWS - 1];
-                rows[MAX_ROWS - 1] = {
-                    name: last?.name ? last.name + '' : '',
-                    qty: (last?.qty || 0)
-                };
-            } else {
-                // rows.push({ name: 'इतर', qty: extra });
+            const qty = Number(sums[g.key] || 0);
+            if (qty > 0) {
+                rows.push({ name: g.key, qty: qty });
             }
-        }
-        while (rows.length < MAX_ROWS) rows.push({ name: '', qty: 0 });
-
-        // const grandTotal = ordered.reduce((a, r) => a + (r.qty || 0), 0);
-
+        });
+    
+        // Add unmapped items that have quantity > 0
+        const knownKeys = mrGrainColumns.map(g => g.key);
+        Object.keys(sums)
+            .filter(k => !knownKeys.includes(k) && Number(sums[k] || 0) > 0)
+            .sort()
+            .forEach(k => {
+                rows.push({ name: k, qty: Number(sums[k] || 0) });
+            });
+    
+        // Calculate grand total from all items that will be displayed
+        const grandTotal = rows.reduce((total, row) => total + (row.qty || 0), 0);
+    
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
-
+    
         printWindow.document.write(`
         <html>
         <head>
             <title>Print DC - ${routeNumber}</title>
             <style>
-                @page { size: A4 portrait; margin: 10mm; }
-                body { font-family: "Kruti Dev", "Mangal", Arial, sans-serif; font-size: 12px; }
+                @page { 
+                    size: A4 portrait; 
+                    margin: 10mm; 
+                }
+                body { 
+                    font-family: "Kruti Dev", "Mangal", Arial, sans-serif; 
+                    font-size: 12px; 
+                    margin: 0;
+                    padding: 10px;
+                }
     
-                .header { text-align:center; line-height:1.3; }
-                .header p { margin: 2px 0; font-weight: 600; }
+                .header { 
+                    text-align: center; 
+                    line-height: 1.3; 
+                    margin-bottom: 10px;
+                }
+                .header p { 
+                    margin: 2px 0; 
+                    font-weight: 600; 
+                }
                 .box-title {
-                    display:inline-block;
-                    border:1px solid #000;
-                    padding:2px 10px;
-                    margin:5px 0;
-                    font-weight:bold;
+                    display: inline-block;
+                    border: 1px solid #000;
+                    padding: 2px 10px;
+                    margin: 5px 0;
+                    font-weight: bold;
                 }
     
-                .meta { width:100%; font-size:12px; margin-top:4px; }
-                .meta td { padding:2px; }
+                .meta { 
+                    width: 100%; 
+                    font-size: 12px; 
+                    margin-top: 4px; 
+                    margin-bottom: 10px;
+                }
+                .meta td { 
+                    padding: 2px; 
+                    vertical-align: top;
+                }
     
-                .table-outer { border:1.5px solid #000; margin-top:6px; }
-                table.dc { border-collapse:collapse; width:100%; font-size:12px; }
+                .table-outer { 
+                    border: 1.5px solid #000; 
+                    margin-top: 6px; 
+                    margin-bottom: 10px;
+                }
+                table.dc { 
+                    border-collapse: collapse; 
+                    width: 100%; 
+                    font-size: 12px; 
+                }
                 table.dc th, table.dc td {
-                    border:1px solid #000;
-                    padding:4px 6px;
-                    text-align:center;
+                    border: 1px solid #000;
+                    padding: 4px 6px;
+                    text-align: center;
                 }
-                table.dc th { font-weight:bold; }
+                table.dc th { 
+                    font-weight: bold; 
+                    background-color: #f5f5f5;
+                }
+                table.dc td {
+                    text-align: left;
+                }
+                table.dc td:last-child {
+                    text-align: right;
+                }
     
                 .total-bar {
-                    text-align:right;
-                    font-weight:bold;
-                    font-size:13px;
-                    margin-top:6px;
+                    text-align: right;
+                    font-weight: bold;
+                    font-size: 13px;
+                    margin-top: 10px;
+                    margin-bottom: 15px;
                 }
                 .total-bar span {
-                    border:1.5px solid #000;
-                    padding:4px 8px;
-                    display:inline-block;
-                    min-width:60px;
+                    border: 1.5px solid #000;
+                    padding: 6px 12px;
+                    display: inline-block;
+                    min-width: 80px;
+                    background-color: #f9f9f9;
                 }
     
                 .note {
-                    font-size:11px;
-                    line-height:1.4;
-                    text-align:justify;
-                    margin-top:8px;
+                    font-size: 11px;
+                    line-height: 1.4;
+                    text-align: justify;
+                    margin-top: 15px;
+                    margin-bottom: 20px;
+                    padding: 8px;
+                    border: 1px dashed #666;
+                    background-color: #f8f8f8;
                 }
     
                 .signs {
-                    display:flex;
-                    justify-content:space-between;
-                    margin-top:15px;
+                    display: flex;
+                    justify-content: space-between;
+                    margin-top: 25px;
                 }
                 .sign-box {
-                    width:45%;
-                    text-align:center;
+                    width: 45%;
+                    text-align: center;
                 }
                 .sign-line {
-                    border-top:1px solid #000;
-                    margin-top:35px;
-                    font-size:11px;
-                    padding-top:2px;
+                    border-top: 1px solid #000;
+                    margin-top: 35px;
+                    font-size: 11px;
+                    padding-top: 2px;
+                }
+                
+                /* Ensure proper printing */
+                @media print {
+                    body { 
+                        margin: 0; 
+                        padding: 0;
+                    }
+                    .table-outer { 
+                        border-width: 1.5px; 
+                    }
+                    .note {
+                        background-color: transparent;
+                    }
                 }
             </style>
         </head>
@@ -501,17 +535,29 @@ const Routepaperview = () => {
             </div>
     
             <table class="meta">
-                             <tr>
-                    <td><b>${periodText} (${daysText})</b></td>
-                    <td style="text-align:right;">तालुका: ${talukaName}</td>
+                <tr>
+                    <td style="width: 60%;">
+                        <strong>${periodText} (${daysText})</strong>
+                    </td>
+                    <td style="text-align: right; width: 40%;">
+                        <strong>तालुका:</strong> ${talukaName}
+                    </td>
                 </tr>
                 <tr>
-                    <td>Order No. ${orderNo}</td>
-                    <td style="text-align:right;">Date ${dateStr}</td>
+                    <td>
+                        <strong>Order No:</strong> ${orderNo}
+                    </td>
+                    <td style="text-align: right;">
+                        <strong>Date:</strong> ${dateStr}
+                    </td>
                 </tr>
                 <tr>
-                    <td>DC पावती क्रमांक: ${dcNo}</td>
-                    <td style="text-align:right;">गाडी नं. ${vehicleNo}</td>
+                    <td>
+                        <strong>DC पावती क्रमांक:</strong> ${dcNo}
+                    </td>
+                    <td style="text-align: right;">
+                        <strong>गाडी नं.:</strong> ${vehicleNo}
+                    </td>
                 </tr>
             </table>
     
@@ -519,17 +565,17 @@ const Routepaperview = () => {
                 <table class="dc">
                     <thead>
                         <tr>
-                            <th style="width:10%;">अ. क्र.</th>
-                            <th style="text-align:left;">धान्यादी वस्तूचे नाव</th>
-                            <th style="width:25%;">वजन</th>
+                            <th style="width: 10%;">अ. क्र.</th>
+                            <th style="text-align: left; width: 65%;">धान्यादी वस्तूचे नाव</th>
+                            <th style="width: 25%;">वजन (किलो)</th>
                         </tr>
                     </thead>
                     <tbody>
-                                             ${rows.map((r, i) => `
+                        ${rows.map((r, i) => `
                             <tr>
                                 <td>${i + 1}</td>
-                                <td style="text-align:left;">${r.name || ''}</td>
-                                <td style="text-align:right;">${r.name ? Number(r.qty || 0).toFixed(1) : ''}</td>
+                                <td style="text-align: left;">${r.name}</td>
+                                <td style="text-align: right;">${r.qty.toFixed(2)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -537,12 +583,10 @@ const Routepaperview = () => {
             </div>
     
             <div class="total-bar">
-                <span>एकूण ${grandTotal.toFixed(2)}</span>
+                <span>एकूण: ${grandTotal.toFixed(2)} किलो</span>
             </div>
-            <div class="note">
-                शाळेकडून शालेय पोषण आहार योजनेअंतर्गत माल पोहोच करुन देण्याकरीता तपशिलाप्रमाणे माल बाब्यात मिळाला. 
-                तसेच सोबत दिलेल्या शाळेच्या यादीनुसार माल उतरवून पोहचवून आणून देण्याची जबाबदारी माझी (ड्रायव्हरची) राहील.
-            </div>
+    
+         
     
             <div class="signs">
                 <div class="sign-box">
@@ -553,12 +597,7 @@ const Routepaperview = () => {
                 </div>
             </div>
     
-            <script>
-                window.onload = function() {
-                    window.print();
-                    setTimeout(()=>window.close(), 600);
-                }
-            </script>
+          
         </body>
         </html>
         `);

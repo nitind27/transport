@@ -49,8 +49,8 @@ const Page = async () => {
 
 
   return (
-    <div className="grid grid-cols-6 gap-4 md:gap-6">
-      <div className="col-span-12 space-y-6 xl:col-span-7">
+    <div className="grid grid-cols-6 gap-4 md:gap-2">
+      <div className="col-span-12 space-y-2 xl:col-span-7">
       <Suspense fallback={<Loader />}>
         <Breadcrumbs title="Users" breadcrumbs={breadcrumbItems} />
         <Usersdatas

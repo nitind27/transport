@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
-import { Filterdispached } from "../tables/Filterdispached";
+
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 import { Modal } from '../ui/modal';
 import { TrashBinIcon } from '@/icons';
+import { formatDateToDDMMYYYY } from '@/lib/utils';
+import { Filterdispacheddetails } from '../tables/Filterdispacheddetails';
+import Loader from '@/common/Loader';
 
 interface ZPOrderDetail {
   id: number;
@@ -949,6 +952,7 @@ const Dipatchdetials = () => {
   const [selectedCenterId, setSelectedCenterId] = useState<string>('');
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
   const [selectedClassRange, setSelectedClassRange] = useState<string>('');
+const [isLoading, setIsLoading] = useState(true);
 
   // Add these two lines here
   const [isTruckDropdownOpen, setIsTruckDropdownOpen] = useState(false);
@@ -994,7 +998,7 @@ const Dipatchdetials = () => {
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
   const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
-
+console.log('filteredDispatchList',filteredDispatchList)
   // State to gate input mode and reset when filters change
   const [didSearch, setDidSearch] = useState(false);
 
@@ -1007,8 +1011,8 @@ const Dipatchdetials = () => {
   useEffect(() => {
     if (datePickerRef.current) {
       const flatPickr = flatpickr(datePickerRef.current, {
-        dateFormat: "Y-m-d",
-        defaultDate: selectedDate ? new Date(selectedDate) : undefined,
+        dateFormat: "d-m-Y",
+        defaultDate: selectedDate,
         onChange: function (selectedDates, dateStr) {
           setSelectedDate(dateStr);
         },
@@ -1031,7 +1035,6 @@ const Dipatchdetials = () => {
       };
     }
   }, []);
-
   // Filter dispatch list based on date
   useEffect(() => {
     let filtered = [...dispatchList];
@@ -1046,7 +1049,6 @@ const Dipatchdetials = () => {
 
     setFilteredDispatchList(filtered);
   }, [dispatchList, selectedDate]);
-
   // Fetchers
   const fetchZpOrders = async () => {
     try {
@@ -1139,16 +1141,29 @@ const Dipatchdetials = () => {
   };
 
   useEffect(() => {
-    fetchZpOrders();
-    fetchSchoolWiseOrders();
-    fetchTrucks();
-    fetchTalukas();
-    fetchCenters();
-    fetchItemMaster();
-    fetchDispatchList();
-    fetchSchoolDataMap();
-  }, []);
+    const fetchAllData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchZpOrders(),
+          fetchSchoolWiseOrders(),
+          fetchTrucks(),
+          fetchTalukas(),
+          fetchCenters(),
+          fetchItemMaster(),
+          fetchDispatchList(),
+          fetchSchoolDataMap()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast.error('Failed to load data. Please refresh the page.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    fetchAllData();
+  }, []);
   // Options
   const orderNoOptions = useMemo(() => [
     { value: '', label: 'Select Order Number' },
@@ -1459,7 +1474,7 @@ const Dipatchdetials = () => {
           taluka: talukaName,
           center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
           truckNo: r.truckNo || '',
-          date: new Date(r.created_at).toLocaleDateString('en-GB'),
+          date: formatDateToDDMMYYYY(r.created_at),
           class_range: r.class_range || '',
           period: r.period || '',
           no_of_days: r.no_of_days || 0,
@@ -1497,6 +1512,7 @@ const Dipatchdetials = () => {
     },
 
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
+    { key: 'dispatch_code', label: 'Dispatch Date', accessor: 'dispatch_code', render: (r) => <span>{formatDateToDDMMYYYY(r.created_at)}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     {
       key: 'taluka',
@@ -1569,7 +1585,7 @@ const Dipatchdetials = () => {
     }
 
     const instance = flatpickr(datePickerRef.current, {
-      dateFormat: "Y-m-d",
+      dateFormat: "d-m-Y",
       defaultDate: selectedDate ? new Date(selectedDate) : undefined,
       onChange: function (selectedDates, dateStr) {
         setSelectedDate(dateStr);
@@ -1724,7 +1740,7 @@ const Dipatchdetials = () => {
         </div>
 
         <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+          <span className="text-xs text-gray-600 mb-1 text-left">Date</span>
           <div className="relative">
             <input
               ref={datePickerRef}
@@ -2008,6 +2024,7 @@ const Dipatchdetials = () => {
 
   return (
     <div className="">
+      {isLoading && <Loader />}
       {showInputMode ? (
         <div className="bg-white rounded-2xl shadow-md border p-4">
           <div className="mb-4">{toolbar}</div>
@@ -2083,7 +2100,7 @@ const Dipatchdetials = () => {
           </div>
         </div>
       ) : (
-        <Filterdispached
+        <Filterdispacheddetails
           data={filteredDispatchList}
           columns={listColumns}
           filterOptions={[]}

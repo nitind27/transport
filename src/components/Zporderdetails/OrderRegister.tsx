@@ -117,7 +117,7 @@ const OrderRegisterWithColumnSearch = () => {
       const response = await fetch('/api/schoolwiseorders');
       const data = await response.json();
       setSchoolWiseOrders(data);
-      
+
       // Extract all grain items from items_data
       const grainItemsSet = new Set<string>();
       data.forEach((order: SchoolWiseOrder) => {
@@ -134,7 +134,7 @@ const OrderRegisterWithColumnSearch = () => {
           }
         }
       });
-      
+
       // Convert set to array and set state
       setAllGrainItems(Array.from(grainItemsSet));
     } catch (error) {
@@ -148,8 +148,8 @@ const OrderRegisterWithColumnSearch = () => {
     fetchSchoolWiseOrders();
   }, []);
 
-  type SWOWithTaluka = SchoolWiseOrder & { 
-    taluka: string; 
+  type SWOWithTaluka = SchoolWiseOrder & {
+    taluka: string;
     _groupKey?: string;
     parsedItems?: ItemsData;
   };
@@ -172,10 +172,10 @@ const OrderRegisterWithColumnSearch = () => {
       } catch (e) {
         console.error('Error parsing items_data:', e);
       }
-      return { 
-        ...r, 
+      return {
+        ...r,
         taluka: s?.talukaname || '-',
-        parsedItems 
+        parsedItems
       };
     });
   }, [filteredSchoolWiseOrders, schools]);
@@ -272,11 +272,11 @@ const OrderRegisterWithColumnSearch = () => {
         [], // Empty row
         // School data headers
         [
-          'Sr No', 
-          'School Name', 
-          'UDISE Code', 
-          'Taluka', 
-          'Class Range', 
+          'Sr No',
+          'School Name',
+          'UDISE Code',
+          'Taluka',
+          'Class Range',
           'Patsankhya',
           ...allGrainItems,
           'Total Weight'
@@ -287,7 +287,7 @@ const OrderRegisterWithColumnSearch = () => {
       groupRows.forEach((school, index) => {
         const schoolDetails = schools.find(s => s.schoolid === school.school_id);
         const itemsData = parseItemsData(school.items_data);
-        
+
         const rowData = [
           (index + 1).toString(),
           school.schoolname || '',
@@ -370,11 +370,11 @@ const OrderRegisterWithColumnSearch = () => {
         [`Total Schools: ${selectedGroupMeta.total_schools}`],
         [],
         [
-          'Sr No', 
-          'School Name', 
-          'UDISE Code', 
-          'Taluka', 
-          'Class Range', 
+          'Sr No',
+          'School Name',
+          'UDISE Code',
+          'Taluka',
+          'Class Range',
           'Patsankhya',
           ...allGrainItems,
           'Total Weight'
@@ -385,7 +385,7 @@ const OrderRegisterWithColumnSearch = () => {
       selectedGroupData.forEach((school, index) => {
         const schoolDetails = schools.find(s => s.schoolid === school.school_id);
         const itemsData = parseItemsData(school.items_data);
-        
+
         const rowData = [
           (index + 1).toString(),
           school.schoolname || '',
@@ -442,6 +442,138 @@ const OrderRegisterWithColumnSearch = () => {
       saveAs(data, fileName);
 
       toast.success('Excel file exported successfully!');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
+  // Export all table data to Excel - Only Detailed Data
+  const exportAllToExcel = () => {
+    if (dataWithTaluka.length === 0) {
+      toast.error('No data available to export');
+      return;
+    }
+  
+    try {
+      const workbook = XLSX.utils.book_new();
+  
+      // Get unique order numbers for display
+      const uniqueOrderNumbers = Array.from(new Set(dataWithTaluka.map(item => item.order_no))).join(', ');
+  
+      // Create Detailed Data Sheet
+      const detailedData = [
+        ['Order Register - Detailed Data'],
+        [`Order No: ${uniqueOrderNumbers}`],
+        [`Generated on: ${new Date().toLocaleString()}`],
+        [`Total Records: ${dataWithTaluka.length}`],
+        [],
+        [
+          'Sr No',
+          'School Name',
+          'UDISE Code',
+          'Taluka',
+          'Class Range',
+          'No of Days',
+          'Period',
+          'Financial Year',
+          'Patsankhya',
+          ...allGrainItems,
+          'Total Weight'
+        ]
+      ];
+  
+      // Add all data rows
+      dataWithTaluka.forEach((school, index) => {
+        const schoolDetails = schools.find(s => s.schoolid === school.school_id);
+        const itemsData = parseItemsData(school.items_data);
+  
+        const rowData = [
+          (index + 1).toString(),
+          school.schoolname || '',
+          school.udaisno || '',
+          schoolDetails?.talukaname || '-',
+          school.class_range || '',
+          school.no_of_days.toString(),
+          school.period,
+          school.financial_year,
+          (school.patsankhya || 0).toString()
+        ];
+  
+        // Add grain items data
+        allGrainItems.forEach(grain => {
+          rowData.push((itemsData[grain as keyof ItemsData] || 0).toString());
+        });
+  
+        // Add total weight (Status column removed)
+        rowData.push((school.total_weight || 0).toString());
+  
+        detailedData.push(rowData);
+      });
+  
+      const detailedWorksheet = XLSX.utils.aoa_to_sheet(detailedData);
+  
+      // Merge header cells
+      if (!detailedWorksheet['!merges']) detailedWorksheet['!merges'] = [];
+      detailedWorksheet['!merges'].push(
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 8 + allGrainItems.length } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 8 + allGrainItems.length } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 8 + allGrainItems.length } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 8 + allGrainItems.length } }
+      );
+  
+      // Apply bold styling to ALL header rows (rows 0, 1, 2, 3, 5)
+      const headerRows = [0, 1, 2, 3, 5];
+      
+      headerRows.forEach(rowIndex => {
+        const numCols = detailedData[rowIndex]?.length || 0;
+        for (let col = 0; col < numCols; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: col });
+          if (detailedWorksheet[cellAddress]) {
+            // Create cell style object
+            detailedWorksheet[cellAddress].s = {
+              font: {
+                bold: true,
+                sz: rowIndex === 0 ? 14 : 11 // Larger font for main title
+              },
+              alignment: {
+                horizontal: 'center',
+                vertical: 'center'
+              }
+            };
+          }
+        }
+      });
+  
+      // Set column widths for detailed data
+      const detailedColWidths = [
+        { wch: 8 },   // Sr No
+        { wch: 30 },  // School Name
+        { wch: 15 },  // UDISE Code
+        { wch: 20 },  // Taluka
+        { wch: 12 },  // Class Range
+        { wch: 10 },  // No of Days
+        { wch: 15 },  // Period
+        { wch: 15 },  // Financial Year
+        { wch: 12 },  // Patsankhya
+        ...allGrainItems.map(() => ({ wch: 12 })), // Grain items
+        { wch: 15 }   // Total Weight
+      ];
+  
+      detailedWorksheet['!cols'] = detailedColWidths;
+  
+      XLSX.utils.book_append_sheet(workbook, detailedWorksheet, 'Order Register Data');
+  
+      // Export the workbook
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+  
+      const fileName = `Order_Register_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+  
+      toast.success(`Excel file exported successfully with ${dataWithTaluka.length} records!`);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       toast.error('Failed to export Excel file');
@@ -572,6 +704,14 @@ const OrderRegisterWithColumnSearch = () => {
               </div>
             </div>
           </div>}
+          exportbtn={
+            <button 
+              onClick={exportAllToExcel}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg shadow hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200 whitespace-nowrap"
+            >
+              Export Excel
+            </button>
+          }
           breadcrumbs={breadcrumbItems}
         />
       </div>
@@ -601,7 +741,7 @@ const OrderRegisterWithColumnSearch = () => {
         searchKey="schoolname"
         searchableKeys={['order_no', 'financial_year', 'class_range', 'taluka']}
         groupByKeys={['uniq_id']}
-        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools']}
+        colspanKeys={['delete', 'uniq_id', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools','order_no']}
       />
 
       {/* School Details Modal */}
@@ -661,17 +801,17 @@ const OrderRegisterWithColumnSearch = () => {
                   <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Patsankhya
                   </th>
-                  
+
                   {/* Dynamic grain items headers */}
                   {allGrainItems.map((grain) => (
-                    <th 
-                      key={grain} 
+                    <th
+                      key={grain}
                       className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                     >
                       {grain}
                     </th>
                   ))}
-                  
+
                   <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wider">
                     Total Weight
                   </th>
@@ -681,7 +821,7 @@ const OrderRegisterWithColumnSearch = () => {
                 {selectedGroupData.map((school, index) => {
                   const schoolDetails = schools.find(s => s.schoolid === school.school_id);
                   const itemsData = parseItemsData(school.items_data);
-                  
+
                   return (
                     <tr key={school.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -702,17 +842,17 @@ const OrderRegisterWithColumnSearch = () => {
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {school.patsankhya || 0}
                       </td>
-                      
+
                       {/* Dynamic grain items data */}
                       {allGrainItems.map((grain) => (
-                        <td 
-                          key={grain} 
+                        <td
+                          key={grain}
                           className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white"
                         >
                           {itemsData[grain as keyof ItemsData] || 0}
                         </td>
                       ))}
-                      
+
                       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
                         {school.total_weight}
                       </td>

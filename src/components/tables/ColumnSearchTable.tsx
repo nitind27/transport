@@ -309,7 +309,7 @@ export function ColumnSearchTable<T extends object>({
                       <div className="flex flex-col gap-1">
                         {/* Column Label */}
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold">{col.label}</span>
+                          <span className="font-semibold whitespace-nowrap">{col.label}</span>
                           {searchable && hasSearchValue && (
                             <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
                               Filtered
@@ -325,7 +325,7 @@ export function ColumnSearchTable<T extends object>({
                                 searchInputRefs.current[columnKey] = el;
                               }}
                               type="text"
-                              placeholder={`Search ${col.label}...`}
+                              placeholder={`Search...`}
                               value={columnSearches[columnKey] || ""}
                               onChange={(e) => handleSearchChange(columnKey, e.target.value)}
                               onKeyDown={(e) => handleSearchKeyPress(e, columnKey)}

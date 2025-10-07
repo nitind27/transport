@@ -10,9 +10,10 @@ interface BreadcrumbsProps {
     title: string;
     datafiled?: React.ReactNode;
     breadcrumbs: BreadcrumbItem[];
+    exportbtn?: React.ReactNode;
 }
 
-const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs, datafiled }) => {
+const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs, datafiled, exportbtn }) => {
     return (
         <div className="p-4 bg-white rounded-lg w-full  mx-auto border">
             <div className='flex items-center justify-between'>
@@ -44,10 +45,13 @@ const BreadcrumbsBtn: React.FC<BreadcrumbsProps> = ({ title, breadcrumbs, datafi
                         {datafiled}
 
                     </div>
+                    <div>
 
-                    <button className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg shadow hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all duration-200 whitespace-nowrap">
-                        Export Excel
-                    </button>
+                        {
+                            exportbtn
+                        }
+                    </div>
+                   
                 </div>
             </div>
         </div >

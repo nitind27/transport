@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
-import { Filterdispached } from "../tables/Filterdispached";
+
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 // import { Modal } from '../ui/modal';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { formatDateToDDMMYYYY } from '@/lib/utils';
+import { ColumnSearchTable } from '../tables/ColumnSearchTable';
 
 // Loader Component
 const Loader = () => {
@@ -96,12 +98,14 @@ type DispatchListRow = {
   truckNo?: string;
   class_range?: string;
   taluka?: string;
+  taluka_name?: string;
   period?: string;
   no_of_days?: number;
   financial_year?: string;
   udaisno?: string;
+
   patsankhya?: string;
-  action?:string;
+  action?: string;
   // Add all grain properties as optional string types
   "grain_तांदुळ"?: string;
   "grain_मुंगदाळ"?: string;
@@ -164,169 +168,169 @@ interface TalukaRow {
 }
 
 const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, dispatchData }) => {
-    const exportToExcel = () => {
-      try {
-        const workbook = XLSX.utils.book_new();
-        
-        // Create grain mapping with all required columns
-        const grainColumns = [
-          'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 
-          'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल', 
-          'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'
-        ];
-  
-        // Initialize grain quantities
-        const grainQuantities = grainColumns.reduce((acc, grain) => {
-          acc[grain] = 0;
-          return acc;
-        }, {} as Record<string, number>);
-  
-        // Map dispatch items to grain quantities
-        dispatchData.items.forEach(item => {
-          const itemName = (item.name || '').toLowerCase().trim();
-          
-          // Simple mapping based on common names
-          if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
-            grainQuantities['तांदुळ'] += Number(item.qty) || 0;
-          } else if (itemName.includes('मुंग') || itemName.includes('moong')) {
-            if (itemName.includes('दाळ') || itemName.includes('dal')) {
-              grainQuantities['मुंगदाळ'] += Number(item.qty) || 0;
-            } else {
-              grainQuantities['मूग'] += Number(item.qty) || 0;
-            }
-          } else if (itemName.includes('मसूर') || itemName.includes('masoor')) {
-            grainQuantities['मसूरदाळ'] += Number(item.qty) || 0;
-          } else if (itemName.includes('तूर') || itemName.includes('toor') || itemName.includes('अरहर')) {
-            grainQuantities['तूरदाळ'] += Number(item.qty) || 0;
-          } else if (itemName.includes('हरभरा') || itemName.includes('chana') || itemName.includes('gram')) {
-            grainQuantities['हरभरा'] += Number(item.qty) || 0;
-          } else if (itemName.includes('चवळी') || itemName.includes('chawli') || itemName.includes('लोबिया')) {
-            grainQuantities['चवळी'] += Number(item.qty) || 0;
-          } else if (itemName.includes('मटकी') || itemName.includes('matki')) {
-            grainQuantities['मटकी'] += Number(item.qty) || 0;
-          } else if (itemName.includes('वाटाणा') || itemName.includes('वाटणा') || itemName.includes('vatana') || itemName.includes('peas')) {
-            grainQuantities['वाटणा'] += Number(item.qty) || 0;
-          } else if (itemName.includes('सोया') || itemName.includes('soya')) {
-            if (itemName.includes('वडी') || itemName.includes('chunks')) {
-              grainQuantities['सोया वडी'] += Number(item.qty) || 0;
-            } else if (itemName.includes('तेल') || itemName.includes('oil')) {
-              grainQuantities['सोया तेल'] += Number(item.qty) || 0;
-            }
-          } else if (itemName.includes('मसाला') || itemName.includes('spices')) {
-            grainQuantities['मसाला'] += Number(item.qty) || 0;
-          } else if (itemName.includes('हळद') || itemName.includes('turmeric') || itemName.includes('haldi')) {
-            grainQuantities['हळद'] += Number(item.qty) || 0;
-          } else if (itemName.includes('मीठ') || itemName.includes('salt')) {
-            grainQuantities['मीठ'] += Number(item.qty) || 0;
-          } else if (itemName.includes('मोहरी') || itemName.includes('mustard')) {
-            grainQuantities['मोहरी'] += Number(item.qty) || 0;
-          } else if (itemName.includes('चना') || itemName.includes('gram')) {
-            grainQuantities['चना'] += Number(item.qty) || 0;
-          } else if (itemName.includes('जीरा') || itemName.includes('cumin')) {
-            grainQuantities['जीरा'] += Number(item.qty) || 0;
+  const exportToExcel = () => {
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      // Create grain mapping with all required columns
+      const grainColumns = [
+        'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
+        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
+        'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'
+      ];
+
+      // Initialize grain quantities
+      const grainQuantities = grainColumns.reduce((acc, grain) => {
+        acc[grain] = 0;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Map dispatch items to grain quantities
+      dispatchData.items.forEach(item => {
+        const itemName = (item.name || '').toLowerCase().trim();
+
+        // Simple mapping based on common names
+        if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
+          grainQuantities['तांदुळ'] += Number(item.qty) || 0;
+        } else if (itemName.includes('मुंग') || itemName.includes('moong')) {
+          if (itemName.includes('दाळ') || itemName.includes('dal')) {
+            grainQuantities['मुंगदाळ'] += Number(item.qty) || 0;
+          } else {
+            grainQuantities['मूग'] += Number(item.qty) || 0;
           }
-        });
-  
-        // Calculate total weight
-        const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
-  
-        // Create worksheet data
-        const worksheetData = [
-          // Headers
-          [
-            'अ. क्र.', 'केंद्र', 'UDISE Code', 'शाळा', 'वर्ग', 'पट संख्या',
-            ...grainColumns,
-            'एकूण वजन'
-          ],
-          
-          // Data row
-          [
-            1, 
-            dispatchData.center_name || '', 
-            dispatchData.udaisno || '', 
-            dispatchData.schoolname || '', 
-            dispatchData.class_range || '1-5', 
-            dispatchData.patsankhya || 0,
-            ...grainColumns.map(grain => grainQuantities[grain].toFixed(3)),
-            totalWeight.toFixed(2)
-          ]
-        ];
-  
-        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-        
-        // Set column widths
-        const colWidths = [
-          { wch: 8 },   // अ. क्र.
-          { wch: 25 },  // केंद्र
-          { wch: 15 },  // UDISE Code
-          { wch: 30 },  // शाळा
-          { wch: 10 },  // वर्ग
-          { wch: 12 },  // पट संख्या
-          ...grainColumns.map(() => ({ wch: 10 })), // grain columns
-          { wch: 12 }   // एकूण वजन
-        ];
-        
-        worksheet['!cols'] = colWidths;
-  
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Dispatch Details');
-        
-        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        
-        const fileName = `Dispatch_${dispatchData.dispatch_code}_${new Date().toISOString().split('T')[0]}.xlsx`;
-        saveAs(data, fileName);
-        
-        toast.success('Excel file exported successfully!');
-        onClose();
-      } catch (error) {
-        console.error('Error exporting to Excel:', error);
-        toast.error(`Failed to export Excel file: `);
-      }
-    };
-  
-    if (!isOpen) return null;
-  
-    return (
-      <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-9999">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Export Dispatch Data to Excel</h2>
-            <button 
-              onClick={onClose} 
-              className="text-gray-500 hover:text-gray-700 text-2xl"
-            >
-              ×
-            </button>
+        } else if (itemName.includes('मसूर') || itemName.includes('masoor')) {
+          grainQuantities['मसूरदाळ'] += Number(item.qty) || 0;
+        } else if (itemName.includes('तूर') || itemName.includes('toor') || itemName.includes('अरहर')) {
+          grainQuantities['तूरदाळ'] += Number(item.qty) || 0;
+        } else if (itemName.includes('हरभरा') || itemName.includes('chana') || itemName.includes('gram')) {
+          grainQuantities['हरभरा'] += Number(item.qty) || 0;
+        } else if (itemName.includes('चवळी') || itemName.includes('chawli') || itemName.includes('लोबिया')) {
+          grainQuantities['चवळी'] += Number(item.qty) || 0;
+        } else if (itemName.includes('मटकी') || itemName.includes('matki')) {
+          grainQuantities['मटकी'] += Number(item.qty) || 0;
+        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटणा') || itemName.includes('vatana') || itemName.includes('peas')) {
+          grainQuantities['वाटणा'] += Number(item.qty) || 0;
+        } else if (itemName.includes('सोया') || itemName.includes('soya')) {
+          if (itemName.includes('वडी') || itemName.includes('chunks')) {
+            grainQuantities['सोया वडी'] += Number(item.qty) || 0;
+          } else if (itemName.includes('तेल') || itemName.includes('oil')) {
+            grainQuantities['सोया तेल'] += Number(item.qty) || 0;
+          }
+        } else if (itemName.includes('मसाला') || itemName.includes('spices')) {
+          grainQuantities['मसाला'] += Number(item.qty) || 0;
+        } else if (itemName.includes('हळद') || itemName.includes('turmeric') || itemName.includes('haldi')) {
+          grainQuantities['हळद'] += Number(item.qty) || 0;
+        } else if (itemName.includes('मीठ') || itemName.includes('salt')) {
+          grainQuantities['मीठ'] += Number(item.qty) || 0;
+        } else if (itemName.includes('मोहरी') || itemName.includes('mustard')) {
+          grainQuantities['मोहरी'] += Number(item.qty) || 0;
+        } else if (itemName.includes('चना') || itemName.includes('gram')) {
+          grainQuantities['चना'] += Number(item.qty) || 0;
+        } else if (itemName.includes('जीरा') || itemName.includes('cumin')) {
+          grainQuantities['जीरा'] += Number(item.qty) || 0;
+        }
+      });
+
+      // Calculate total weight
+      const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
+
+      // Create worksheet data
+      const worksheetData = [
+        // Headers
+        [
+          'अ. क्र.', 'केंद्र', 'UDISE Code', 'शाळा', 'वर्ग', 'पट संख्या',
+          ...grainColumns,
+          'एकूण वजन'
+        ],
+
+        // Data row
+        [
+          1,
+          dispatchData.center_name || '',
+          dispatchData.udaisno || '',
+          dispatchData.schoolname || '',
+          dispatchData.class_range || '1-5',
+          dispatchData.patsankhya || 0,
+          ...grainColumns.map(grain => grainQuantities[grain].toFixed(3)),
+          totalWeight.toFixed(2)
+        ]
+      ];
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },   // अ. क्र.
+        { wch: 25 },  // केंद्र
+        { wch: 15 },  // UDISE Code
+        { wch: 30 },  // शाळा
+        { wch: 10 },  // वर्ग
+        { wch: 12 },  // पट संख्या
+        ...grainColumns.map(() => ({ wch: 10 })), // grain columns
+        { wch: 12 }   // एकूण वजन
+      ];
+
+      worksheet['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Dispatch Details');
+
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      const fileName = `Dispatch_${dispatchData.dispatch_code}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+
+      toast.success('Excel file exported successfully!');
+      onClose();
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error(`Failed to export Excel file: `);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-9999">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Export Dispatch Data to Excel</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium mb-2">Dispatch Details Summary</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div><strong>Receipt No:</strong> {dispatchData.dispatch_code}</div>
+              <div><strong>Date:</strong> {dispatchData.date}</div>
+              <div><strong>School:</strong> {dispatchData.schoolname}</div>
+              <div><strong>Udise No:</strong> {dispatchData.udaisno}</div>
+              <div><strong>Taluka:</strong> {dispatchData.taluka}</div>
+              <div><strong>Center:</strong> {dispatchData.center_name}</div>
+              <div><strong>Class:</strong> {dispatchData.class_range || '-'}</div>
+              <div><strong>Truck:</strong> {dispatchData.truckNo}</div>
+            </div>
           </div>
-          
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium mb-2">Dispatch Details Summary</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Receipt No:</strong> {dispatchData.dispatch_code}</div>
-                <div><strong>Date:</strong> {dispatchData.date}</div>
-                <div><strong>School:</strong> {dispatchData.schoolname}</div>
-                <div><strong>Udise No:</strong> {dispatchData.udaisno}</div>
-                <div><strong>Taluka:</strong> {dispatchData.taluka}</div>
-                <div><strong>Center:</strong> {dispatchData.center_name}</div>
-                <div><strong>Class:</strong> {dispatchData.class_range || '-'}</div>
-                <div><strong>Truck:</strong> {dispatchData.truckNo}</div>
-              </div>
-            </div>
-  
-            <div className="text-center">
-              <button
-                onClick={exportToExcel}
-                className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Export to Excel
-              </button>
-            </div>
+
+          <div className="text-center">
+            <button
+              onClick={exportToExcel}
+              className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              Export to Excel
+            </button>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
 const DispatchView = () => {
   const [loading, setLoading] = useState(true); // Add loading state
@@ -468,7 +472,7 @@ const DispatchView = () => {
   // Filter dispatch list based on date range
   useEffect(() => {
     let filtered = [...dispatchList];
-    
+
     // Filter by date range if dates are selected
     if (fromDate && fromDate.trim() !== '') {
       const fromDateObj = new Date(fromDate);
@@ -695,11 +699,11 @@ const DispatchView = () => {
   const exportFilteredDataToExcel = () => {
     try {
       const workbook = XLSX.utils.book_new();
-      
+
       // Create grain mapping with all required columns
       const grainColumns = [
-        'पट संख्या', 'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 
-        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल', 
+        'पट संख्या', 'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
+        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
         'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
       ];
 
@@ -712,7 +716,7 @@ const DispatchView = () => {
             order_no: item.order_no,
             schoolname: item.schoolname,
             udaisno: schoolDataById.get(Number(item.school_id))?.udaisno || '',
-            taluka: schoolDataById.get(Number(item.school_id)) ? 
+            taluka: schoolDataById.get(Number(item.school_id)) ?
               (talukaList.find(t => t.taluka_id === schoolDataById.get(Number(item.school_id))?.taluka_id)?.name || '') : '',
             center_name: centerList.find(cn => String(cn.center_id) === String(item.center_id))?.marathi_name || item.center_name || '',
             truckNo: item.truckNo || '',
@@ -721,14 +725,14 @@ const DispatchView = () => {
             items: {} as Record<string, number>
           };
         }
-        
+
         // Add item to the group
         const itemName = item.item_name.trim();
         if (!acc[key].items[itemName]) {
           acc[key].items[itemName] = 0;
         }
         acc[key].items[itemName] += Number(item.qty_dispatch || 0);
-        
+
         return acc;
       }, {} as Record<string, {
         dispatch_code: string;
@@ -748,8 +752,8 @@ const DispatchView = () => {
         // Headers
         [
           'अ. क्र.', 'केंद्र', 'UDISE Code', 'शाळा', 'वर्ग', 'पट संख्या',
-          'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 
-          'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल', 
+          'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
+          'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
           'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
         ]
       ];
@@ -767,7 +771,7 @@ const DispatchView = () => {
         Object.entries(group.items).forEach(([itemName, qty]) => {
           const name = (itemName || '').toLowerCase().trim();
           const quantity = Number(qty) || 0;
-          
+
           // Simple mapping based on common names
           if (name.includes('तांदुळ') || name.includes('rice') || name.includes('चावल')) {
             grainQuantities['तांदुळ'] += quantity;
@@ -843,7 +847,7 @@ const DispatchView = () => {
       });
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-      
+
       // Set column widths
       const colWidths = [
         { wch: 8 },   // अ. क्र.
@@ -854,17 +858,17 @@ const DispatchView = () => {
         { wch: 12 },  // पट संख्या
         ...grainColumns.slice(1).map(() => ({ wch: 10 })), // grain columns
       ];
-      
+
       worksheet['!cols'] = colWidths;
 
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Filtered Dispatch Data');
-      
+
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+
       const fileName = `Filtered_Dispatch_Data_${fromDate || 'all'}_to_${toDate || 'all'}_${new Date().toISOString().split('T')[0]}.xlsx`;
       saveAs(data, fileName);
-      
+
       toast.success('Filtered data exported to Excel successfully!');
     } catch (error) {
       console.error('Error exporting filtered data to Excel:', error);
@@ -875,10 +879,10 @@ const DispatchView = () => {
   // Memoize grain quantities calculation to prevent performance issues
   const grainQuantitiesByDispatch = useMemo(() => {
     const quantitiesMap = new Map<string, Record<string, number>>();
-    
+
     // Get unique dispatch codes from filtered list
     const uniqueDispatchCodes = [...new Set(filteredDispatchList.map(item => item.dispatch_code))];
-    
+
     uniqueDispatchCodes.forEach(dispatchCode => {
       const grainQuantities = {
         'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
@@ -888,11 +892,11 @@ const DispatchView = () => {
 
       // Get all items for this dispatch code
       const dispatchItems = dispatchList.filter(d => d.dispatch_code === dispatchCode);
-      
+
       dispatchItems.forEach(item => {
         const itemName = (item.item_name || '').toLowerCase().trim();
         const quantity = Number(item.qty_dispatch || 0);
-        
+
         // Map items to grain quantities
         if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
           grainQuantities['तांदुळ'] += quantity;
@@ -939,7 +943,7 @@ const DispatchView = () => {
       const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
       quantitiesMap.set(dispatchCode, { ...grainQuantities, 'एकूण वजन': totalWeight });
     });
-    
+
     return quantitiesMap;
   }, [filteredDispatchList, dispatchList]);
 
@@ -977,8 +981,8 @@ const DispatchView = () => {
 
   // Updated table columns with correct keys and action column
   const listColumns: Column<DispatchListRow>[] = [
-     // Action column with delete functionality
-     {
+    // Action column with delete functionality
+    {
       key: 'action',
       label: 'ACTION',
       render: (r) => (
@@ -996,18 +1000,17 @@ const DispatchView = () => {
       )
     },
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
+    { key: 'created_at', label: 'Dispatch Date', accessor: 'created_at', render: (r) => <span>{formatDateToDDMMYYYY(r.created_at)}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList
     {
-      key: 'taluka',
+      key: 'taluka_name',
       label: 'TALUKA',
-      render: (r) => {
-        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-        return <span>{talukaName}</span>;
-      }
+      accessor: 'taluka_name',
+      render: (r) => 
+        <span>{r.taluka_name}</span>,
     },
-    // Center (prefer Marathi name)
+    // Center (prefer Marathi name) 
     {
       key: 'center_name',
       label: 'CENTER',
@@ -1031,11 +1034,10 @@ const DispatchView = () => {
     {
       key: 'udaisno',
       label: 'UDIAS',
-      render: (r) => {
-        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-        const udaisno = sd?.udaisno || '';
-        return <span>{udaisno}</span>;
-      }
+      accessor: 'udaisno',
+      render: (r) => 
+        <span>{r.udaisno}</span>,
+      
     },
     {
       key: 'class_range',
@@ -1044,7 +1046,7 @@ const DispatchView = () => {
       render: (r) => <span>{r.class_range || ''}</span>
     },
     { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
-    
+
     // New grain columns with correct keys
     {
       key: 'patsankhya',
@@ -1195,7 +1197,7 @@ const DispatchView = () => {
         return <span className="font-semibold text-green-600">{quantities['एकूण वजन'].toFixed(2)}</span>;
       }
     },
-   
+
   ];
 
   // Updated toolbar section with only From Date and To Date filters
@@ -1433,15 +1435,19 @@ const DispatchView = () => {
           </div>
         </div>
       ) : (
-        <Filterdispached
+        <ColumnSearchTable
           data={filteredDispatchList}
+          classname={"h-auto overflow-y-auto scrollbar-hide"}
           columns={listColumns}
+          title="Order Details with Column Search"
           filterOptions={[]}
-          filterKey={undefined}
-          toolbar={null}
-          groupByKey="dispatch_code"
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya","total_weight","action"]}
+
+          searchKey="schoolname"
+          searchableKeys={['order_no', 'schoolname', 'class_range', 'taluka', 'dispatch_code', 'center_name', 'udaisno', 'truckNo', 'created_at','taluka_name']}
+          groupByKeys={['dispatch_code', 'taluka']}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "created_at","taluka_name"]}
         />
+
       )}
 
       {lastDispatchData && (
