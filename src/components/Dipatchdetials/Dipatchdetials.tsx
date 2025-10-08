@@ -954,9 +954,9 @@ const Dipatchdetials = () => {
   const [selectedClassRange, setSelectedClassRange] = useState<string>('');
 const [isLoading, setIsLoading] = useState(true);
 
-  // Add these two lines here
-  const [isTruckDropdownOpen, setIsTruckDropdownOpen] = useState(false);
-  const [truckSearchTerm, setTruckSearchTerm] = useState('');
+  // Add these states for typeahead functionality
+  const [showTruckSuggestions, setShowTruckSuggestions] = useState(false);
+  const [truckInputValue, setTruckInputValue] = useState('');
 
   // Masters
   const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
@@ -1171,17 +1171,8 @@ console.log('filteredDispatchList',filteredDispatchList)
   ], [zpOrders]);
 
   const truckOptions = useMemo(() => [
-    { value: '', label: 'Select Truck' },
     ...truckList.map(t => ({ value: String(t.id), label: t.truckNo }))
   ], [truckList]);
-
-  // Add this right after truckOptions
-  const filteredTruckOptions = useMemo(() => {
-    if (!truckSearchTerm) return truckOptions;
-    return truckOptions.filter(option =>
-      option.label.toLowerCase().includes(truckSearchTerm.toLowerCase())
-    );
-  }, [truckOptions, truckSearchTerm]);
 
   const talukaOptions = useMemo(() => [
     { value: '', label: 'Select Taluka' },
@@ -1244,40 +1235,58 @@ console.log('filteredDispatchList',filteredDispatchList)
         .map(s => s.class_range)
         .filter(Boolean);
 
-      // Check if school has both "1-5" and "6-8"
+      // Check if school has "1-5" and/or "6-8"
       const has1to5 = schoolClassRanges.includes("1-5");
       const has6to8 = schoolClassRanges.includes("6-8");
       const hasBothRanges = has1to5 && has6to8;
 
+      // Check dispatch status for each class range
+      const dispatched1to5 = dispatchList.some(d =>
+        String(d.order_id) === orderNo &&
+        d.school_id === schoolId &&
+        String(d.class_range || '') === "1-5"
+      );
+
+      const dispatched6to8 = dispatchList.some(d =>
+        String(d.order_id) === orderNo &&
+        d.school_id === schoolId &&
+        String(d.class_range || '') === "6-8"
+      );
+
+      // Debug logging
+      console.log(`School ${schoolId}:`, {
+        classRanges: schoolClassRanges,
+        has1to5,
+        has6to8,
+        dispatched1to5,
+        dispatched6to8,
+        hasBothRanges
+      });
+
+      let shouldHideSchool = false;
+
       if (hasBothRanges) {
-        // Check if both ranges have been dispatched
-        const dispatched1to5 = dispatchList.some(d =>
-          String(d.order_id) === orderNo &&
-          d.school_id === schoolId &&
-          String(d.class_range || '') === "1-5"
-        );
-
-        const dispatched6to8 = dispatchList.some(d =>
-          String(d.order_id) === orderNo &&
-          d.school_id === schoolId &&
-          String(d.class_range || '') === "6-8"
-        );
-
-        // Debug logging
-        console.log(`School ${schoolId}:`, {
-          classRanges: schoolClassRanges,
-          has1to5,
-          has6to8,
-          dispatched1to5,
-          dispatched6to8,
-          willHide: dispatched1to5 && dispatched6to8
-        });
-
-        // Only hide if BOTH are dispatched
-        if (dispatched1to5 && dispatched6to8) {
-          console.log(`Hiding school ${schoolId} because both class ranges are dispatched`);
-          continue; // Skip this school (hide it)
+        // School has both 1-5 and 6-8: hide only if BOTH are dispatched
+        shouldHideSchool = dispatched1to5 && dispatched6to8;
+        if (shouldHideSchool) {
+          console.log(`Hiding school ${schoolId} because both class ranges (1-5 and 6-8) are dispatched`);
         }
+      } else if (has1to5 && !has6to8) {
+        // School has only 1-5: hide if 1-5 is dispatched
+        shouldHideSchool = dispatched1to5;
+        if (shouldHideSchool) {
+          console.log(`Hiding school ${schoolId} because only class range (1-5) is dispatched`);
+        }
+      } else if (!has1to5 && has6to8) {
+        // School has only 6-8: hide if 6-8 is dispatched
+        shouldHideSchool = dispatched6to8;
+        if (shouldHideSchool) {
+          console.log(`Hiding school ${schoolId} because only class range (6-8) is dispatched`);
+        }
+      }
+
+      if (shouldHideSchool) {
+        continue; // Skip this school (hide it)
       }
 
       // Show this school
@@ -1470,6 +1479,7 @@ console.log('filteredDispatchList',filteredDispatchList)
         const payload = {
           dispatch_code: r.dispatch_code,
           schoolname: r.schoolname || '',
+          
           udaisno: sd?.udaisno || '',
           taluka: talukaName,
           center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
@@ -1573,7 +1583,8 @@ console.log('filteredDispatchList',filteredDispatchList)
 
   const allFiltersSelected = Boolean(orderNo && selectedTruckId && selectedCenterId && selectedSchoolId);
   const showInputMode = allFiltersSelected && didSearch;
-
+ 
+  
   // Initialize Flatpickr for date picker (re-init when mode changes so toolbar remounts)
   useEffect(() => {
     if (!datePickerRef.current) return;
@@ -1607,6 +1618,13 @@ console.log('filteredDispatchList',filteredDispatchList)
       }
     };
   }, [showInputMode, selectedDate]);
+  // Add filtered suggestions based on input
+  const filteredTruckSuggestions = useMemo(() => {
+    if (!truckInputValue.trim()) return [];
+    return truckOptions.filter(option =>
+      option.label.toLowerCase().includes(truckInputValue.toLowerCase())
+    );
+  }, [truckOptions, truckInputValue]);
 
   // Update the toolbar section with the clear button
   const toolbar = (
@@ -1627,57 +1645,62 @@ console.log('filteredDispatchList',filteredDispatchList)
         <div className="flex flex-col relative">
           <span className="text-xs text-gray-600 mb-1 text-left">Truck</span>
           <div className="relative">
-            <div
-              className="h-10 rounded-md border px-3 text-sm cursor-pointer flex items-center justify-between bg-white"
-              onClick={() => setIsTruckDropdownOpen(!isTruckDropdownOpen)}
-            >
-              <span className={selectedTruckId ? 'text-gray-900' : 'text-gray-500'}>
-                {truckOptions.find(option => option.value === selectedTruckId)?.label || 'Select Truck'}
-              </span>
-              <svg
-                className={`w-4 h-4 transition-transform ${isTruckDropdownOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-
-            {isTruckDropdownOpen && (
+            <input
+              type="text"
+              placeholder="Type truck number..."
+              className="h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={truckInputValue}
+              onChange={(e) => {
+                const value = e.target.value;
+                setTruckInputValue(value);
+                setShowTruckSuggestions(value.length > 0);
+                
+                // Find exact match and set selectedTruckId
+                const exactMatch = truckOptions.find(truck => 
+                  truck.label.toLowerCase() === value.toLowerCase()
+                );
+                if (exactMatch) {
+                  setSelectedTruckId(exactMatch.value);
+                } else {
+                  setSelectedTruckId('');
+                }
+              }}
+              onFocus={() => {
+                if (truckInputValue.length > 0) {
+                  setShowTruckSuggestions(true);
+                }
+              }}
+              onBlur={() => {
+                // Delay hiding suggestions to allow option selection
+                setTimeout(() => setShowTruckSuggestions(false), 200);
+              }}
+            />
+            
+            {/* Custom Typeahead Suggestions */}
+            {showTruckSuggestions && filteredTruckSuggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-                <div className="p-2 border-b">
-                  <input
-                    type="text"
-                    placeholder="Search trucks..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={truckSearchTerm}
-                    onChange={(e) => setTruckSearchTerm(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    autoFocus
-                  />
-                </div>
                 <div className="max-h-48 overflow-y-auto">
-                  {filteredTruckOptions.length > 0 ? (
-                    filteredTruckOptions.map((option) => (
-                      <div
-                        key={option.value}
-                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${selectedTruckId === option.value ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
-                          }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTruckId(option.value);
-                          setIsTruckDropdownOpen(false);
-                          setTruckSearchTerm('');
-                        }}
-                      >
-                        {option.label}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
-                  )}
+                  {filteredTruckSuggestions.map((option) => (
+                    <div
+                      key={option.value}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 text-gray-900"
+                      onClick={() => {
+                        setTruckInputValue(option.label);
+                        setSelectedTruckId(option.value);
+                        setShowTruckSuggestions(false);
+                      }}
+                    >
+                      {option.label}
+                    </div>
+                  ))}
                 </div>
+              </div>
+            )}
+            
+            {/* No results message */}
+            {showTruckSuggestions && filteredTruckSuggestions.length === 0 && truckInputValue.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
               </div>
             )}
           </div>
@@ -2021,6 +2044,7 @@ console.log('filteredDispatchList',filteredDispatchList)
       toast.error('Delete failed');
     }
   };
+
 
   return (
     <div className="">

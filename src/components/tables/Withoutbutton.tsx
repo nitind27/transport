@@ -122,7 +122,7 @@ export function Withoutbutton<T extends object>({
         customStyles={{
           rows: {
             style: {
-              minHeight: "48px",
+              minHeight: "28px",
             },
           },
          headCells: {

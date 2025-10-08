@@ -386,7 +386,7 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
         customStyles={{
           rows: {
             style: {
-              minHeight: "48px",
+              minHeight: "28px",
             },
           },
           headCells: {

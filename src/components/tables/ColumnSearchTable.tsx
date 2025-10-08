@@ -349,14 +349,14 @@ export function ColumnSearchTable<T extends object>({
                 })}
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700 ">
               {filteredData.map((row: ExtendedData<T>, index: number) => (
                 <tr key={index} className={index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"}>
                   {row._isFirstInGroup ? (
                     <td
                       rowSpan={row._groupCount}
-                      className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
-                      style={{ verticalAlign: "top" }}
+                      className="px-0 py-0 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center font-medium"
+                      // style={{ verticalAlign: "top" }}
                     >
                       {groupSerialMap.get(row._groupKey || "") ?? 0}
                     </td>
@@ -370,15 +370,15 @@ export function ColumnSearchTable<T extends object>({
                         <td
                           key={String(col.key)}
                           rowSpan={row._groupCount}
-                          className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
-                          style={{ verticalAlign: "top" }}
+                          className="px-0 py-0 whitespace-nowrap text-[12px] text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center"
+                          // style={{ verticalAlign: "top" }}
                         >
                           {cellValue}
                         </td>
                       );
                     }
                     return (
-                      <td key={String(col.key)} className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
+                      <td key={String(col.key)} className="px-0 py-0 whitespace-nowrap text-sm text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 text-center">
                         {cellValue}
                       </td>
                     );
@@ -446,7 +446,7 @@ export function ColumnSearchTable<T extends object>({
         customStyles={{
           rows: {
             style: {
-              minHeight: "48px",
+              minHeight: "28px",
             },
           },
           headCells: {

@@ -284,7 +284,7 @@ export function Filterdispacheddetails<T extends Record<string, unknown>>({
                   Sr No
                 </th>
                 {columns.map((col) => (
-                  <th key={String(col.key)} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border border-gray-200 dark:border-gray-700">
+                  <th key={String(col.key)} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border border-gray-200 dark:border-gray-700 whitespace-nowrap">
                     {col.label}
                   </th>
                 ))}
@@ -376,7 +376,7 @@ export function Filterdispacheddetails<T extends Record<string, unknown>>({
         customStyles={{
           rows: {
             style: {
-              minHeight: "48px",
+              minHeight: "28px",
             },
           },
           headCells: {

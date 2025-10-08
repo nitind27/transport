@@ -984,12 +984,12 @@ const DispatchView = () => {
     // Action column with delete functionality
     {
       key: 'action',
-      label: 'ACTION',
+      label: 'Bin',
       render: (r) => (
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleDeleteDispatch(r.dispatch_code)}
-            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
             title="Delete Dispatch"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

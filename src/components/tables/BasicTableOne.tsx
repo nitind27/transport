@@ -138,13 +138,14 @@ export function ReusableTable<T extends object>({
         customStyles={{
           rows: {
             style: {
-              minHeight: "48px",
+              minHeight: "28px",
             },
           },
          headCells: {
         style: {
           fontWeight: "600",
-          // fontSize: "14px",
+          height: "50px",
+          // fontSize: "14px",image.png
           border: "1px solid #ddd",
           // borderTop: "white",
           // borderLeft: "white",
