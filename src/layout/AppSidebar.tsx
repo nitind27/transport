@@ -7,24 +7,12 @@ import { useSidebar } from "../context/SidebarContext";
 import { RxDashboard } from "react-icons/rx";
 import { TbCategoryPlus } from "react-icons/tb"
 
-
 import {
-
   ChevronDownIcon,
-
   HorizontaLDots,
-
 } from "../icons/index";
 
 import { useToggleContext } from "@/context/ToggleContext";
-// import { FarmdersType } from "@/components/farmersdata/farmers";
-// import { Schemesdatas } from "@/components/schemesdata/schemes";
-// import { UserData } from "@/components/usersdata/Userdata";
-
-
-
-// const { farmers, schemes ,users} = await getData();
-
 
 type NavItem = {
   name: string;
@@ -33,7 +21,8 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const allNavItems: NavItem[] = [
+// Admin (category_id = 1) - Full access to all menus including Masters
+const adminNavItems: NavItem[] = [
   {
     icon: <RxDashboard />,
     name: "Dashboard",
@@ -42,12 +31,10 @@ const allNavItems: NavItem[] = [
   {
     icon: <TbCategoryPlus />,
     name: "Masters",
-   
-     subItems: [
+    subItems: [
       { name: "Users", path: "/users" },
       { name: "District", path: "/distdata" },
       { name: "Taluka", path: "/taluka" },
-      // { name: "Village", path: "/village" },
       { name: "Center's", path: "/center" },
       { name: "Schools", path: "/school" },
       { name: "Items", path: "/itemsgrains" },
@@ -57,21 +44,79 @@ const allNavItems: NavItem[] = [
       { name: "Godown", path: "/godown" },
     ],
   },
+  // {
+  //   icon: <TbCategoryPlus />,
+  //   name: "Stock Inventory",
+  //   path: "/stockinventory",
+  // },
+  // {
+  //   icon: <TbCategoryPlus />,
+  //   name: "ZP Order Details",
+  //   subItems: [
+  //     { name: "Order Details", path: "/zporderdetails" },
+  //     { name: "Add Schools Wise Order Detials", path: "/addSchoolswiseorder" },
+  //     { name: "Order Register", path: "/orderregister" },
+  //   ],
+  // },
+  // {
+  //   icon: <TbCategoryPlus />,
+  //   name: "Dispatch Details",
+  //   path: "/dipatchdetials",
+  // },
+  // {
+  //   icon: <TbCategoryPlus />,
+  //   name: "Route Paper",
+  //   path: "/routepaper",
+  // },
+];
+
+// Owner (category_id = 2) - Dashboard and ZP Order Details only
+const ownerNavItems: NavItem[] = [
+  {
+    icon: <RxDashboard />,
+    name: "Dashboard",
+    path: "/",
+  },
+  {
+    icon: <TbCategoryPlus />,
+    name: "ZP Order Details",
+    subItems: [
+      { name: "Order Details", path: "/zporderdetails" },
+      { name: "Add Schools Wise Order Detials", path: "/addSchoolswiseorder" },
+      { name: "Order Register", path: "/orderregister" },
+    ],
+  },
+];
+
+// Supervisor (category_id = 3) - Dashboard, ZP Order Details, and Stock Inventory
+const supervisorNavItems: NavItem[] = [
+  {
+    icon: <RxDashboard />,
+    name: "Dashboard",
+    path: "/",
+  },
+  {
+    icon: <TbCategoryPlus />,
+    name: "ZP Order Details",
+    subItems: [
+      { name: "Order Details", path: "/zporderdetails" },
+      { name: "Add Schools Wise Order Detials", path: "/addSchoolswiseorder" },
+      { name: "Order Register", path: "/orderregister" },
+    ],
+  },
   {
     icon: <TbCategoryPlus />,
     name: "Stock Inventory",
     path: "/stockinventory",
   },
+];
+
+// Staff (category_id = 4) - Dashboard, Dispatch Details, Route Paper, and Stock Inventory
+const staffNavItems: NavItem[] = [
   {
-    icon: <TbCategoryPlus />,
-    name: "ZP Order Details",
-    // path: "/zporderdetails",
-    subItems: [
-      { name: "Order Details", path: "/zporderdetails" },
-      { name: "Add Schools Wise Order Detials", path: "/addSchoolswiseorder" },
-      { name: "Order Register", path: "/orderregister" },
-      
-    ],
+    icon: <RxDashboard />,
+    name: "Dashboard",
+    path: "/",
   },
   {
     icon: <TbCategoryPlus />,
@@ -83,68 +128,54 @@ const allNavItems: NavItem[] = [
     name: "Route Paper",
     path: "/routepaper",
   },
-  // {
-  //   icon: <RxDashboard />,
-  //   name: "भौतिक तक्ता",
-  //   path: "/bhautik",
-  // },
-  // {
-  //   icon: <RxDashboard />,
-  //   name: "वैयक्तिक",
-  //   path: "/selfform",
-  // },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Stock Inventory",
+    path: "/stockinventory",
+  },
 ];
-const dashboardOnly: NavItem[] = [
+
+// Default fallback - Dashboard only
+const defaultNavItems: NavItem[] = [
   {
     icon: <RxDashboard />,
     name: "Dashboard",
     path: "/",
   },
-  // {
-  //   icon: <RxDashboard />,
-  //   name: "भौतिक तक्ता",
-  //   path: "/bhautik",
-  // },
-
-  // {
-  //   icon: <RxDashboard />,
-  //   name: "वैयक्तिक",
-  //   path: "/selfform",
-  // },
-
-];
-
-
-
-const othersItems: NavItem[] = [
-
-
-
 ];
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
-  // Any component
   const { setIsglobleloading } = useToggleContext();
-  // const currentUser = sessionStorage?.getItem('userName');
   const router = usePathname();
   const [storedValue, setStoredValue] = useState<string | null>(null);
-  const [storedValuecategory_name, setStoredValuecategory_name] = useState<string | null>(null);
-  const navItems: NavItem[] = storedValuecategory_name === "1"
-    ? allNavItems
-    : (storedValuecategory_name === "25")
-      ? dashboardOnly
-      : dashboardOnly;
+  const [storedValuecategory_id, setStoredValuecategory_id] = useState<string | null>(null);
+  
+  // Function to get navigation items based on user category
+  const getNavItemsByCategory = (categoryId: string | null): NavItem[] => {
+    switch (categoryId) {
+      case "1": // Admin
+        return adminNavItems;
+      case "2": // Owner
+        return ownerNavItems;
+      case "3": // Supervisor
+        return supervisorNavItems;
+      case "4": // Staff
+        return staffNavItems;
+      default:
+        return defaultNavItems;
+    }
+  };
 
+  const navItems: NavItem[] = getNavItemsByCategory(storedValuecategory_id);
 
   useEffect(() => {
     const value = sessionStorage.getItem('userName');
-    const category_name = sessionStorage.getItem('category_id');
+    const category_id = sessionStorage.getItem('category_id');
     setStoredValue(value);
-    setStoredValuecategory_name(category_name);
+    setStoredValuecategory_id(category_id);
   }, []);
-
 
   // Function to handle click and store path in localStorage
   const handleItemClick = (path: string) => {
@@ -154,7 +185,6 @@ const AppSidebar: React.FC = () => {
 
   useEffect(() => {
     const handleRouteChange = () => {
-
       setIsglobleloading(false);
     };
 
@@ -162,17 +192,15 @@ const AppSidebar: React.FC = () => {
       handleRouteChange();
     }
     return () => {
-
+      // Cleanup if needed
     };
   }, [router]);
-
 
   const renderMenuItems = (
     navItems: NavItem[],
     menuType: "main" | "others"
   ) => (
     <ul className="flex flex-col gap-4">
-
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
@@ -210,12 +238,10 @@ const AppSidebar: React.FC = () => {
           ) : (
             nav.path && (
               <>
-
                 <Link
                   href={nav.path}
                   className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
                     }`}
-
                   onClick={() => handleItemClick(`${nav.path}`)}
                 >
                   <span
@@ -283,14 +309,13 @@ const AppSidebar: React.FC = () => {
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // const isActive = (path: string) => path === pathname;
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
   useEffect(() => {
     // Check if the current path matches any submenu item
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+      const items = menuType === "main" ? navItems : [];
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -310,7 +335,7 @@ const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [pathname, isActive]);
+  }, [pathname, isActive, navItems]);
 
   useEffect(() => {
     // Set the height of the submenu items when the submenu is opened
@@ -359,22 +384,8 @@ const AppSidebar: React.FC = () => {
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              {/* <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              /> */}
               <h1 className="dark:hidden text-[20px] font-semibold">Hello, {storedValue}</h1>
               <h1 className="hidden dark:block text-white text-[20px] font-semibold">Hello, {storedValue}</h1>
-              {/* <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              /> */}
             </>
           ) : (
             <Image
@@ -404,11 +415,8 @@ const AppSidebar: React.FC = () => {
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
-
-
           </div>
         </nav>
-
       </div>
     </aside>
   );

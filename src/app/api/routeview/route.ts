@@ -129,15 +129,43 @@ export async function PATCH(req: Request) {
   }
 }
 
+// export async function DELETE(req: Request) {
+//   try {
+//     const { id } = await req.json();
+//     if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
+//     const [res] = await pool.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
+//     if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
+//     return NextResponse.json({ message: 'Deleted' });
+//   } catch (e) {
+//     console.error(e);
+//     return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
+//   }
+// } 
+
+// Add this new DELETE method that handles dispatch_code
 export async function DELETE(req: Request) {
   try {
-    const { id } = await req.json();
-    if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
-    const [res] = await pool.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
-    if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
-    return NextResponse.json({ message: 'Deleted' });
+    const body = await req.json();
+    const { id, dispatch_code } = body;
+    
+    if (dispatch_code) {
+      // Delete by dispatch_code (delete entire route)
+      const [res] = await pool.query<ResultSetHeader>(
+        'DELETE FROM dispatch_details WHERE dispatch_code = ?', 
+        [dispatch_code]
+      );
+      if (res.affectedRows === 0) return NextResponse.json({ message: 'No records found' }, { status: 404 });
+      return NextResponse.json({ message: 'Route deleted successfully' });
+    } else if (id) {
+      // Delete by individual ID (existing functionality)
+      const [res] = await pool.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
+      if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
+      return NextResponse.json({ message: 'Deleted' });
+    } else {
+      return NextResponse.json({ message: 'id or dispatch_code required' }, { status: 400 });
+    }
   } catch (e) {
     console.error(e);
     return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
   }
-} 
+}

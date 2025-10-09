@@ -54,6 +54,14 @@ interface StockInventoryProps {
 const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
   const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
+  // Get user category from sessionStorage
+  const [userCategory, setUserCategory] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const category = sessionStorage.getItem('category_id');
+    setUserCategory(category);
+  }, []);
+
   // Tab state - Updated to include new tabs
   const [activeTab, setActiveTab] = useState<'stockTransfer' | 'damageStock' | 'inventory' | 'addStock'>('inventory');
 
@@ -318,46 +326,42 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     },
   ];
 
+  // Function to get visible tabs based on user role
+  const getVisibleTabs = () => {
+    const allTabs = [
+      { key: 'inventory', label: 'Stock Inventory' },
+      { key: 'addStock', label: 'Add Stock' },
+      { key: 'stockTransfer', label: 'Stock Transfer' },
+      { key: 'damageStock', label: 'Damage Stock' }
+    ];
+
+    // Staff (category_id = 4) can only see Stock Inventory tab
+    if (userCategory === '4') {
+      return [{ key: 'inventory', label: 'Stock Inventory' }];
+    }
+
+    // Admin, Owner, Supervisor can see all tabs
+    return allTabs;
+  };
+
+  const visibleTabs = getVisibleTabs();
+
   return (
     <div className="">
-      {/* Tab Navigation - Updated with new tabs */}
+      {/* Tab Navigation - Role-based visibility */}
       <div className="flex border-b border-gray-200 mb-2">
-        <button
-          onClick={() => setActiveTab('inventory')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'inventory'
-            ? 'border-b-2 border-blue-600 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-        >
-          Stock Inventory
-        </button>
-        <button
-          onClick={() => setActiveTab('addStock')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'addStock'
-            ? 'border-b-2 border-blue-600 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-        >
-          Add Stock
-        </button>
-        <button
-          onClick={() => setActiveTab('stockTransfer')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'stockTransfer'
-            ? 'border-b-2 border-blue-600 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-        >
-          Stock Transfer
-        </button>
-        <button
-          onClick={() => setActiveTab('damageStock')}
-          className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === 'damageStock'
-            ? 'border-b-2 border-blue-600 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-        >
-          Damage Stock
-        </button>
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as "inventory" | "addStock" | "stockTransfer" | "damageStock")}
+            className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${activeTab === tab.key
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content - Updated with new tab content */}
@@ -435,7 +439,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
       
         </div>
-      ) : (
+      ) : activeTab === 'addStock' ? (
         // Add Stock Tab - With Form and Actions
         <div>
           <ReusableTable
@@ -641,7 +645,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
             searchKey="grain"
           />
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

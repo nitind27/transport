@@ -5,7 +5,7 @@ import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
-
+import { TrashBinIcon } from '@/icons';
 import { Filterroutepaper } from '../tables/Filterroutepaper';
 import { formatDate } from '@/lib/utils';
 
@@ -182,7 +182,43 @@ const Routepaperview = () => {
             toast.error('Failed to load taluka');
         }
     };
+// Delete handler function
+const handleDeleteRoute = async (routeNumber: string) => {
+    if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
+        return;
+    }
 
+    try {
+        // Get all dispatch codes for this route
+        const routeData = getDataByRouteNumber(routeNumber);
+        const dispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
+        
+        // Delete each dispatch code
+        for (const dispatchCode of dispatchCodes) {
+            const response = await fetch(`/api/routeview`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ dispatch_code: dispatchCode }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to delete dispatch');
+            }
+        }
+
+        // Remove deleted items from local state
+        setDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+        setFilteredDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+        
+        toast.success('Route deleted successfully!');
+    } catch (error) {
+        console.error('Error deleting route:', error);
+        toast.error('Failed to delete route');
+    }
+};
     const fetchDispatchList = async () => {
         try {
             const res = await fetch('/api/routeview');
@@ -951,6 +987,14 @@ const Routepaperview = () => {
                     >
                         Print_Dc
                     </button>
+                    <button
+                    onClick={() => handleDeleteRoute(r.route_number)}
+                    className="px-2 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                    title="Delete Route"
+                >
+                    <TrashBinIcon />
+                    
+                </button>
                 </div>
             )
         },
