@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { Column } from "../tables/tabletype";
+// import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
-import { ColumnSearchTable } from '../tables/ColumnSearchTable';
+// import { ColumnSearchTable } from '../tables/ColumnSearchTable';
 import Loader from '@/common/Loader';
+import React from 'react'; // Added missing import for React
 
 interface SchoolWiseOrder {
   id: number;
@@ -22,6 +23,7 @@ interface SchoolWiseOrder {
   created_at: string;
   class_range?: string;
   patsankhya?: number;
+  is_dispatched?: boolean | 0; // Added is_dispatched field
 }
 
 interface TalukaRow {
@@ -40,11 +42,11 @@ interface CenterRow {
   taluka_id?: number;
 }
 
-interface ItemGrain {
-  id: number;
-  name: string;
-  Unit: string;
-}
+// interface ItemGrain {
+//   id: number;
+//   name: string;
+//   Unit: string;
+// }
 
 interface SchoolDataRow {
   schoolid: number;
@@ -52,6 +54,12 @@ interface SchoolDataRow {
   taluka_id: number;
   schoolname: string;
   udaisno: string;
+}
+
+interface TruckData {
+  id: number;
+  truckNo: string;
+  status: string;
 }
 
 type SchoolDataApiRow = {
@@ -79,214 +87,104 @@ type PendingOrderRow = {
   total_weight: number;
   items_count: number;
   items_data: Record<string, number>;
+  center_id: number;
+  taluka_id: number;
 };
-type DispatchListRow = {
-    id: number;
-    dispatch_code: string;
-    order_id: number;
-    school_id: number;
-    center_id: number;
-    truck_id: number;
-    item_name: string;
-    unit: string;
-    total_qty: number;
-    qty_dispatch: number;
-    bal_qty: number;
-    status: string;
-    created_at: string;
-    order_no?: string;
-    schoolname?: string;
-    center_name?: string;
-    total_weight?: string;
-    truckNo?: string;
-    class_range?: string;
-    taluka?: string;
-    taluka_name?: string;
-    period?: string;
-    no_of_days?: number;
-    financial_year?: string;
-    udaisno?: string;
-  
-    patsankhya?: string;
-    action?: string;
-    // Add all grain properties as optional string types
-    "grain_तांदुळ"?: string;
-    "grain_मुंगदाळ"?: string;
-    "grain_मसूरदाळ"?: string;
-    "grain_तूरदाळ"?: string;
-    "grain_हरभरा"?: string;
-    "grain_चवळी"?: string;
-    "grain_मटकी"?: string;
-    "grain_मूग"?: string;
-    "grain_वाटणा"?: string;
-    "grain_सोया वडी"?: string;
-    "grain_मसाला"?: string;
-    "grain_सोया तेल"?: string;
-    "grain_हळद"?: string;
-    "grain_मीठ"?: string;
-    "grain_मोहरी"?: string;
-    "grain_चना"?: string;
-    "grain_जीरा"?: string;
-  };
+
+type DispatchCartItem = {
+  id: number;
+  order_id: number;
+  school_id: number;
+  order_no: string;
+  schoolname: string;
+  udaisno: string;
+  taluka_name: string;
+  center_name: string;
+  class_range: string;
+  patsankhya: number;
+  period: string;
+  financial_year: string;
+  no_of_days: number;
+  total_weight: number;
+  items_data: Record<string, number>;
+  center_id: number;
+  taluka_id: number;
+};
+
 const PendingOrderDetails = () => {
   const [loading, setLoading] = useState(true);
-  
-  // Filters
-  const [selectedOrderNo, setSelectedOrderNo] = useState<string>('');
-  const [selectedTalukaId, setSelectedTalukaId] = useState<string>('');
-  const [selectedCenterId, setSelectedCenterId] = useState<string>('');
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
-  const [selectedClassRange, setSelectedClassRange] = useState<string>('');
 
   // Masters
   const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
   const [centerList, setCenterList] = useState<CenterRow[]>([]);
-  const [itemGrains,setItemGrains] = useState<ItemGrain[]>([]);
-  console.log(itemGrains);
+  // const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
   const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
-  const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
+  const [truckData, setTruckData] = useState<TruckData[]>([]);
 
-  // Get unique order numbers
-  const orderOptions = useMemo(() => {
-    const uniqueOrders = new Set<string>();
-    schoolWiseOrders.forEach(order => {
-      if (order.order_no) {
-        uniqueOrders.add(order.order_no);
-      }
+  // Dispatch cart state
+  const [dispatchCart, setDispatchCart] = useState<DispatchCartItem[]>([]);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showTruckModal, setShowTruckModal] = useState(false);
+  const [selectedTruckId, setSelectedTruckId] = useState<string>('');
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+  // Add this state for the correct pending schools count
+  const [pendingSchoolsCount, setPendingSchoolsCount] = useState(0);
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50); // Show 50 schools per page
+
+  // Grain columns definition (same as route paper)
+  const mrGrainColumns = [
+    { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल'] },
+    { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ'] },
+    { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal'] },
+    { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर'] },
+    { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram'] },
+    { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया'] },
+    { key: 'मटकी', aliases: ['मटकी', 'matki', 'मोठ'] },
+    { key: 'मूग', aliases: ['मूग', 'moong', 'मुग'] },
+    { key: 'वाटणा', aliases: ['वाटणा', 'vatana', 'हरभरा'] },
+    { key: 'सोया वडी', aliases: ['सोया वडी', 'soya vadi', 'सोया_वडी'] },
+    { key: 'मसाला', aliases: ['मसाला', 'masala', 'spice'] },
+    { key: 'सोया तेल', aliases: ['सोया तेल', 'soya oil', 'सोया_तेल'] },
+    { key: 'हळद', aliases: ['हळद', 'haldi', 'turmeric'] },
+    { key: 'मीठ', aliases: ['मीठ', 'meeth', 'salt'] },
+    { key: 'मोहरी', aliases: ['मोहरी', 'mohari', 'mustard'] },
+    { key: 'चना', aliases: ['चना', 'chana', 'gram'] },
+    { key: 'जीरा', aliases: ['जीरा', 'jeera', 'cumin'] },
+  ];
+
+  // Map items → per-group grain totals using aliases
+  const sumGrainsForGroup = (items: Record<string, number>) => {
+    const sums: Record<string, number> = {};
+    Object.entries(items).forEach(([name, qty]) => {
+      const nm = (name || '').toLowerCase().trim();
+      const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+      const key = match ? match.key : name;
+      sums[key] = (sums[key] || 0) + Number(qty || 0);
     });
-    return Array.from(uniqueOrders).sort();
-  }, [schoolWiseOrders]);
+    return sums;
+  };
 
-  // Get taluka options
-  const talukaOptions = useMemo(() => [
-    { value: '', label: 'Select Taluka' },
-    ...talukaList.map(t => ({ value: String(t.taluka_id), label: t.name }))
-  ], [talukaList]);
+  // Get UDISE by school ID
+  const getUdiseBySchool = (schoolId: number) => {
+    const sd = schoolDataById.get(schoolId);
+    return sd?.udaisno || '';
+  };
 
-  // Get center options filtered by taluka
-  const centerOptions = useMemo(() => [
-    { value: '', label: 'Select Center' },
-    ...centerList
-      .filter(c => !selectedTalukaId || String(c.taluka_id || '') === String(selectedTalukaId))
-      .map(c => ({ value: String(c.center_id), label: c.marathi_name || c.name || String(c.center_id) }))
-  ], [centerList, selectedTalukaId]);
-
-  // Get school options filtered by center/taluka
-  const schoolOptions = useMemo(() => {
-    if (!selectedOrderNo) return [{ value: '', label: 'Select School' }];
-
-    let filteredSchools = schoolWiseOrders.filter(s => s.order_no === selectedOrderNo);
-
-    // Filter by center if selected
-    if (selectedCenterId) {
-      filteredSchools = filteredSchools.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.center) === String(selectedCenterId);
-      });
-    } else if (selectedTalukaId) {
-      filteredSchools = filteredSchools.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.taluka_id) === String(selectedTalukaId);
-      });
-    }
-
-    // Filter by class range if selected
-    if (selectedClassRange) {
-      filteredSchools = filteredSchools.filter(s => s.class_range === selectedClassRange);
-    }
-
-    // Remove schools that have been dispatched
-    const dispatchedSchoolIds = new Set(
-      dispatchList
-        .filter(d => d.order_no === selectedOrderNo)
-        .map(d => d.school_id)
-    );
-
-    filteredSchools = filteredSchools.filter(s => !dispatchedSchoolIds.has(s.school_id));
-
-    // Get unique schools
-    const uniqueSchools = new Map<number, SchoolWiseOrder>();
-    filteredSchools.forEach(s => {
-      if (!uniqueSchools.has(s.school_id)) {
-        uniqueSchools.set(s.school_id, s);
-      }
-    });
-
-    return [
-      { value: '', label: 'Select School' },
-      ...Array.from(uniqueSchools.values()).map((s, idx) => {
-        const fallback = schoolDataById.get(Number(s.school_id));
-        const name = s.schoolname || fallback?.schoolname || `School ${s.school_id}`;
-        const ud = s.udaisno || fallback?.udaisno || 'NA';
-        const classRanges = schoolWiseOrders
-          .filter(sw => sw.order_no === selectedOrderNo && sw.school_id === s.school_id)
-          .map(sw => sw.class_range)
-          .filter(Boolean)
-          .join(', ');
-
-        return {
-          value: String(s.school_id),
-          label: `${idx + 1}) ${name} (${ud}) ${classRanges ? `[${classRanges}]` : ''}`,
-        };
-      })
-    ];
-  }, [selectedOrderNo, selectedTalukaId, selectedCenterId, selectedClassRange, schoolWiseOrders, schoolDataById, dispatchList]);
-
-  // Get class range options
-  const classRangeOptions = useMemo(() => {
-    if (!selectedOrderNo || !selectedSchoolId) return [{ value: '', label: 'Class Range (Select)' }];
-    
-    const uniq = new Set<string>();
-    schoolWiseOrders
-      .filter(s => s.order_no === selectedOrderNo && String(s.school_id) === String(selectedSchoolId))
-      .forEach(s => { if (s.class_range) uniq.add(String(s.class_range)); });
-    
-    const arr = Array.from(uniq.values()).sort();
-    return [{ value: '', label: 'Class Range (All)' }, ...arr.map(v => ({ value: v, label: v }))];
-  }, [selectedOrderNo, selectedSchoolId, schoolWiseOrders]);
-
-  // Process pending orders data
+  // Fix the pendingOrdersData processing to show ONLY pending schools
   const pendingOrdersData = useMemo(() => {
-    if (!selectedOrderNo) return [];
-
-    let filteredOrders = schoolWiseOrders.filter(s => s.order_no === selectedOrderNo);
-
-    // Apply filters
-    if (selectedTalukaId) {
-      filteredOrders = filteredOrders.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.taluka_id) === String(selectedTalukaId);
-      });
-    }
-
-    if (selectedCenterId) {
-      filteredOrders = filteredOrders.filter(s => {
-        const sd = schoolDataById.get(Number(s.school_id));
-        return sd && String(sd.center) === String(selectedCenterId);
-      });
-    }
-
-    if (selectedSchoolId) {
-      filteredOrders = filteredOrders.filter(s => String(s.school_id) === String(selectedSchoolId));
-    }
-
-    if (selectedClassRange) {
-      filteredOrders = filteredOrders.filter(s => s.class_range === selectedClassRange);
-    }
-
-    // Remove dispatched schools
-    const dispatchedSchoolIds = new Set(
-      dispatchList
-        .filter(d => d.order_no === selectedOrderNo)
-        .map(d => d.school_id)
+    // Filter out ONLY dispatched schools - show only pending schools
+    const pendingOrders = schoolWiseOrders.filter(order =>
+      order.is_dispatched === 0 || order.is_dispatched === false
     );
-
-    filteredOrders = filteredOrders.filter(s => !dispatchedSchoolIds.has(s.school_id));
 
     // Group by school and process data
     const schoolGroups = new Map<number, SchoolWiseOrder[]>();
-    filteredOrders.forEach(order => {
+    pendingOrders.forEach(order => {
       if (!schoolGroups.has(order.school_id)) {
         schoolGroups.set(order.school_id, []);
       }
@@ -294,182 +192,203 @@ const PendingOrderDetails = () => {
     });
 
     const processedData: PendingOrderRow[] = [];
-    
+
     schoolGroups.forEach((orders, schoolId) => {
       const firstOrder = orders[0];
       const sd = schoolDataById.get(schoolId);
       const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
       const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
 
-      // Combine items from all class ranges for this school
-      const combinedItems: Record<string, number> = {};
-      let totalWeight = 0;
-      let totalPatsankhya = 0;
-
+      // Group orders by class range to create separate rows
+      const classRangeGroups = new Map<string, SchoolWiseOrder[]>();
       orders.forEach(order => {
-        const items = typeof order.items_data === 'string' 
-          ? JSON.parse(order.items_data) 
-          : (order.items_data || {});
-        
-        Object.entries(items).forEach(([itemName, qty]) => {
-          combinedItems[itemName] = (combinedItems[itemName] || 0) + Number(qty);
-        });
-        
-        totalWeight += Number(order.total_weight || 0);
-        totalPatsankhya += Number(order.patsankhya || 0);
+        const classRange = order.class_range || 'Unknown';
+        if (!classRangeGroups.has(classRange)) {
+          classRangeGroups.set(classRange, []);
+        }
+        classRangeGroups.get(classRange)!.push(order);
       });
 
-      const classRanges = orders.map(o => o.class_range).filter(Boolean).join(', ');
+      // Create separate row for each class range
+      classRangeGroups.forEach((classOrders, classRange) => {
+        // Create unique key for this school + class range combination
+        const uniqueKey = `${schoolId}_${classRange}`;
 
-      processedData.push({
-        id: firstOrder.id,
-        order_id: firstOrder.order_id,
-        school_id: schoolId,
-        order_no: firstOrder.order_no,
-        schoolname: firstOrder.schoolname,
-        udaisno: firstOrder.udaisno,
-        taluka_name: talukaName,
-        center_name: centerName,
-        class_range: classRanges,
-        patsankhya: totalPatsankhya,
-        period: firstOrder.period,
-        financial_year: firstOrder.financial_year,
-        no_of_days: firstOrder.no_of_days,
-        total_weight: totalWeight,
-        items_count: Object.keys(combinedItems).length,
-        items_data: combinedItems
+        // Skip if this specific school + class range is already in cart
+        if (dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey)) {
+          return;
+        }
+
+        // Combine items from orders in this class range only
+        const combinedItems: Record<string, number> = {};
+        let totalWeight = 0;
+        let totalPatsankhya = 0;
+
+        classOrders.forEach(order => {
+          const items = typeof order.items_data === 'string'
+            ? JSON.parse(order.items_data)
+            : (order.items_data || {});
+
+          Object.entries(items).forEach(([itemName, qty]) => {
+            combinedItems[itemName] = (combinedItems[itemName] || 0) + Number(qty);
+          });
+
+          totalWeight += Number(order.total_weight || 0);
+          totalPatsankhya += Number(order.patsankhya || 0);
+        });
+
+        processedData.push({
+          id: firstOrder.id,
+          order_id: firstOrder.order_id,
+          school_id: schoolId,
+          order_no: firstOrder.order_no,
+          schoolname: firstOrder.schoolname,
+          udaisno: firstOrder.udaisno,
+          taluka_name: talukaName,
+          center_name: centerName,
+          class_range: classRange,
+          patsankhya: totalPatsankhya,
+          period: firstOrder.period,
+          financial_year: firstOrder.financial_year,
+          no_of_days: firstOrder.no_of_days,
+          total_weight: totalWeight,
+          items_count: Object.keys(combinedItems).length,
+          items_data: combinedItems,
+          center_id: sd?.center || 0,
+          taluka_id: sd?.taluka_id || 0
+        });
       });
     });
 
-    return processedData.sort((a, b) => a.schoolname.localeCompare(b.schoolname));
-  }, [selectedOrderNo, selectedTalukaId, selectedCenterId, selectedSchoolId, selectedClassRange, schoolWiseOrders, schoolDataById, dispatchList, talukaList, centerList]);
+    return processedData.sort((a, b) => {
+      // Sort by school name first, then by class range
+      const schoolCompare = a.schoolname.localeCompare(b.schoolname);
+      if (schoolCompare !== 0) return schoolCompare;
+      return a.class_range.localeCompare(b.class_range);
+    });
+  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
 
-  // Table columns
-  const columns: Column<PendingOrderRow>[] = [
-    { key: 'order_no', label: 'Order No', accessor: 'order_no' },
-    { key: 'schoolname', label: 'School Name', accessor: 'schoolname' },
-    { key: 'udaisno', label: 'UDISE No', accessor: 'udaisno' },
-    { key: 'taluka_name', label: 'Taluka', accessor: 'taluka_name' },
-    { key: 'center_name', label: 'Center', accessor: 'center_name' },
-    { key: 'class_range', label: 'Class Range', accessor: 'class_range' },
-    { key: 'patsankhya', label: 'पट संख्या', render: (r) => <span>{r.patsankhya}</span> },
-    { key: 'items_count', label: 'Items Count', render: (r) => <span className="font-semibold text-blue-600">{r.items_count}</span> },
-    { key: 'total_weight', label: 'Total Weight', render: (r) => <span className="font-semibold text-green-600">{r.total_weight.toFixed(2)} kg</span> },
-    {
-      key: 'items_detail',
-      label: 'Items Detail',
-      render: (r) => (
-        <div className="max-w-xs">
-          <div className="text-xs space-y-1">
-            {Object.entries(r.items_data).slice(0, 3).map(([item, qty]) => (
-              <div key={item} className="flex justify-between">
-                <span className="truncate">{item}</span>
-                <span className="font-medium">{qty}</span>
-              </div>
-            ))}
-            {Object.keys(r.items_data).length > 3 && (
-              <div className="text-gray-500">+{Object.keys(r.items_data).length - 3} more...</div>
-            )}
-          </div>
-        </div>
-      )
+  // Calculate pagination
+  const totalPages = Math.ceil(pendingOrdersData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = pendingOrdersData.slice(startIndex, endIndex);
+
+  // Update the count calculation to use the filtered data
+  // Remove the uniqueSchoolsCount useMemo (lines 268-277) since we're using the API count
+  // Keep only the pendingSchoolsCount from the API
+
+  // Add to dispatch cart
+  const addToDispatchCart = (row: PendingOrderRow) => {
+    const cartItem: DispatchCartItem = {
+      id: row.id,
+      order_id: row.order_id,
+      school_id: row.school_id,
+      order_no: row.order_no,
+      schoolname: row.schoolname,
+      udaisno: row.udaisno,
+      taluka_name: row.taluka_name,
+      center_name: row.center_name,
+      class_range: row.class_range,
+      patsankhya: row.patsankhya,
+      period: row.period,
+      financial_year: row.financial_year,
+      no_of_days: row.no_of_days,
+      total_weight: row.total_weight,
+      items_data: row.items_data,
+      center_id: row.center_id,
+      taluka_id: row.taluka_id
+    };
+
+    setDispatchCart(prev => [...prev, cartItem]);
+    toast.success('Added to dispatch cart');
+  };
+
+  // Remove from dispatch cart - now removes specific school + class range combination
+  const removeFromDispatchCart = (schoolId: number, classRange: string) => {
+    setDispatchCart(prev => prev.filter(item =>
+      !(item.school_id === schoolId && item.class_range === classRange)
+    ));
+    toast.success('Removed from dispatch cart');
+  };
+
+  // Submit dispatch
+  const submitDispatch = async () => {
+    if (dispatchCart.length === 0) {
+      toast.error('No items in dispatch cart');
+      return;
     }
-  ];
 
-  // Toolbar
-  const toolbar = (
-    <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2 items-center">
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Order Number</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedOrderNo}
-            onChange={(e) => {
-              setSelectedOrderNo(e.target.value);
-              setSelectedTalukaId('');
-              setSelectedCenterId('');
-              setSelectedSchoolId('');
-              setSelectedClassRange('');
-            }}
-          >
-            <option value="">Select Order Number</option>
-            {orderOptions.map(orderNo => (
-              <option key={orderNo} value={orderNo}>{orderNo}</option>
-            ))}
-          </select>
-        </div>
+    if (!selectedTruckId) {
+      toast.error('Please select a truck');
+      return;
+    }
 
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Taluka</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedTalukaId}
-            onChange={(e) => {
-              setSelectedTalukaId(e.target.value);
-              setSelectedCenterId('');
-              setSelectedSchoolId('');
-              setSelectedClassRange('');
-            }}
-            disabled={!selectedOrderNo}
-          >
-            {talukaOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
+    try {
+      setLoading(true);
 
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Center</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedCenterId}
-            onChange={(e) => {
-              setSelectedCenterId(e.target.value);
-              setSelectedSchoolId('');
-              setSelectedClassRange('');
-            }}
-            disabled={!selectedOrderNo || !selectedTalukaId}
-          >
-            {centerOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
+      // Group by order_id for dispatch
+      const orderGroups = new Map<number, DispatchCartItem[]>();
+      dispatchCart.forEach(item => {
+        if (!orderGroups.has(item.order_id)) {
+          orderGroups.set(item.order_id, []);
+        }
+        orderGroups.get(item.order_id)!.push(item);
+      });
 
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">School</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedSchoolId}
-            onChange={(e) => {
-              setSelectedSchoolId(e.target.value);
-              setSelectedClassRange('');
-            }}
-            disabled={!selectedOrderNo}
-          >
-            {schoolOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
+      // Submit each order group
+      for (const [orderId, items] of orderGroups) {
+        const firstItem = items[0];
 
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-600 mb-1 text-left">Class Range</span>
-          <select
-            className="h-10 rounded-md border px-3 text-sm"
-            value={selectedClassRange}
-            onChange={(e) => setSelectedClassRange(e.target.value)}
-            disabled={!selectedOrderNo || !selectedSchoolId}
-          >
-            {classRangeOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-    </div>
-  );
+        // Convert items_data to lines format
+        const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
+          grain,
+          unit: 'kg', // Default unit
+          totalQty: Number(totalQty),
+          qtyDispatch: Number(totalQty) // Dispatch full quantity
+        }));
+
+        const payload = {
+          order_id: orderId,
+          school_id: firstItem.school_id,
+          center_id: firstItem.center_id,
+          truck_id: Number(selectedTruckId),
+          class_range: firstItem.class_range,
+          lines
+        };
+
+        const response = await fetch('/api/dispatchdetails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to submit dispatch');
+        }
+      }
+
+      toast.success('Dispatch submitted successfully');
+      setDispatchCart([]);
+      setShowCartModal(false);
+      setShowTruckModal(false);
+      setShowSubmitConfirm(false);
+      setSelectedTruckId('');
+
+      // Refresh data
+      await fetchSchoolWiseOrders();
+
+    } catch (error) {
+      console.error('Error submitting dispatch:', error);
+      toast.error('Failed to submit dispatch');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   // Fetch functions
   const fetchTalukas = async () => {
@@ -490,16 +409,18 @@ const PendingOrderDetails = () => {
     }
   };
 
-  const fetchItemMaster = async () => {
-    try {
-      const res = await fetch('/api/itemgrains');
-      if (res.ok) setItemGrains(await res.json());
-    } catch { }
-  };
+  // const fetchItemMaster = async () => {
+  //   try {
+  //     const res = await fetch('/api/itemgrains');
+  //     if (res.ok) setItemGrains(await res.json());
+  //   } catch { }
+  // };
 
+  // Change the fetchSchoolWiseOrders function to use the correct endpoint
   const fetchSchoolWiseOrders = async () => {
     try {
-      const response = await fetch('/api/schoolwiseorders');
+      // Use the endpoint that includes dispatch status
+      const response = await fetch('/api/schoolwiseorders/schoolwisedashtaluka');
       const data = await response.json();
       setSchoolWiseOrders(data);
     } catch (error) {
@@ -508,12 +429,12 @@ const PendingOrderDetails = () => {
     }
   };
 
-  const fetchDispatchList = async () => {
+  const fetchTruckData = async () => {
     try {
-      const res = await fetch('/api/dispatchdetails');
-      if (res.ok) setDispatchList(await res.json());
-    } catch (e) {
-      console.error(e);
+      const res = await fetch('/api/truckdata');
+      if (res.ok) setTruckData(await res.json());
+    } catch {
+      toast.error('Failed to load truck data');
     }
   };
 
@@ -540,6 +461,26 @@ const PendingOrderDetails = () => {
     }
   };
 
+  // Update the fetchPendingSchoolsCount function to be more robust:
+  const fetchPendingSchoolsCount = async () => {
+    try {
+      // Use the SAME API as dashboard to get the exact same count
+      const response = await fetch('/api/talukadashboard?order_no=20');
+      const data = await response.json();
+
+      // Calculate total remaining schools from all talukas (same as dashboard)
+      // Replace line 472:
+      const totalRemaining = data.reduce((sum: number, taluka: { remaining_schools?: number }) =>
+        sum + (taluka.remaining_schools || 0), 0
+      );
+      setPendingSchoolsCount(totalRemaining);
+    } catch (error) {
+      console.error('Error fetching pending schools count:', error);
+      setPendingSchoolsCount(0);
+    }
+  };
+
+  // Update the useEffect to refresh count when schoolWiseOrders changes
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -547,10 +488,11 @@ const PendingOrderDetails = () => {
         await Promise.all([
           fetchTalukas(),
           fetchCenters(),
-          fetchItemMaster(),
+          // fetchItemMaster(),
           fetchSchoolWiseOrders(),
-          fetchDispatchList(),
-          fetchSchoolDataMap()
+          fetchTruckData(),
+          fetchSchoolDataMap(),
+          fetchPendingSchoolsCount()
         ]);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -569,34 +511,405 @@ const PendingOrderDetails = () => {
 
   return (
     <div className="">
-      <div className="bg-white rounded-2xl shadow-md border p-4 mb-4">
-        {toolbar}
-      </div>
+      {/* Dispatch Cart Card */}
 
+
+      {/* Pending Orders Table */}
       <div className="bg-white rounded-2xl shadow-md border p-4">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Pending Order Details
-            {pendingOrdersData.length > 0 && (
+          <div className='flex justify-between items-center'>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Pending Order Details
               <span className="ml-2 text-sm text-gray-600">
-                ({pendingOrdersData.length} schools pending)
+                ({pendingSchoolsCount} schools pending)
               </span>
-            )}
-          </h3>
+            </h3>
+            <div>
+              <button
+                onClick={() => setShowCartModal(true)}
+                disabled={dispatchCart.length === 0}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                View Cart ({dispatchCart.length})
+              </button>
+
+            </div>
+          </div>
+
         </div>
 
-        <ColumnSearchTable
-          data={pendingOrdersData}
-          classname={"h-auto overflow-y-auto scrollbar-hide"}
-          columns={columns}
-          title="Pending Orders"
-          filterOptions={[]}
-          searchKey="schoolname"
-          searchableKeys={['order_no', 'schoolname', 'udaisno', 'taluka_name', 'center_name', 'class_range']}
-          groupByKeys={['order_no', 'taluka_name']}
-          colspanKeys={["order_no", "taluka_name", "center_name", "schoolname", "udaisno", "class_range", "patsankhya", "items_count", "total_weight", "items_detail"]}
-        />
+        {/* Custom table with proper pagination */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300 text-sm">
+            <thead>
+              <tr className="bg-gray-100 whitespace-nowrap">
+                <th className="border px-3 py-2 text-left font-semibold">अ.क्र</th>
+                <th className="border px-3 py-2 text-left font-semibold">ACTION</th>
+                <th className="border px-3 py-2 text-left font-semibold">ORDER NO</th>
+                <th className="border px-3 py-2 text-left font-semibold">TALUKA</th>
+                <th className="border px-3 py-2 text-left font-semibold">CENTER</th>
+                <th className="border px-3 py-2 text-left font-semibold">SCHOOL</th>
+                <th className="border px-3 py-2 text-left font-semibold">UDISE NO</th>
+                <th className="border px-3 py-2 text-left font-semibold">CLASS RANGE</th>
+                <th className="border px-3 py-2 text-left font-semibold">पट संख्या</th>
+                <th className="border px-3 py-2 text-left font-semibold">PERIOD</th>
+                <th className="border px-3 py-2 text-left font-semibold">NO OF DAYS</th>
+                <th className="border px-3 py-2 text-left font-semibold">FINANCIAL YEAR</th>
+                {/* Add grain columns */}
+                {mrGrainColumns.map(grain => (
+                  <th key={grain.key} className="border px-3 py-2 text-left font-semibold">{grain.key}</th>
+                ))}
+                <th className="border px-3 py-2 text-left font-semibold">TOTAL WEIGHT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.map((row, index) => (
+                <tr key={`${row.school_id}_${row.class_range}`} className="hover:bg-gray-50 whitespace-nowrap">
+                  <td className="border px-3 py-2 text-center">{startIndex + index + 1}</td>
+                  <td className="border px-3 py-2">
+                    <button
+                      onClick={() => addToDispatchCart(row)}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      Add
+                    </button>
+                  </td>
+                  <td className="border px-3 py-2">{row.order_no}</td>
+                  <td className="border px-3 py-2">{row.taluka_name}</td>
+                  <td className="border px-3 py-2">{row.center_name}</td>
+                  <td className="border px-3 py-2">{row.schoolname}</td>
+                  <td className="border px-3 py-2">{row.udaisno}</td>
+                  <td className="border px-3 py-2">{row.class_range}</td>
+                  <td className="border px-3 py-2 text-right">{row.patsankhya}</td>
+                  <td className="border px-3 py-2">{row.period}</td>
+                  <td className="border px-3 py-2 text-right">{row.no_of_days}</td>
+                  <td className="border px-3 py-2">{row.financial_year}</td>
+                  {/* Add grain data */}
+                  {mrGrainColumns.map(grain => {
+                    let quantity = 0;
+                    Object.entries(row.items_data).forEach(([itemName, qty]) => {
+                      const nm = (itemName || '').toLowerCase().trim();
+                      const match = grain.aliases.some(alias => nm.includes(alias.toLowerCase()));
+                      if (match) {
+                        quantity += Number(qty || 0);
+                      }
+                    });
+                    return (
+                      <td key={grain.key} className="border px-3 py-2 text-right">
+                        {quantity > 0 ? quantity.toFixed(2) : '0'}
+                      </td>
+                    );
+                  })}
+                  <td className="border px-3 py-2 text-right font-semibold text-green-600">
+                    {row.total_weight.toFixed(2)} kg
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-between items-center mt-4">
+          <div className="text-sm text-gray-600">
+            Showing {startIndex + 1} to {Math.min(endIndex, pendingOrdersData.length)} of {pendingOrdersData.length} entries
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+
+            <span className="px-3 py-1">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 border rounded"
+            >
+              <option value={25}>25 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Dispatch Cart Modal - Similar to Route Paper */}
+      {showCartModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
+          <div className="bg-white rounded-lg p-6 w-full max-w-[95vw] max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Dispatch Cart ({dispatchCart.length} items)</h2>
+              <button
+                onClick={() => setShowCartModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Table: one row per school with class ranges 1-5 and 6-8 in different rows */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-300 text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-2 py-1 whitespace-nowrap">अ. क्र.</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">Action</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">Order No</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">केंद्र</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">UDISE Code</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">शाळा</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">वर्ग</th>
+                    <th className="border px-2 py-1 whitespace-nowrap">पट संख्या</th>
+                    {mrGrainColumns.map(c => (
+                      <th key={c.key} className="border px-2 py-1 whitespace-nowrap">{c.key}</th>
+                    ))}
+                    <th className="border px-2 py-1 whitespace-nowrap">एकुण वजन</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dispatchCart.map((item, idx) => {
+                    const sums = sumGrainsForGroup(item.items_data);
+                    const total = Object.values(sums).reduce((a, b) => a + (Number(b) || 0), 0);
+                    const udise = getUdiseBySchool(item.school_id);
+
+                    // Split class ranges into 1-5 and 6-8
+                    const classRanges = item.class_range.split(', ').filter(Boolean);
+                    const class1to5 = classRanges.filter(cr => cr.includes('1-5') || cr.includes('1 to 5'));
+                    const class6to8 = classRanges.filter(cr => cr.includes('6-8') || cr.includes('6 to 8'));
+
+                    return (
+                      <React.Fragment key={item.school_id}>
+                        {/* Row for classes 1-5 */}
+                        {class1to5.length > 0 && (
+                          <tr>
+                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                            <td className="border px-2 py-1">
+                              <button
+                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
+                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{class1to5.join(', ')}</td>
+                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
+                            {mrGrainColumns.map(c => (
+                              <td key={c.key} className="border px-2 py-1 text-right">
+                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
+                              </td>
+                            ))}
+                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
+                          </tr>
+                        )}
+
+                        {/* Row for classes 6-8 */}
+                        {class6to8.length > 0 && (
+                          <tr>
+                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                            <td className="border px-2 py-1">
+                              <button
+                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
+                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{class6to8.join(', ')}</td>
+                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
+                            {mrGrainColumns.map(c => (
+                              <td key={c.key} className="border px-2 py-1 text-right">
+                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
+                              </td>
+                            ))}
+                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
+                          </tr>
+                        )}
+
+                        {/* If no specific class ranges, show all */}
+                        {class1to5.length === 0 && class6to8.length === 0 && (
+                          <tr>
+                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                            <td className="border px-2 py-1">
+                              <button
+                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
+                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
+                            <td className="border px-2 py-1 whitespace-nowrap">{item.class_range || ''}</td>
+                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
+                            {mrGrainColumns.map(c => (
+                              <td key={c.key} className="border px-2 py-1 text-right">
+                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
+                              </td>
+                            ))}
+                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowCartModal(false)}
+                className="px-4 py-2 rounded bg-gray-200 text-gray-800"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowCartModal(false);
+                  setShowTruckModal(true);
+                }}
+                disabled={loading || dispatchCart.length === 0}
+                className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60 inline-flex items-center"
+              >
+                {loading && (
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                )}
+                {loading ? 'Submitting...' : 'Final Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Truck Selection Modal */}
+      {showTruckModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Select Truck</h2>
+              <button
+                onClick={() => setShowTruckModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Truck Number
+              </label>
+              <select
+                value={selectedTruckId}
+                onChange={(e) => setSelectedTruckId(e.target.value)}
+                className="w-full h-10 rounded-md border px-3 text-sm"
+              >
+                <option value="">Select Truck</option>
+                {truckData.map(truck => (
+                  <option key={truck.id} value={truck.id}>
+                    {truck.truckNo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowTruckModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowTruckModal(false);
+                  setShowSubmitConfirm(true);
+                }}
+                disabled={!selectedTruckId}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Submit Dispatch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitConfirm && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Confirm Final Submit</h2>
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="mb-4 text-gray-600">
+              Are you sure you want to submit the dispatch cart with {dispatchCart.length} items?
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                disabled={loading}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitDispatch}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 inline-flex items-center"
+              >
+                {loading && (
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                )}
+                {loading ? 'Submitting...' : 'Yes, Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
