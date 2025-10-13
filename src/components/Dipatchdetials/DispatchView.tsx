@@ -97,7 +97,7 @@ type DispatchListRow = {
   total_weight?: string;
   truckNo?: string;
   class_range?: string;
-  taluka?: string;
+  taluka_id?: string;
   taluka_name?: string;
   period?: string;
   no_of_days?: number;
@@ -166,6 +166,33 @@ interface TalukaRow {
   dist_id?: number;
   status?: string;
 }
+
+// Add these type definitions after line 160 (after ExcelExportModalProps interface)
+type DispatchData = {
+  dispatch_code: string;
+  schoolname: string;
+  udaisno: string;
+  taluka: string;
+  center_name: string;
+  truckNo: string;
+  date: string;
+  class_range?: string;
+  period?: string;
+  no_of_days?: number;
+  financial_year?: string;
+  patsankhya?: string;
+  items: Array<{
+    name: string;
+    qty: number;
+    unit: string;
+  }>;
+};
+
+type DispatchItem = {
+  name: string;
+  qty: number;
+  unit: string;
+};
 
 const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, dispatchData }) => {
   const exportToExcel = () => {
@@ -947,6 +974,109 @@ const DispatchView = () => {
     return quantitiesMap;
   }, [filteredDispatchList, dispatchList]);
 
+  // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
+  const mrGrainColumns = [
+    { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल', 'tandul', 'rice grains'] },
+    { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ', 'green dal'] },
+    { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal', 'red dal', 'red lentil'] },
+    { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर', 'tur dal'] },
+    { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram', 'bengal gram', 'besan'] },
+    { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
+    { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
+    { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
+    { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas', 'green peas'] },
+    { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
+    { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
+    { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
+    { key: 'हळद', aliases: ['हळद', 'turmeric', 'haldi', 'turmeric powder'] },
+    { key: 'मीठ', aliases: ['मीठ', 'salt', 'common salt'] },
+    { key: 'मोहरी', aliases: ['मोहरी', 'mustard', 'mustard seeds'] },
+  ];
+
+  // Enhanced function to calculate grain totals - includes all items
+  const sumGrainsForGroup = (items: Array<{ name: string; qty: number }>) => {
+    const sums: Record<string, number> = {};
+    const mappedItems: string[] = [];
+    
+    items.forEach(it => {
+      if (!it.name || it.qty === 0) return;
+      
+      const nm = (it.name || '').toLowerCase().trim();
+      const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+      
+      if (match) {
+        const key = match.key;
+        sums[key] = (sums[key] || 0) + Number(it.qty || 0);
+        mappedItems.push(key);
+      } else {
+        // For unmapped items, keep the original name
+        sums[it.name] = (sums[it.name] || 0) + Number(it.qty || 0);
+      }
+    });
+    
+    return sums;
+  };
+
+  // Get all unique item names from the data (both mapped and unmapped)
+  const getAllItemNames = (data: DispatchListRow[]) => {
+    const allItems = new Map<string, boolean>();
+    
+    data.forEach(row => {
+      if (row.item_name) {
+        const nm = row.item_name.toLowerCase().trim();
+        const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+        
+        if (match) {
+          allItems.set(match.key, true);
+        } else {
+          allItems.set(row.item_name, true);
+        }
+      }
+    });
+    
+    // Create array with mapped items first, then unmapped items
+    const mappedKeys = mrGrainColumns.map(g => g.key);
+    const orderedItems: string[] = [];
+    
+    // Add mapped items in order
+    mappedKeys.forEach(key => {
+      if (allItems.has(key)) {
+        orderedItems.push(key);
+        allItems.delete(key);
+      }
+    });
+    
+    // Add unmapped items alphabetically
+    const unmappedItems = Array.from(allItems.keys()).sort();
+    orderedItems.push(...unmappedItems);
+    
+    return orderedItems;
+  };
+
+  // Get taluka name by school ID
+  const getTalukaNameBySchoolId = (schoolId: number): string => {
+    const schoolData = schoolDataById.get(schoolId);
+    if (schoolData) {
+      const taluka = talukaList.find(t => t.taluka_id === schoolData.taluka_id);
+      return taluka?.name || '';
+    }
+    return '';
+  };
+
+  // Get UDISE number by school ID
+  const getUdiseNumberBySchoolId = (schoolId: number): string => {
+    const schoolData = schoolDataById.get(schoolId);
+    return schoolData?.udaisno || '';
+  };
+
+  // Format date function
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-GB');
+  };
+
   // Add delete functionality
   const handleDeleteDispatch = async (dispatchCode: string) => {
     if (!confirm('Are you sure you want to delete this dispatch? This action cannot be undone.')) {
@@ -979,25 +1109,1300 @@ const DispatchView = () => {
     }
   };
 
-  // Updated table columns with correct keys and action column
+  // FIXED: Print Rice Pavti function using the same approach as Dipatchdetials.tsx
+  const printRicePavti = (dispatchData: DispatchData) => {
+    try {
+      console.log('Print Rice Pavti clicked:', dispatchData);
+      
+      // Create print content for Rice Pavti
+      const riceItems = dispatchData.items.filter((item: DispatchItem) => {
+        const itemName = item.name.toLowerCase();
+        return itemName.includes('rice') || itemName.includes('चावल') || itemName.includes('तांदुळ');
+      });
+
+      if (riceItems.length === 0) {
+        toast.error('No rice items found to print');
+        return;
+      }
+
+      const printContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rice Pavti - ${dispatchData.dispatch_code}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: A4;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #000;
+      background: white;
+    }
+    .copy-container {
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-after: always;
+    }
+    .copy-container:last-child {
+      page-break-after: avoid;
+    }
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      position: relative;
+      margin-top: 10px;
+    }
+    .center-item {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+    .end-item {
+      margin-left: auto;
+    }
+    .subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .subtitle-small {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .info-section {
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .info-left, .info-right {
+      flex-basis: 50%;
+    }
+    .info-left {
+      text-align: left;
+    }
+    .info-right {
+      text-align: right;
+    }
+    .recipient-info {
+      margin: 12px 0;
+    }
+    .recipient-info div {
+      margin-bottom: 4px;
+    }
+    .description-text {
+      margin: 12px 0;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: justify;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11px;
+    }
+    .table th, .table td {
+      border: 1px solid #000;
+      padding: 6px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    .table td:first-child {
+      width: 40px;
+    }
+    .table td:nth-child(2) {
+      text-align: left;
+      width: 60%;
+    }
+    .table td:last-child {
+      width: 80px;
+    }
+    .footer {
+      margin-top: 25px;
+    }
+    .signature-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      font-size: 12px;
+    }
+    .signature-left {
+      text-align: left;
+      width: 50%;
+    }
+    .signature-right {
+      text-align: right;
+      width: 50%;
+    }
+    
+    /* Hide elements when printing */
+    @media print {
+      body {
+        padding: 10px;
+      }
+      @page {
+        margin: 0;
+        size: A4;
+        marks: none;
+        -webkit-print-color-adjust: exact;
+      }
+      ::after, ::before {
+        content: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+ ${Array.from({ length: 4 }, (_, copyIndex) => `
+    <div class="copy-container">
+      <div class="container">
+        <div class="header">
+          <div class="title">
+            <div class="center-item">Rice Pavti Receipt</div>
+            <div class="end-item">Copy ${copyIndex + 1}</div>
+          </div>
+
+          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+          <div class="subtitle">ता. भोकरदन जि. जालना</div>
+          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+            <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+          </div>
+          <div class="info-row">
+            <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+          </div>
+        </div>
+
+        <div class="recipient-info">
+          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        </div>
+
+        <div class="description-text">
+          आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+        </div>
+
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          ${riceItems.length > 10 ? `
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 11}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+        </div>
+
+        <div class="description-text">
+          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+        </div>
+
+        <div class="footer">
+          <div class="signature-section">
+            <div class="signature-left">
+              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+            </div>
+            <div class="signature-right">
+              माल ताब्यात घेणाऱ्याची सही व शिक्का
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('')}
+</body>
+</html>
+    `;
+
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Unable to open print window. Please check popup blocker.');
+        return;
+      }
+      
+      printWindow.document.write(printContent);
+      // printWindow.document.close();
+
+      // Wait for content to load before printing - SAME AS DIPATCHDETIALS.TSX
+      printWindow.onload = () => {
+        printWindow.focus();
+
+        // Add a small delay to ensure all content is rendered
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+
+      toast.success('Rice Pavti print window opened');
+    } catch (error) {
+      console.error('Error printing rice pavti:', error);
+      toast.error('Failed to print rice pavti');
+    }
+  };
+
+  // FIXED: Print Kirana function using the same approach as Dipatchdetials.tsx
+  const printKirana = (dispatchData: DispatchData) => {
+    try {
+      console.log('Print Kirana clicked:', dispatchData);
+      
+      // Create print content for Kirana
+      const kiranaItems = dispatchData.items.filter((item: DispatchItem) => {
+        const itemName = item.name.toLowerCase();
+        return !itemName.includes('rice') && !itemName.includes('चावल') && !itemName.includes('तांदुळ');
+      });
+
+      if (kiranaItems.length === 0) {
+        toast.error('No kirana items found to print');
+        return;
+      }
+
+      const printContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Kirana - ${dispatchData.dispatch_code}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: A4;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #000;
+      background: white;
+    }
+    .copy-container {
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-after: always;
+    }
+    .copy-container:last-child {
+      page-break-after: avoid;
+    }
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      position: relative;
+      margin-top: 10px;
+    }
+    .center-item {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+    .end-item {
+      margin-left: auto;
+    }
+    .subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .subtitle-small {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .info-section {
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .info-left, .info-right {
+      flex-basis: 50%;
+    }
+    .info-left {
+      text-align: left;
+    }
+    .info-right {
+      text-align: right;
+    }
+    .recipient-info {
+      margin: 12px 0;
+    }
+    .recipient-info div {
+      margin-bottom: 4px;
+    }
+    .description-text {
+      margin: 12px 0;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: justify;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11px;
+    }
+    .table th, .table td {
+      border: 1px solid #000;
+      padding: 6px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    .table td:first-child {
+      width: 40px;
+    }
+    .table td:nth-child(2) {
+      text-align: left;
+      width: 60%;
+    }
+    .table td:last-child {
+      width: 80px;
+    }
+    .footer {
+      margin-top: 25px;
+    }
+    .signature-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      font-size: 12px;
+    }
+    .signature-left {
+      text-align: left;
+      width: 50%;
+    }
+    .signature-right {
+      text-align: right;
+      width: 50%;
+    }
+    
+    /* Hide elements when printing */
+    @media print {
+      body {
+        padding: 10px;
+      }
+      @page {
+        margin: 0;
+        size: A4;
+        marks: none;
+        -webkit-print-color-adjust: exact;
+      }
+      ::after, ::before {
+        content: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+ ${Array.from({ length: 4 }, (_, copyIndex) => `
+    <div class="copy-container">
+      <div class="container">
+        <div class="header">
+          <div class="title">
+            <div class="center-item">Kirana Receipt</div>
+            <div class="end-item">Copy ${copyIndex + 1}</div>
+          </div>
+
+          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+          <div class="subtitle">ता. भोकरधन जि. जालना</div>
+          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+            <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+          </div>
+          <div class="info-row">
+            <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+          </div>
+        </div>
+
+        <div class="recipient-info">
+          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        </div>
+
+        <div class="description-text">
+          आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+        </div>
+
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${kiranaItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          ${kiranaItems.length > 10 ? `
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${kiranaItems.slice(10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 11}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+        </div>
+
+        <div class="description-text">
+          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+        </div>
+
+        <div class="footer">
+          <div class="signature-section">
+            <div class="signature-left">
+              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+            </div>
+            <div class="signature-right">
+              माल ताब्यात घेणाऱ्याची सही व शिक्का
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('')}
+</body>
+</html>
+    `;
+
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Unable to open print window. Please check popup blocker.');
+        return;
+      }
+      
+      printWindow.document.write(printContent);
+      // printWindow.document.close();
+
+      // Wait for content to load before printing - SAME AS DIPATCHDETIALS.TSX
+      printWindow.onload = () => {
+        printWindow.focus();
+
+        // Add a small delay to ensure all content is rendered
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+
+      toast.success('Kirana print window opened');
+    } catch (error) {
+      console.error('Error printing kirana:', error);
+      toast.error('  to print kirana');
+    }
+  };
+
+  // FIXED: Print Route Paper function using the same approach as Dipatchdetials.tsx
+  const printRoutePaper = (dispatchCode: string) => {
+    const dispatchData = dispatchList.filter(item => item.dispatch_code === dispatchCode);
+    
+    if (dispatchData.length === 0) {
+        toast.error('Dispatch data not found for printing');
+        return;
+    }
+
+    // Get all unique items in the dispatch
+    const allItemNames = getAllItemNames(dispatchData);
+
+    // Group by school and calculate totals
+    const schoolsMap = new Map();
+    dispatchData.forEach(row => {
+        const schoolKey = `${row.school_id}-${row.class_range || ''}`;
+        if (!schoolsMap.has(schoolKey)) {
+            const talukaName = getTalukaNameBySchoolId(row.school_id);
+            const udiseNumber = getUdiseNumberBySchoolId(row.school_id);
+            schoolsMap.set(schoolKey, {
+                schoolname: row.schoolname || '',
+                class_range: row.class_range || '',
+                center_name: row.center_name || '',
+                taluka_name: talukaName,
+                udise_number: udiseNumber,
+                patsankhya: row.patsankhya || '',
+                items: [],
+                receipts: new Set<string>(),
+            });
+        }
+        
+        schoolsMap.get(schoolKey).items.push({
+            name: row.item_name,
+            qty: row.qty_dispatch,
+            unit: row.unit
+        });
+        
+        if (row.dispatch_code) {
+            schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
+        }
+    });
+
+    const schools = Array.from(schoolsMap.values());
+
+    // Calculate grand totals for all items
+    const grandTotals: Record<string, number> = {};
+    
+    schools.forEach(school => {
+        const schoolSums = sumGrainsForGroup(school.items);
+        Object.entries(schoolSums).forEach(([itemName, qty]) => {
+            grandTotals[itemName] = (grandTotals[itemName] || 0) + qty;
+        });
+    });
+
+    // Calculate overall total
+    const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
+
+    // Get dynamic data from first dispatch item
+    const firstDispatchItem = dispatchData[0];
+    const dispatchDate = firstDispatchItem?.created_at ? formatDate(firstDispatchItem.created_at) : '';
+    const orderNo = firstDispatchItem?.order_no || '';
+    const dispatchCodeValue = firstDispatchItem?.dispatch_code || '';
+    const vehicleNo = firstDispatchItem?.truckNo || '';
+    const periodText = firstDispatchItem?.period || 'Aug-Sept-2025';
+    const daysText = firstDispatchItem?.no_of_days ? `${firstDispatchItem.no_of_days} Days` : '42 Days';
+
+    // Open print window with Excel-style formatting
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Route Paper - ${dispatchCode}</title>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 10px; 
+                            font-size: 12px;
+                        }
+                        .header-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 14px;
+                        }
+                        .header-table td {
+                            vertical-align: top;
+                            padding: 0 5px;
+                        }
+                        .header-org {
+                            font-size: 13px; 
+                            font-weight: bold; 
+                            line-height: 1.25; 
+                            text-align: center;
+                            margin-bottom: 10px;
+                        }
+                        .header-logo {
+                            width: 78px;
+                            height: auto;
+                            display: block;
+                            margin: 6px auto 3px auto;
+                        }
+                        .dispatch-detail {
+                            text-align: left;
+                            font-size: 12px;
+                            line-height: 1.55;
+                        }
+                        .driver-detail {
+                            text-align: right;
+                            font-size: 12px;
+                            line-height: 1.55;
+                        }
+                        .header-center { 
+                            font-size: 12px;
+                            font-weight: bold;
+                            text-align: right;
+                            margin-top: 6px; 
+                        }
+                        .dataflex {
+                            display: flex;
+                            justify-content: space-around;
+                            align-items: flex-start;
+                            margin-top: 10px;
+                            width: 100%;
+                        }
+                        .dataflex > div {
+                            flex: 1;
+                            text-align: center;
+                            padding: 0 10px;
+                        }
+                        .dataflex > div:first-child {
+                            text-align: left;
+                        }
+                        .dataflex > div:last-child {
+                            text-align: right;
+                        }
+                        .center-title {
+                            font-size: 12px;
+                            font-weight: bold;
+                            text-align: center;
+                            margin-top: 10px;
+                        }
+                        .table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            border: 1px solid #000;
+                        }
+                        .table th, .table td { 
+                            border: 1px solid #000; 
+                            padding: 4px 6px; 
+                            text-align: center;
+                            font-size: 11px;
+                        }
+                        .table th { 
+                            background-color: #f0f0f0; 
+                            font-weight: bold;
+                        }
+                        .total-row { 
+                            background-color: #e6e6e6; 
+                            font-weight: bold;
+                        }
+                        .grain-column {
+                            min-width: 60px;
+                        }
+                        .serial-column {
+                            min-width: 30px;
+                        }
+                        .center-align {
+                            text-align: center;
+                        }
+                        .left-align {
+                            text-align: left;
+                        }
+                        .right-align {
+                            text-align: right;
+                        }
+                        .footer { 
+                            margin-top: 15px; 
+                            text-align: center;
+                            font-size: 11px;
+                            border-top: 1px solid #000;
+                            padding-top: 5px;
+                        }
+                        @media print {
+                            body { margin: 5mm; }
+                            .table { font-size: 10px; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <table class="header-table">
+                        <tr>
+                            <td style="width:44%; text-align:center;">
+                                <div class="header-org">
+                                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
+                                    शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
+                                </div>
+                                <div class="dataflex">
+                                    <div>
+                                        Dispatch No. - ${dispatchCodeValue}<br>
+                                        Dispatch date - ${dispatchDate}<br>
+                                        पुरवठा माहे - ${periodText} (${daysText})<br>
+                                        Order No. - ${orderNo}<br>
+                                        Total Weight - <b>${overallTotal.toFixed(2)}</b>
+                                    </div>
+                                    <div>
+                                        <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+                                    </div>
+                                    <div>
+                                        Driver MOTIRAM PADAVI<br>
+                                        Mob 9022899429<br>
+                                        Vehicle No ${vehicleNo}<br>
+                                        <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                    </div>
+                                </div>
+                                <div class="center-title">
+                                    मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+            
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th class="serial-column">अ. क्र.</th>
+                                <th class="left-align">तालुका</th>
+                                <th class="left-align">पावती क्रमांक</th>
+                                <th class="left-align">केंद्र</th>
+                                <th class="left-align">UDISE Code</th>
+                                <th class="left-align">शाळा</th>
+                                <th class="center-align">वर्ग</th>
+                                <th class="center-align">पट संख्या</th>
+                                ${allItemNames.map(item =>
+                                    `<th class="grain-column">${item}</th>`
+                                ).join('')}
+                                <th class="center-align">एकूण</th>
+                                <th class="center-align">हेड मास्टर मोबाइल No.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${schools.map((school, index) => {
+                                const grainSums = sumGrainsForGroup(school.items);
+                                const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+                                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+                                return `
+                                    <tr>
+                                        <td class="center-align">${index + 1}</td>
+                                        <td class="left-align">${school.taluka_name || '-'}</td>
+                                        <td class="left-align">${receipts}</td>
+                                        <td class="left-align">${school.center_name}</td>
+                                        <td class="center-align">${school.udise_number || '-'}</td>
+                                        <td class="left-align">${school.schoolname}</td>
+                                        <td class="center-align">${school.class_range}</td>
+                                        <td class="center-align">${school.patsankhya || '-'}</td>
+                                        ${allItemNames.map(item =>
+                                            `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
+                                        ).join('')}
+                                        <td class="right-align">${schoolTotal.toFixed(2)}</td>
+                                        <td class="center-align">-</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            <tr class="total-row">
+                                <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
+                                ${allItemNames.map(item =>
+                                    `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
+                                ).join('')}
+                                <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
+                                <td class="center-align"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+            
+                    <div class="footer">
+                        <table style="width: 100%; margin-top: 20px;">
+                            <tr>
+                                <td style="width: 33%; text-align: center;">
+                                    <p>तपासणी अधिकारी</p>
+                                    <p>___________________________________</p>
+                                </td>
+                                <td style="width: 33%; text-align: center;">
+                                    <p>वाहन चालक</p>
+                                    <p>___________________________________</p>
+                                </td>
+                                <td style="width: 33%; text-align: center;">
+                                    <p>सह्या</p>
+                                    <p>___________________________________</p>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
+                        <p style="margin-top: 5px;">Dispatch: ${dispatchCode} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
+                    </div>
+            
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 1000);
+                        }
+                    </script>
+                </body>
+            </html>
+        `);
+    }
+};
+
+  // FIXED: Print DC function using the same approach as Dipatchdetials.tsx
+  const printDC = (dispatchData: DispatchData) => {
+    try {
+      console.log('Print DC clicked:', dispatchData);
+      
+      const printContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Delivery Challan - ${dispatchData.dispatch_code}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: A4;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #000;
+      background: white;
+    }
+    .copy-container {
+      width: 100%;
+      margin-bottom: 20px;
+      page-break-after: always;
+    }
+    .copy-container:last-child {
+      page-break-after: avoid;
+    }
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      position: relative;
+      margin-top: 10px;
+    }
+    .center-item {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+    .end-item {
+      margin-left: auto;
+    }
+    .subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .subtitle-small {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .info-section {
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .info-left, .info-right {
+      flex-basis: 50%;
+    }
+    .info-left {
+      text-align: left;
+    }
+    .info-right {
+      text-align: right;
+    }
+    .recipient-info {
+      margin: 12px 0;
+    }
+    .recipient-info div {
+      margin-bottom: 4px;
+    }
+    .description-text {
+      margin: 12px 0;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: justify;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11px;
+    }
+    .table th, .table td {
+      border: 1px solid #000;
+      padding: 6px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .table th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    .table td:first-child {
+      width: 40px;
+    }
+    .table td:nth-child(2) {
+      text-align: left;
+      width: 60%;
+    }
+    .table td:last-child {
+      width: 80px;
+    }
+    .footer {
+      margin-top: 25px;
+    }
+    .signature-section {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      font-size: 12px;
+    }
+    .signature-left {
+      text-align: left;
+      width: 50%;
+    }
+    .signature-right {
+      text-align: right;
+      width: 50%;
+    }
+    
+    /* Hide elements when printing */
+    @media print {
+      body {
+        padding: 10px;
+      }
+      @page {
+        margin: 0;
+        size: A4;
+        marks: none;
+        -webkit-print-color-adjust: exact;
+      }
+      ::after, ::before {
+        content: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+ ${Array.from({ length: 4 }, (_, copyIndex) => `
+    <div class="copy-container">
+      <div class="container">
+        <div class="header">
+          <div class="title">
+            <div class="center-item">डिलीव्हरी चलन</div>
+            <div class="end-item">Copy ${copyIndex + 1}</div>
+          </div>
+
+          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+          <div class="subtitle">ता. भोकरधन जि. जालना</div>
+          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+            <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+          </div>
+          <div class="info-row">
+            <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+          </div>
+        </div>
+
+        <div class="recipient-info">
+          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        </div>
+
+        <div class="description-text">
+          आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+        </div>
+
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dispatchData.items.slice(0, 10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          ${dispatchData.items.length > 10 ? `
+          <table class="table" style="flex: 1;">
+            <thead>
+              <tr>
+                <th>अ.क्रं.</th>
+                <th>धान्याचे नाव</th>
+                <th>वजन किलो ग्रॅम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dispatchData.items.slice(10).map((item: DispatchItem, index: number) => `
+                <tr>
+                  <td>${index + 11}</td>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+        </div>
+
+        <div class="description-text">
+          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+        </div>
+
+        <div class="footer">
+          <div class="signature-section">
+            <div class="signature-left">
+              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+            </div>
+            <div class="signature-right">
+              माल ताब्यात घेणाऱ्याची सही व शिक्का
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('')}
+</body>
+</html>
+    `;
+
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Unable to open print window. Please check popup blocker.');
+        return;
+      }
+      
+      printWindow.document.write(printContent);
+      // printWindow.document.close();
+
+      // Wait for content to load before printing - SAME AS DIPATCHDETIALS.TSX
+      printWindow.onload = () => {
+        printWindow.focus();
+
+        // Add a small delay to ensure all content is rendered
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+
+      toast.success('DC print window opened');
+    } catch (error) {
+      console.error('Error printing DC:', error);
+      toast.error('Failed to print DC');
+    }
+  };
+
+  // Updated table columns with proper delete button
   const listColumns: Column<DispatchListRow>[] = [
-    // Action column with delete functionality
+    // Delete button column (Bin) - Fixed implementation
     {
-      key: 'action',
+      key: 'delete',
       label: 'Bin',
       render: (r) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleDeleteDispatch(r.dispatch_code)}
-            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-            title="Delete Dispatch"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={() => handleDeleteDispatch(r.dispatch_code)}
+          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+          title="Delete Dispatch"
+          disabled={loading} // Disable during loading
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
       )
+    },
+    
+    // Action column with 4 print buttons
+    {
+      key: 'action',
+      label: 'ACTION',
+      render: (r) => {
+        // build items array for this row's school+order+class
+        const schoolItems = dispatchList
+          .filter(d =>
+            d.schoolname === r.schoolname &&
+            d.order_no === r.order_no &&
+            String(d.class_range || '') === String(r.class_range || '')
+          )
+          .map(d => ({ name: d.item_name, qty: d.qty_dispatch, unit: d.unit }));
+
+        const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
+        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+        const payload = {
+          dispatch_code: r.dispatch_code,
+          schoolname: r.schoolname || '',
+          udaisno: sd?.udaisno || '',
+          taluka: talukaName,
+          center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
+          truckNo: r.truckNo || '',
+          date: formatDateToDDMMYYYY(r.created_at),
+          class_range: r.class_range || '',
+          period: r.period || '',
+          no_of_days: r.no_of_days || 0,
+          financial_year: r.financial_year || '',
+          items: schoolItems
+        };
+
+        return (
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => printRicePavti(payload)}
+              className="px-2 py-1 rounded bg-green-50 text-green-700 hover:bg-green-100 text-xs"
+              title="Print Rice Pavti"
+              disabled={loading}
+            >
+              Print Rice Pavti
+            </button>
+            
+            <button
+              onClick={() => printKirana(payload)}
+              className="px-2 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs"
+              title="Print Kirana"
+              disabled={loading}
+            >
+              Print Kirana
+            </button>
+            
+            <button
+              onClick={() => printRoutePaper(r.dispatch_code)}
+              className="px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs"
+              title="Print Route Paper"
+              disabled={loading}
+            >
+              Print Route Paper
+            </button>
+            
+            <button
+              onClick={() => printDC(payload)}
+              className="px-2 py-1 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 text-xs"
+              title="Print DC"
+              disabled={loading}
+            >
+              Print DC
+            </button>
+          </div>
+        );
+      }
     },
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'created_at', label: 'Dispatch Date', accessor: 'created_at', render: (r) => <span>{formatDateToDDMMYYYY(r.created_at)}</span> },
@@ -1045,7 +2450,7 @@ const DispatchView = () => {
       accessor: 'class_range',
       render: (r) => <span>{r.class_range || ''}</span>
     },
-    { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo || r.truck_id}</span> },
+    { key: 'truckNo', label: 'TRUCK NO', accessor: 'truckNo', render: (r) => <span>{r.truckNo}</span> },
 
     // New grain columns with correct keys
     {
@@ -1441,11 +2846,10 @@ const DispatchView = () => {
           columns={listColumns}
           title="Order Details with Column Search"
           filterOptions={[]}
-
           searchKey="schoolname"
-          searchableKeys={['order_no', 'schoolname', 'class_range', 'taluka', 'dispatch_code', 'center_name', 'udaisno', 'truckNo', 'created_at','taluka_name']}
-          groupByKeys={['dispatch_code', 'taluka']}
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "created_at","taluka_name"]}
+          searchableKeys={['order_no', 'schoolname', 'class_range', 'taluka_id', 'dispatch_code', 'center_name', 'udaisno', 'truckNo', 'created_at','taluka_name']}
+          groupByKeys={['dispatch_code', 'taluka_name','truckNo']}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "delete", "created_at","taluka_name"]}
         />
 
       )}

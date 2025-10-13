@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-// import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
-// import { ColumnSearchTable } from '../tables/ColumnSearchTable';
 import Loader from '@/common/Loader';
-import React from 'react'; // Added missing import for React
+import React from 'react';
 
 interface SchoolWiseOrder {
   id: number;
@@ -23,7 +21,7 @@ interface SchoolWiseOrder {
   created_at: string;
   class_range?: string;
   patsankhya?: number;
-  is_dispatched?: boolean | 0; // Added is_dispatched field
+  is_dispatched?: boolean | 0;
 }
 
 interface TalukaRow {
@@ -41,12 +39,6 @@ interface CenterRow {
   status?: string;
   taluka_id?: number;
 }
-
-// interface ItemGrain {
-//   id: number;
-//   name: string;
-//   Unit: string;
-// }
 
 interface SchoolDataRow {
   schoolid: number;
@@ -111,17 +103,67 @@ type DispatchCartItem = {
   taluka_id: number;
 };
 
+
+type DispatchListRow = {
+  id: number;
+  dispatch_code: string;
+  order_id: number;
+  school_id: number;
+  center_id: number;
+  truck_id: number;
+  item_name: string;
+  unit: string;
+  total_qty: number;
+  qty_dispatch: number;
+  bal_qty: number;
+  status: string;
+  created_at: string;
+  order_no?: string;
+  schoolname?: string;
+  center_name?: string;
+  total_weight?: string;
+  truckNo?: string;
+  class_range?: string;
+  taluka_id?: string;
+  taluka_name?: string;
+  period?: string;
+  no_of_days?: number;
+  financial_year?: string;
+  udaisno?: string;
+  patsankhya?: string;
+  action?: string;
+  // Add all grain properties as optional string types
+  "grain_तांदुळ"?: string;
+  "grain_मुंगदाळ"?: string;
+  "grain_मसूरदाळ"?: string;
+  "grain_तूरदाळ"?: string;
+  "grain_हरभरा"?: string;
+  "grain_चवळी"?: string;
+  "grain_मटकी"?: string;
+  "grain_मूग"?: string;
+  "grain_वाटणा"?: string;
+  "grain_सोया वडी"?: string;
+  "grain_मसाला"?: string;
+  "grain_सोया तेल"?: string;
+  "grain_हळद"?: string;
+  "grain_मीठ"?: string;
+  "grain_मोहरी"?: string;
+  "grain_चना"?: string;
+  "grain_जीरा"?: string;
+};
+
 const PendingOrderDetails = () => {
   const [loading, setLoading] = useState(true);
 
   // Masters
   const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
   const [centerList, setCenterList] = useState<CenterRow[]>([]);
-  // const [itemGrains, setItemGrains] = useState<ItemGrain[]>([]);
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
   const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
   const [truckData, setTruckData] = useState<TruckData[]>([]);
-
+// Add these state variables for typehead functionality
+const [showTruckSuggestions, setShowTruckSuggestions] = useState(false);
+const [truckInputValue, setTruckInputValue] = useState('');
   // Dispatch cart state
   const [dispatchCart, setDispatchCart] = useState<DispatchCartItem[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
@@ -134,18 +176,39 @@ const PendingOrderDetails = () => {
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50); // Show 50 schools per page
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // Grain columns definition (same as route paper)
+  // Add search filters state
+  const [searchFilters, setSearchFilters] = useState({
+    order_no: '',
+    taluka_name: '',
+    center_name: '',
+    schoolname: '',
+    udaisno: '',
+    class_range: '',
+    patsankhya: '',
+    period: '',
+    no_of_days: '',
+    financial_year: '',
+    total_weight: ''
+  });
+
+  // FIXED: State management for quantities - properly separated by school_id and class_range
+  const [editableQuantities, setEditableQuantities] = useState<Map<string, Record<string, number>>>(new Map());
+  const [editingRow, setEditingRow] = useState<string | null>(null);
+  const [originalQuantities, setOriginalQuantities] = useState<Map<string, Record<string, number>>>(new Map());
+  const [dispatchedQuantities, setDispatchedQuantities] = useState<Map<string, Record<string, number>>>(new Map());
+
+  // Grain columns definition
   const mrGrainColumns = [
     { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल'] },
-    { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ'] },
+    { key: 'मुंगदाळ', aliases: ['मुंगदाळ', 'मुगडाळ', 'moong dal', 'मूगडाळ'] },
     { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal'] },
     { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर'] },
     { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram'] },
     { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया'] },
     { key: 'मटकी', aliases: ['मटकी', 'matki', 'मोठ'] },
-    { key: 'मूग', aliases: ['मूग', 'moong', 'मुग'] },
+    { key: 'मूग', aliases: ['मुंग', 'moong'] },
     { key: 'वाटणा', aliases: ['वाटणा', 'vatana', 'हरभरा'] },
     { key: 'सोया वडी', aliases: ['सोया वडी', 'soya vadi', 'सोया_वडी'] },
     { key: 'मसाला', aliases: ['मसाला', 'masala', 'spice'] },
@@ -162,7 +225,13 @@ const PendingOrderDetails = () => {
     const sums: Record<string, number> = {};
     Object.entries(items).forEach(([name, qty]) => {
       const nm = (name || '').toLowerCase().trim();
-      const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+      const match = mrGrainColumns.find(c => 
+        c.aliases.some(a => {
+          const aliasLower = a.toLowerCase();
+          if (nm === aliasLower) return true;
+          return nm.includes(aliasLower);
+        })
+      );
       const key = match ? match.key : name;
       sums[key] = (sums[key] || 0) + Number(qty || 0);
     });
@@ -175,7 +244,212 @@ const PendingOrderDetails = () => {
     return sd?.udaisno || '';
   };
 
-  // Fix the pendingOrdersData processing to show ONLY pending schools
+  // Filter function for search
+  const filterData = (data: PendingOrderRow[]) => {
+    return data.filter(row => {
+      return Object.entries(searchFilters).every(([key, value]) => {
+        if (!value) return true;
+        const rowValue = String(row[key as keyof PendingOrderRow] || '').toLowerCase();
+        const searchValue = value.toLowerCase();
+        return rowValue.includes(searchValue);
+      });
+    });
+  };
+
+  // Create truck options for typehead
+const truckOptions = useMemo(() => [
+  ...truckData.map(t => ({ value: String(t.id), label: t.truckNo }))
+], [truckData]);
+
+// Filter truck suggestions based on input
+const filteredTruckSuggestions = useMemo(() => {
+  if (!truckInputValue.trim()) return [];
+  return truckOptions.filter(option =>
+    option.label.toLowerCase().includes(truckInputValue.toLowerCase())
+  );
+}, [truckOptions, truckInputValue]);
+
+  // FIXED: Store original quantities for each class range separately
+  const storeOriginalQuantities = (row: PendingOrderRow) => {
+    const rowKey = `${row.school_id}_${row.class_range}`;
+    
+    // Check if we already have stored original quantities for this row
+    if (originalQuantities.has(rowKey)) {
+      return;
+    }
+
+    const quantities: Record<string, number> = {};
+    
+    mrGrainColumns.forEach(grain => {
+      let quantity = 0;
+      Object.entries(row.items_data).forEach(([itemName, qty]) => {
+        const nm = (itemName || '').toLowerCase().trim();
+        const match = grain.aliases.some(alias => {
+          const aliasLower = alias.toLowerCase();
+          if (nm === aliasLower) return true;
+          return nm.includes(aliasLower);
+        });
+        if (match) {
+          quantity += Number(qty || 0);
+        }
+      });
+      quantities[grain.key] = quantity;
+    });
+    
+    setOriginalQuantities(prev => {
+      const newMap = new Map(prev);
+      newMap.set(rowKey, quantities);
+      return newMap;
+    });
+  };
+
+  // FIXED: Handle quantity change with proper validation for specific class range
+  const handleQuantityChange = (rowKey: string, grainKey: string, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    const originalQty = originalQuantities.get(rowKey)?.[grainKey] || 0;
+    
+    // Validate against original quantity
+    if (numericValue > originalQty) {
+      toast.error(`Value cannot be greater than ${originalQty} for ${grainKey}`);
+      return;
+    }
+    
+    if (numericValue < 0) {
+      toast.error(`Value cannot be negative for ${grainKey}`);
+      return;
+    }
+    
+    setEditableQuantities(prev => {
+      const newMap = new Map(prev);
+      if (!newMap.has(rowKey)) {
+        newMap.set(rowKey, {});
+      }
+      const rowQuantities = newMap.get(rowKey)!;
+      rowQuantities[grainKey] = numericValue;
+      return newMap;
+    });
+  };
+
+  // FIXED: Calculate remaining quantities correctly for each class range
+  const getRemainingQuantities = (rowKey: string) => {
+    const original = originalQuantities.get(rowKey) || {};
+    const dispatched = dispatchedQuantities.get(rowKey) || {};
+    
+    const remaining: Record<string, number> = {};
+    
+    mrGrainColumns.forEach(grain => {
+      const originalQty = original[grain.key] || 0;
+      const dispatchedQty = dispatched[grain.key] || 0;
+      const remainingQty = Math.max(0, originalQty - dispatchedQty);
+      
+      remaining[grain.key] = remainingQty;
+    });
+    
+    return remaining;
+  };
+
+  // Calculate total weight from quantities
+  const calculateTotalWeight = (quantities: Record<string, number>) => {
+    return Object.values(quantities).reduce((sum, qty) => sum + Number(qty), 0);
+  };
+
+  // FIXED: Add to dispatch cart with proper quantity handling for specific class range
+  const addToDispatchCartWithEdits = (row: PendingOrderRow) => {
+    const rowKey = `${row.school_id}_${row.class_range}`;
+    const editedQuantities = editableQuantities.get(rowKey);
+    const original = originalQuantities.get(rowKey) || {};
+    
+    // Create final quantities: use edited values where available, otherwise use original
+    const finalQuantities: Record<string, number> = {};
+    
+    mrGrainColumns.forEach(grain => {
+      const originalQty = original[grain.key] || 0;
+      const editedQty = editedQuantities?.[grain.key];
+      
+      // Use edited value if available, otherwise use original
+      finalQuantities[grain.key] = editedQty !== undefined ? editedQty : originalQty;
+    });
+
+    // Validate all quantities
+    let hasValidationError = false;
+    Object.entries(finalQuantities).forEach(([grainKey, finalValue]) => {
+      const originalQty = original[grainKey] || 0;
+      if (finalValue > originalQty) {
+        toast.error(`Value cannot be greater than ${originalQty} for ${grainKey}`);
+        hasValidationError = true;
+      }
+      if (finalValue < 0) {
+        toast.error(`Value cannot be negative for ${grainKey}`);
+        hasValidationError = true;
+      }
+    });
+
+    if (hasValidationError) {
+      return;
+    }
+
+    // Create modified items_data with final quantities
+    const modifiedItemsData: Record<string, number> = {};
+    
+    // Apply final quantities to the items_data proportionally
+    Object.entries(finalQuantities).forEach(([grainKey, finalValue]) => {
+      const grain = mrGrainColumns.find(g => g.key === grainKey);
+      if (grain && finalValue > 0) {
+        let totalOriginalQuantity = 0;
+        const matchingItems: string[] = [];
+        
+        Object.entries(row.items_data).forEach(([itemName, qty]) => {
+          const nm = (itemName || '').toLowerCase().trim();
+          const match = grain.aliases.some(alias => {
+            const aliasLower = alias.toLowerCase();
+            if (nm === aliasLower) return true;
+            return nm.includes(aliasLower);
+          });
+          if (match) {
+            totalOriginalQuantity += Number(qty || 0);
+            matchingItems.push(itemName);
+          }
+        });
+
+        if (totalOriginalQuantity > 0 && matchingItems.length > 0) {
+          // Distribute the final quantity proportionally among matching items
+          const ratio = finalValue / totalOriginalQuantity;
+          matchingItems.forEach(itemName => {
+            const originalQty = Number(row.items_data[itemName] || 0);
+            modifiedItemsData[itemName] = Math.round(originalQty * ratio * 100) / 100; // Round to 2 decimal places
+          });
+        }
+      }
+    });
+
+    // Create cart item with modified data
+    const cartItem: DispatchCartItem = {
+      ...row,
+      items_data: modifiedItemsData,
+      total_weight: calculateTotalWeight(finalQuantities)
+    };
+
+    setDispatchCart(prev => [...prev, cartItem]);
+    
+    // Store dispatched quantities for remaining calculation (only for this specific class range)
+    setDispatchedQuantities(prev => {
+      const newMap = new Map(prev);
+      newMap.set(rowKey, finalQuantities);
+      return newMap;
+    });
+    
+    toast.success(`Added to dispatch cart for ${row.class_range} class`);
+    
+    // Clear edits for this row
+    setEditableQuantities(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(rowKey);
+      return newMap;
+    });
+    setEditingRow(null);
+  };
+
+  // FIXED: Modified pendingOrdersData processing to handle remaining quantities correctly per class range
   const pendingOrdersData = useMemo(() => {
     // Filter out ONLY dispatched schools - show only pending schools
     const pendingOrders = schoolWiseOrders.filter(order =>
@@ -211,9 +485,8 @@ const PendingOrderDetails = () => {
 
       // Create separate row for each class range
       classRangeGroups.forEach((classOrders, classRange) => {
-        // Create unique key for this school + class range combination
         const uniqueKey = `${schoolId}_${classRange}`;
-
+        
         // Skip if this specific school + class range is already in cart
         if (dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey)) {
           return;
@@ -237,7 +510,8 @@ const PendingOrderDetails = () => {
           totalPatsankhya += Number(order.patsankhya || 0);
         });
 
-        processedData.push({
+        // Create the row data
+        const rowData = {
           id: firstOrder.id,
           order_id: firstOrder.order_id,
           school_id: schoolId,
@@ -256,139 +530,223 @@ const PendingOrderDetails = () => {
           items_data: combinedItems,
           center_id: sd?.center || 0,
           taluka_id: sd?.taluka_id || 0
-        });
+        };
+
+        // Store original quantities for this specific class range
+        storeOriginalQuantities(rowData);
+
+        // Get remaining quantities after dispatch for this specific class range
+        const remainingQuantities = getRemainingQuantities(uniqueKey);
+        
+        // Calculate remaining total weight
+        const remainingTotalWeight = calculateTotalWeight(remainingQuantities);
+        
+        // Only show row if there are remaining quantities
+        if (remainingTotalWeight > 0) {
+          processedData.push({
+            ...rowData,
+            total_weight: remainingTotalWeight,
+            items_count: Object.keys(remainingQuantities).length,
+            items_data: remainingQuantities
+          });
+        }
       });
     });
 
     return processedData.sort((a, b) => {
-      // Sort by school name first, then by class range
       const schoolCompare = a.schoolname.localeCompare(b.schoolname);
       if (schoolCompare !== 0) return schoolCompare;
       return a.class_range.localeCompare(b.class_range);
     });
-  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
+  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart, originalQuantities, dispatchedQuantities]);
+
+  // Apply search filters to the data
+  const filteredData = useMemo(() => {
+    return filterData(pendingOrdersData);
+  }, [pendingOrdersData, searchFilters]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(pendingOrdersData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedData = pendingOrdersData.slice(startIndex, endIndex);
+  const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Update the count calculation to use the filtered data
-  // Remove the uniqueSchoolsCount useMemo (lines 268-277) since we're using the API count
-  // Keep only the pendingSchoolsCount from the API
-
-  // Add to dispatch cart
-  const addToDispatchCart = (row: PendingOrderRow) => {
-    const cartItem: DispatchCartItem = {
-      id: row.id,
-      order_id: row.order_id,
-      school_id: row.school_id,
-      order_no: row.order_no,
-      schoolname: row.schoolname,
-      udaisno: row.udaisno,
-      taluka_name: row.taluka_name,
-      center_name: row.center_name,
-      class_range: row.class_range,
-      patsankhya: row.patsankhya,
-      period: row.period,
-      financial_year: row.financial_year,
-      no_of_days: row.no_of_days,
-      total_weight: row.total_weight,
-      items_data: row.items_data,
-      center_id: row.center_id,
-      taluka_id: row.taluka_id
-    };
-
-    setDispatchCart(prev => [...prev, cartItem]);
-    toast.success('Added to dispatch cart');
+  // Handle search input changes
+  const handleSearchChange = (column: string, value: string) => {
+    setSearchFilters(prev => ({
+      ...prev,
+      [column]: value
+    }));
+    setCurrentPage(1);
   };
 
-  // Remove from dispatch cart - now removes specific school + class range combination
+  // Clear all search filters
+  const clearAllFilters = () => {
+    setSearchFilters({
+      order_no: '',
+      taluka_name: '',
+      center_name: '',
+      schoolname: '',
+      udaisno: '',
+      class_range: '',
+      patsankhya: '',
+      period: '',
+      no_of_days: '',
+      financial_year: '',
+      total_weight: ''
+    });
+    setCurrentPage(1);
+  };
+
+  // Remove from dispatch cart - removes specific school + class range combination
   const removeFromDispatchCart = (schoolId: number, classRange: string) => {
+    const rowKey = `${schoolId}_${classRange}`;
+    
     setDispatchCart(prev => prev.filter(item =>
       !(item.school_id === schoolId && item.class_range === classRange)
     ));
+    
+    // Clear dispatched quantities for this row when removed from cart
+    setDispatchedQuantities(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(rowKey);
+      return newMap;
+    });
+    
     toast.success('Removed from dispatch cart');
   };
 
-  // Submit dispatch
-  const submitDispatch = async () => {
-    if (dispatchCart.length === 0) {
-      toast.error('No items in dispatch cart');
+// Update the submitDispatch function to also submit to route_paper
+const submitDispatch = async () => {
+  if (dispatchCart.length === 0) {
+    toast.error('No items in dispatch cart');
+    return;
+  }
+
+  // Check if truck is selected either by ID or by input value
+  if (!selectedTruckId && !truckInputValue.trim()) {
+    toast.error('Please select a truck');
+    return;
+  }
+
+  // If truckInputValue is provided but no selectedTruckId, try to find exact match
+  let finalTruckId = selectedTruckId;
+  if (!selectedTruckId && truckInputValue.trim()) {
+    const exactMatch = truckOptions.find(truck => 
+      truck.label.toLowerCase() === truckInputValue.toLowerCase()
+    );
+    if (exactMatch) {
+      finalTruckId = exactMatch.value;
+    } else {
+      toast.error('Please select a valid truck from the list');
       return;
     }
+  }
 
-    if (!selectedTruckId) {
-      toast.error('Please select a truck');
-      return;
-    }
+  try {
+    setLoading(true);
 
-    try {
-      setLoading(true);
+    // Group by order_id for dispatch
+    const orderGroups = new Map<number, DispatchCartItem[]>();
+    dispatchCart.forEach(item => {
+      if (!orderGroups.has(item.order_id)) {
+        orderGroups.set(item.order_id, []);
+      }
+      orderGroups.get(item.order_id)!.push(item);
+    });
 
-      // Group by order_id for dispatch
-      const orderGroups = new Map<number, DispatchCartItem[]>();
-      dispatchCart.forEach(item => {
-        if (!orderGroups.has(item.order_id)) {
-          orderGroups.set(item.order_id, []);
-        }
-        orderGroups.get(item.order_id)!.push(item);
+    const dispatchIds: number[] = [];
+
+    // Submit each order group to dispatch_details
+    for (const [orderId, items] of orderGroups) {
+      const firstItem = items[0];
+
+      // Convert items_data to lines format
+      const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
+        grain,
+        unit: 'kg',
+        totalQty: Number(totalQty),
+        qtyDispatch: Number(totalQty)
+      }));
+
+      const payload = {
+        order_id: orderId,
+        school_id: firstItem.school_id,
+        center_id: firstItem.center_id,
+        truck_id: Number(finalTruckId),
+        class_range: firstItem.class_range,
+        lines
+      };
+
+      const response = await fetch('/api/dispatchdetails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
 
-      // Submit each order group
-      for (const [orderId, items] of orderGroups) {
-        const firstItem = items[0];
-
-        // Convert items_data to lines format
-        const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
-          grain,
-          unit: 'kg', // Default unit
-          totalQty: Number(totalQty),
-          qtyDispatch: Number(totalQty) // Dispatch full quantity
-        }));
-
-        const payload = {
-          order_id: orderId,
-          school_id: firstItem.school_id,
-          center_id: firstItem.center_id,
-          truck_id: Number(selectedTruckId),
-          class_range: firstItem.class_range,
-          lines
-        };
-
-        const response = await fetch('/api/dispatchdetails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to submit dispatch');
-        }
+      if (!response.ok) {
+        throw new Error('Failed to submit dispatch');
       }
 
-      toast.success('Dispatch submitted successfully');
-      setDispatchCart([]);
-      setShowCartModal(false);
-      setShowTruckModal(false);
-      setShowSubmitConfirm(false);
-      setSelectedTruckId('');
-
-      // Refresh data
-      await fetchSchoolWiseOrders();
-
-    } catch (error) {
-      console.error('Error submitting dispatch:', error);
-      toast.error('Failed to submit dispatch');
-    } finally {
-      setLoading(false);
+      const result = await response.json();
+      
+      // Get the dispatch IDs for route paper submission
+      if (result.dispatch_code) {
+        // Fetch the dispatch IDs for this dispatch_code
+        const dispatchResponse = await fetch('/api/dispatchdetails');
+        const dispatchData = await dispatchResponse.json();
+        const newDispatchIds = dispatchData
+          .filter((d: DispatchListRow) => d.dispatch_code === result.dispatch_code)
+          .map((d: DispatchListRow) => d.id);
+        dispatchIds.push(...newDispatchIds);
+      }
     }
-  };
 
+    // Submit to route_paper with all dispatch IDs using the same route_number
+    if (dispatchIds.length > 0) {
+      const routePayload = {
+        routes: [{
+          dispatch_ids: dispatchIds
+        }]
+      };
 
+      const routeResponse = await fetch('/api/routepaper', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(routePayload),
+      });
+
+      if (!routeResponse.ok) {
+        console.warn('Failed to submit to route paper, but dispatch was successful');
+      } else {
+        const routeResult = await routeResponse.json();
+        console.log('Route paper submitted with route_number:', routeResult.route_number);
+      }
+    }
+
+    toast.success('Dispatch submitted successfully');
+    setDispatchCart([]);
+    setShowCartModal(false);
+    setShowTruckModal(false);
+    setShowSubmitConfirm(false);
+    setSelectedTruckId('');
+    setTruckInputValue('');
+    setShowTruckSuggestions(false);
+
+    // Refresh data
+    await fetchSchoolWiseOrders();
+
+  } catch (error) {
+    console.error('Error submitting dispatch:', error);
+    toast.error('Failed to submit dispatch');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch functions
   const fetchTalukas = async () => {
@@ -409,17 +767,8 @@ const PendingOrderDetails = () => {
     }
   };
 
-  // const fetchItemMaster = async () => {
-  //   try {
-  //     const res = await fetch('/api/itemgrains');
-  //     if (res.ok) setItemGrains(await res.json());
-  //   } catch { }
-  // };
-
-  // Change the fetchSchoolWiseOrders function to use the correct endpoint
   const fetchSchoolWiseOrders = async () => {
     try {
-      // Use the endpoint that includes dispatch status
       const response = await fetch('/api/schoolwiseorders/schoolwisedashtaluka');
       const data = await response.json();
       setSchoolWiseOrders(data);
@@ -461,15 +810,10 @@ const PendingOrderDetails = () => {
     }
   };
 
-  // Update the fetchPendingSchoolsCount function to be more robust:
   const fetchPendingSchoolsCount = async () => {
     try {
-      // Use the SAME API as dashboard to get the exact same count
       const response = await fetch('/api/talukadashboard?order_no=20');
       const data = await response.json();
-
-      // Calculate total remaining schools from all talukas (same as dashboard)
-      // Replace line 472:
       const totalRemaining = data.reduce((sum: number, taluka: { remaining_schools?: number }) =>
         sum + (taluka.remaining_schools || 0), 0
       );
@@ -480,7 +824,6 @@ const PendingOrderDetails = () => {
     }
   };
 
-  // Update the useEffect to refresh count when schoolWiseOrders changes
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -488,7 +831,6 @@ const PendingOrderDetails = () => {
         await Promise.all([
           fetchTalukas(),
           fetchCenters(),
-          // fetchItemMaster(),
           fetchSchoolWiseOrders(),
           fetchTruckData(),
           fetchSchoolDataMap(),
@@ -505,15 +847,23 @@ const PendingOrderDetails = () => {
     fetchAllData();
   }, []);
 
+  // Cart statistics
+  const cartStats = useMemo(() => {
+    const uniqueSchools = new Set(dispatchCart.map(item => item.school_id));
+    const totalWeight = dispatchCart.reduce((sum, item) => sum + item.total_weight, 0);
+    
+    return {
+      schoolCount: uniqueSchools.size,
+      totalWeight: totalWeight
+    };
+  }, [dispatchCart]);
+
   if (loading) {
     return <Loader />;
   }
 
   return (
     <div className="">
-      {/* Dispatch Cart Card */}
-
-
       {/* Pending Orders Table */}
       <div className="bg-white rounded-2xl shadow-md border p-4">
         <div className="mb-4">
@@ -524,18 +874,22 @@ const PendingOrderDetails = () => {
                 ({pendingSchoolsCount} schools pending)
               </span>
             </h3>
-            <div>
+            <div className="flex gap-2">
+              <button
+                onClick={clearAllFilters}
+                className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
+              >
+                Clear Filters
+              </button>
               <button
                 onClick={() => setShowCartModal(true)}
                 disabled={dispatchCart.length === 0}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                View Cart ({dispatchCart.length})
+                View Cart - Schools ({cartStats.schoolCount}) - Total Weight: {cartStats.totalWeight.toFixed(2)} kg
               </button>
-
             </div>
           </div>
-
         </div>
 
         {/* Custom table with proper pagination */}
@@ -543,68 +897,200 @@ const PendingOrderDetails = () => {
           <table className="min-w-full border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100 whitespace-nowrap">
-                <th className="border px-3 py-2 text-left font-semibold">अ.क्र</th>
+                <th className="border px-3 py-2 text-left font-semibold">SR NO</th>
                 <th className="border px-3 py-2 text-left font-semibold">ACTION</th>
-                <th className="border px-3 py-2 text-left font-semibold">ORDER NO</th>
-                <th className="border px-3 py-2 text-left font-semibold">TALUKA</th>
-                <th className="border px-3 py-2 text-left font-semibold">CENTER</th>
-                <th className="border px-3 py-2 text-left font-semibold">SCHOOL</th>
-                <th className="border px-3 py-2 text-left font-semibold">UDISE NO</th>
-                <th className="border px-3 py-2 text-left font-semibold">CLASS RANGE</th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>ORDER NO</div>
+                </th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>TALUKA</div>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchFilters.taluka_name}
+                    onChange={(e) => handleSearchChange('taluka_name', e.target.value)}
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1 bg-white w-[150px]"
+                  />
+                </th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>CENTER</div>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchFilters.center_name}
+                    onChange={(e) => handleSearchChange('center_name', e.target.value)}
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1 bg-white"
+                  />
+                </th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>SCHOOL</div>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchFilters.schoolname}
+                    onChange={(e) => handleSearchChange('schoolname', e.target.value)}
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1 bg-white"
+                  />
+                </th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>UDISE NO</div>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchFilters.udaisno}
+                    onChange={(e) => handleSearchChange('udaisno', e.target.value)}
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1 bg-white"
+                  />
+                </th>
+                <th className="border px-3 py-2 text-left font-semibold">
+                  <div>CLASS RANGE</div>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchFilters.class_range}
+                    onChange={(e) => handleSearchChange('class_range', e.target.value)}
+                    className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1 bg-white"
+                  />
+                </th>
                 <th className="border px-3 py-2 text-left font-semibold">पट संख्या</th>
                 <th className="border px-3 py-2 text-left font-semibold">PERIOD</th>
                 <th className="border px-3 py-2 text-left font-semibold">NO OF DAYS</th>
                 <th className="border px-3 py-2 text-left font-semibold">FINANCIAL YEAR</th>
                 {/* Add grain columns */}
                 {mrGrainColumns.map(grain => (
-                  <th key={grain.key} className="border px-3 py-2 text-left font-semibold">{grain.key}</th>
+                  <th key={grain.key} className="border px-3 py-2 text-left font-semibold">
+                    <div>{grain.key}</div>
+                  </th>
                 ))}
                 <th className="border px-3 py-2 text-left font-semibold">TOTAL WEIGHT</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedData.map((row, index) => (
-                <tr key={`${row.school_id}_${row.class_range}`} className="hover:bg-gray-50 whitespace-nowrap">
-                  <td className="border px-3 py-2 text-center">{startIndex + index + 1}</td>
-                  <td className="border px-3 py-2">
-                    <button
-                      onClick={() => addToDispatchCart(row)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      Add
-                    </button>
-                  </td>
-                  <td className="border px-3 py-2">{row.order_no}</td>
-                  <td className="border px-3 py-2">{row.taluka_name}</td>
-                  <td className="border px-3 py-2">{row.center_name}</td>
-                  <td className="border px-3 py-2">{row.schoolname}</td>
-                  <td className="border px-3 py-2">{row.udaisno}</td>
-                  <td className="border px-3 py-2">{row.class_range}</td>
-                  <td className="border px-3 py-2 text-right">{row.patsankhya}</td>
-                  <td className="border px-3 py-2">{row.period}</td>
-                  <td className="border px-3 py-2 text-right">{row.no_of_days}</td>
-                  <td className="border px-3 py-2">{row.financial_year}</td>
-                  {/* Add grain data */}
-                  {mrGrainColumns.map(grain => {
-                    let quantity = 0;
-                    Object.entries(row.items_data).forEach(([itemName, qty]) => {
-                      const nm = (itemName || '').toLowerCase().trim();
-                      const match = grain.aliases.some(alias => nm.includes(alias.toLowerCase()));
-                      if (match) {
-                        quantity += Number(qty || 0);
-                      }
+              {paginatedData.map((row, index) => {
+                const rowKey = `${row.school_id}_${row.class_range}`;
+                const isEditing = editingRow === rowKey;
+                const rowEdits = editableQuantities.get(rowKey) || {};
+                const original = originalQuantities.get(rowKey) || {};
+                
+                // FIXED: Calculate current quantities properly for this specific class range
+                const currentQuantities: Record<string, number> = {};
+                
+                mrGrainColumns.forEach(grain => {
+                  // Get remaining quantity from row data (already filtered by dispatched quantities)
+                  let remainingQuantity = 0;
+                  Object.entries(row.items_data).forEach(([itemName, qty]) => {
+                    const nm = (itemName || '').toLowerCase().trim();
+                    const match = grain.aliases.some(alias => {
+                      const aliasLower = alias.toLowerCase();
+                      if (nm === aliasLower) return true;
+                      return nm.includes(aliasLower);
                     });
-                    return (
-                      <td key={grain.key} className="border px-3 py-2 text-right">
-                        {quantity > 0 ? quantity.toFixed(2) : '0'}
-                      </td>
-                    );
-                  })}
-                  <td className="border px-3 py-2 text-right font-semibold text-green-600">
-                    {row.total_weight.toFixed(2)} kg
-                  </td>
-                </tr>
-              ))}
+                    if (match) {
+                      remainingQuantity += Number(qty || 0);
+                    }
+                  });
+                  
+                  // Use edited value if available and in editing mode, otherwise use remaining quantity
+                  currentQuantities[grain.key] = isEditing && rowEdits[grain.key] !== undefined 
+                    ? rowEdits[grain.key] 
+                    : remainingQuantity;
+                });
+                
+                const currentTotalWeight = calculateTotalWeight(currentQuantities);
+                
+                return (
+                  <tr key={rowKey} className="hover:bg-gray-50 whitespace-nowrap">
+                    <td className="border px-3 py-2 text-center">{startIndex + index + 1}</td>
+                    <td className="border px-3 py-2">
+                      {isEditing ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => addToDispatchCartWithEdits(row)}
+                            className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                          >
+                            Add
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingRow(null);
+                              setEditableQuantities(prev => {
+                                const newMap = new Map(prev);
+                                newMap.delete(rowKey);
+                                return newMap;
+                              });
+                            }}
+                            className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingRow(rowKey)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                    <td className="border px-3 py-2">{row.order_no}</td>
+                    <td className="border px-3 py-2">{row.taluka_name}</td>
+                    <td className="border px-3 py-2">{row.center_name}</td>
+                    <td className="border px-3 py-2">{row.schoolname}</td>
+                    <td className="border px-3 py-2">{row.udaisno}</td>
+                    <td className="border px-3 py-2">{row.class_range}</td>
+                    <td className="border px-3 py-2 text-right">{row.patsankhya}</td>
+                    <td className="border px-3 py-2">{row.period}</td>
+                    <td className="border px-3 py-2 text-right">{row.no_of_days}</td>
+                    <td className="border px-3 py-2">{row.financial_year}</td>
+                    
+                    {/* Modified grain data section with correct remaining quantities */}
+                    {mrGrainColumns.map(grain => {
+                      const currentValue = currentQuantities[grain.key] || 0;
+                      const originalQty = original[grain.key] || 0;
+
+                      return (
+                        <td key={grain.key} className="border px-3 py-2 text-right">
+                          {isEditing ? (
+                            <div className="flex flex-col">
+                              <input
+                                type="number"
+                                min="0"
+                                max={originalQty}
+                                step="0.01"
+                                value={currentValue}
+                                onChange={(e) => handleQuantityChange(rowKey, grain.key, e.target.value)}
+                                className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right"
+                              />
+                              <div className="text-xs text-gray-500 mt-1">
+                                Available: {originalQty.toFixed(2)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              {currentValue > 0 ? currentValue.toFixed(2) : '0'}
+                              {originalQty > currentValue && (
+                                <div className="text-xs text-blue-600">
+                                  (Original: {originalQty.toFixed(2)})
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    
+                    <td className="border px-3 py-2 text-right font-semibold text-green-600">
+                      {currentTotalWeight.toFixed(2)} kg
+                      {isEditing && (
+                        <div className="text-xs text-blue-600">
+                          (Live Update)
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -612,7 +1098,12 @@ const PendingOrderDetails = () => {
         {/* Pagination Controls */}
         <div className="flex justify-between items-center mt-4">
           <div className="text-sm text-gray-600">
-            Showing {startIndex + 1} to {Math.min(endIndex, pendingOrdersData.length)} of {pendingOrdersData.length} entries
+            Showing {startIndex + 1} to {Math.min(endIndex, filteredData.length)} of {filteredData.length} entries
+            {filteredData.length !== pendingOrdersData.length && (
+              <span className="ml-2 text-blue-600">
+                (filtered from {pendingOrdersData.length} total)
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -652,12 +1143,14 @@ const PendingOrderDetails = () => {
         </div>
       </div>
 
-      {/* Dispatch Cart Modal - Similar to Route Paper */}
+      {/* Dispatch Cart Modal */}
       {showCartModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
           <div className="bg-white rounded-lg p-6 w-full max-w-[95vw] max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Dispatch Cart ({dispatchCart.length} items)</h2>
+              <h2 className="text-xl font-semibold">
+                Dispatch Cart - Schools ({cartStats.schoolCount}) - Total Weight: {cartStats.totalWeight.toFixed(2)} kg
+              </h2>
               <button
                 onClick={() => setShowCartModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
@@ -666,7 +1159,6 @@ const PendingOrderDetails = () => {
               </button>
             </div>
 
-            {/* Table: one row per school with class ranges 1-5 and 6-8 in different rows */}
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-300 text-sm">
                 <thead>
@@ -691,94 +1183,30 @@ const PendingOrderDetails = () => {
                     const total = Object.values(sums).reduce((a, b) => a + (Number(b) || 0), 0);
                     const udise = getUdiseBySchool(item.school_id);
 
-                    // Split class ranges into 1-5 and 6-8
-                    const classRanges = item.class_range.split(', ').filter(Boolean);
-                    const class1to5 = classRanges.filter(cr => cr.includes('1-5') || cr.includes('1 to 5'));
-                    const class6to8 = classRanges.filter(cr => cr.includes('6-8') || cr.includes('6 to 8'));
-
                     return (
-                      <React.Fragment key={item.school_id}>
-                        {/* Row for classes 1-5 */}
-                        {class1to5.length > 0 && (
-                          <tr>
-                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
-                            <td className="border px-2 py-1">
-                              <button
-                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
-                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
-                              >
-                                Remove
-                              </button>
-                            </td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{class1to5.join(', ')}</td>
-                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
-                            {mrGrainColumns.map(c => (
-                              <td key={c.key} className="border px-2 py-1 text-right">
-                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
-                              </td>
-                            ))}
-                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
-                          </tr>
-                        )}
-
-                        {/* Row for classes 6-8 */}
-                        {class6to8.length > 0 && (
-                          <tr>
-                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
-                            <td className="border px-2 py-1">
-                              <button
-                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
-                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
-                              >
-                                Remove
-                              </button>
-                            </td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{class6to8.join(', ')}</td>
-                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
-                            {mrGrainColumns.map(c => (
-                              <td key={c.key} className="border px-2 py-1 text-right">
-                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
-                              </td>
-                            ))}
-                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
-                          </tr>
-                        )}
-
-                        {/* If no specific class ranges, show all */}
-                        {class1to5.length === 0 && class6to8.length === 0 && (
-                          <tr>
-                            <td className="border px-2 py-1 text-center">{idx + 1}</td>
-                            <td className="border px-2 py-1">
-                              <button
-                                onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
-                                className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
-                              >
-                                Remove
-                              </button>
-                            </td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
-                            <td className="border px-2 py-1 whitespace-nowrap">{item.class_range || ''}</td>
-                            <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
-                            {mrGrainColumns.map(c => (
-                              <td key={c.key} className="border px-2 py-1 text-right">
-                                {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
-                              </td>
-                            ))}
-                            <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
-                          </tr>
-                        )}
-                      </React.Fragment>
+                      <tr key={`${item.school_id}_${item.class_range}_${idx}`}>
+                        <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                        <td className="border px-2 py-1">
+                          <button
+                            onClick={() => removeFromDispatchCart(item.school_id, item.class_range)}
+                            className="px-2 py-1 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                        <td className="border px-2 py-1 whitespace-nowrap">{item.order_no}</td>
+                        <td className="border px-2 py-1 whitespace-nowrap">{item.center_name || ''}</td>
+                        <td className="border px-2 py-1 whitespace-nowrap">{udise}</td>
+                        <td className="border px-2 py-1 whitespace-nowrap">{item.schoolname || ''}</td>
+                        <td className="border px-2 py-1 whitespace-nowrap">{item.class_range}</td>
+                        <td className="border px-2 py-1 text-right">{item.patsankhya}</td>
+                        {mrGrainColumns.map(c => (
+                          <td key={c.key} className="border px-2 py-1 text-right">
+                            {sums[c.key] ? Number(sums[c.key]).toFixed(2) : '0'}
+                          </td>
+                        ))}
+                        <td className="border px-2 py-1 text-right">{total.toFixed(2)}</td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -814,58 +1242,115 @@ const PendingOrderDetails = () => {
       )}
 
       {/* Truck Selection Modal */}
-      {showTruckModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Select Truck</h2>
-              <button
-                onClick={() => setShowTruckModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
+    {/* Enhanced Truck Selection Modal with Typehead */}
+{showTruckModal && (
+  <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Select Truck</h2>
+        <button
+          onClick={() => {
+            setShowTruckModal(false);
+            setTruckInputValue('');
+            setShowTruckSuggestions(false);
+          }}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
+      </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Truck Number
-              </label>
-              <select
-                value={selectedTruckId}
-                onChange={(e) => setSelectedTruckId(e.target.value)}
-                className="w-full h-10 rounded-md border px-3 text-sm"
-              >
-                <option value="">Select Truck</option>
-                {truckData.map(truck => (
-                  <option key={truck.id} value={truck.id}>
-                    {truck.truckNo}
-                  </option>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Truck Number
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Type truck number..."
+            className="w-full h-10 rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={truckInputValue}
+            onChange={(e) => {
+              const value = e.target.value;
+              setTruckInputValue(value);
+              setShowTruckSuggestions(value.length > 0);
+              
+              // Find exact match and set selectedTruckId
+              const exactMatch = truckOptions.find(truck => 
+                truck.label.toLowerCase() === value.toLowerCase()
+              );
+              if (exactMatch) {
+                setSelectedTruckId(exactMatch.value);
+              } else {
+                setSelectedTruckId('');
+              }
+            }}
+            onFocus={() => {
+              if (truckInputValue.length > 0) {
+                setShowTruckSuggestions(true);
+              }
+            }}
+            onBlur={() => {
+              // Delay hiding suggestions to allow option selection
+              setTimeout(() => setShowTruckSuggestions(false), 200);
+            }}
+          />
+          
+          {/* Custom Typeahead Suggestions */}
+          {showTruckSuggestions && filteredTruckSuggestions.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+              <div className="max-h-48 overflow-y-auto">
+                {filteredTruckSuggestions.map((option) => (
+                  <div
+                    key={option.value}
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 text-gray-900"
+                    onClick={() => {
+                      setTruckInputValue(option.label);
+                      setSelectedTruckId(option.value);
+                      setShowTruckSuggestions(false);
+                    }}
+                  >
+                    {option.label}
+                  </div>
                 ))}
-              </select>
+              </div>
             </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowTruckModal(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowTruckModal(false);
-                  setShowSubmitConfirm(true);
-                }}
-                disabled={!selectedTruckId}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Submit Dispatch
-              </button>
+          )}
+          
+          {/* No results message */}
+          {showTruckSuggestions && filteredTruckSuggestions.length === 0 && truckInputValue.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+              <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => {
+            setShowTruckModal(false);
+            setTruckInputValue('');
+            setShowTruckSuggestions(false);
+          }}
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            setShowTruckModal(false);
+            setShowSubmitConfirm(true);
+          }}
+          disabled={!selectedTruckId}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Submit Dispatch
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Submit Confirmation Modal */}
       {showSubmitConfirm && (
@@ -882,7 +1367,7 @@ const PendingOrderDetails = () => {
             </div>
 
             <p className="mb-4 text-gray-600">
-              Are you sure you want to submit the dispatch cart with {dispatchCart.length} items?
+              Are you sure you want to submit the dispatch cart with {cartStats.schoolCount} schools and total weight of {cartStats.totalWeight.toFixed(2)} kg?
             </p>
 
             <div className="flex justify-end gap-2">

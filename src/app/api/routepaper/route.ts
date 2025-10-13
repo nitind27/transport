@@ -54,13 +54,15 @@ export async function POST(req: Request) {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
-    // Get last route_number from DB
+    // Get the last route_number from DB and increment by 1
     type MaxRow = RowDataPacket & { lastNum: number | null };
     const [rows] = await conn.query<MaxRow[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
-    const routeNumber = ((rows && rows[0]?.lastNum) ? Number(rows[0].lastNum) : 0) + 1; // Next batch number, starts from 1 if table empty
+    const routeNumber = ((rows && rows[0]?.lastNum) ? Number(rows[0].lastNum) : 0) + 1;
+    
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
 
+    // Use the same route_number for all routes in this batch
     for (const r of routes) {
       if (!Array.isArray(r.dispatch_ids) || r.dispatch_ids.length === 0) {
         await conn.rollback();
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
         dispatch_code = String(dcRows[0].dispatch_code || '');
       }
 
+      // Use the same routeNumber for all items in this batch
       const routecode = `RP-${dateStr}-${routeNumber}`;
       await conn.query<ResultSetHeader>(
         `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code)
@@ -90,7 +93,11 @@ export async function POST(req: Request) {
     }
 
     await conn.commit();
-    return NextResponse.json({ message: 'Route paper saved', count: routes.length });
+    return NextResponse.json({ 
+      message: 'Route paper saved', 
+      count: routes.length,
+      route_number: routeNumber 
+    });
   } catch (e) {
     if (conn) try { await conn.rollback(); } catch { }
     console.error('route_paper insert error:', e);

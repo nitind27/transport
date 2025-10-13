@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import DataTable from "react-data-table-component";
 import { Column, FilterOption } from "./tabletype";
 // import FormInModal from "../example/ModalExample/FormInModal";
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
 
 type Props<T> = {
   data: T[];
@@ -33,12 +35,15 @@ type ExtendedData<T> = T & {
   _groupKey?: string;
 };
 
+interface DatePickerRefs {
+  [key: string]: flatpickr.Instance | null;
+}
+
 export function ColumnSearchTable<T extends object>({
   data,
   columns,
   filterOptions = [],
   filterKey,
-
   groupByKey,
   groupByKeys,
   colspanKeys = [],
@@ -51,7 +56,8 @@ export function ColumnSearchTable<T extends object>({
 
   const [columnSearches, setColumnSearches] = useState<Record<string, string>>({});
   
-  // Remove tempSearchValue state since we'll use columnSearches directly for real-time filtering
+  // Add date picker refs
+  const datePickerRefs = useRef<DatePickerRefs>({});
   const searchInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const isGrouped = useMemo(() => !!groupByKey || (groupByKeys && groupByKeys.length > 0), [groupByKey, groupByKeys]);
@@ -110,22 +116,35 @@ export function ColumnSearchTable<T extends object>({
       list = list.filter(g => g.items.some(it => String((it)[filterKey]) === String(filter)));
     }
     if (search) {
-      const s = search.toLowerCase();
-      list = list.filter(g => g.items.some(it => Object.values(it).some(v => String(v).toLowerCase().includes(s))));
+      const s = search;
+      list = list.filter(g => g.items.some(it => Object.values(it).some(v => String(v).includes(s))));
     }
     
     Object.entries(debouncedColumnSearches).forEach(([columnKey, searchValue]) => {
       if (!isSearchable(columnKey)) return;
-      if (searchValue.trim()) {
-        const s = searchValue.toLowerCase();
+      if (searchValue) {
+        const s = searchValue;
         list = list.filter(g =>
           g.items.some(it => {
             const column = columns.find(col => String(col.key) === columnKey);
             if (!column) return false;
+            
+            // Get the actual value from the row
+            let cellValue = "";
             if (column.accessor) {
-              return String((it)[column.accessor] ?? "").toLowerCase().includes(s);
+              cellValue = String((it)[column.accessor] ?? "");
+            } else if (column.render) {
+              // For columns with custom render, we need to get the raw data
+              const rawValue = (it)[column.key as keyof T];
+              cellValue = String(rawValue ?? "");
+            } else {
+              // Fallback to direct key access
+              const rawValue = (it)[column.key as keyof T];
+              cellValue = String(rawValue ?? "");
             }
-            return false;
+            
+            // Perform case-insensitive search with trimmed values
+            return cellValue.includes(s);
           })
         );
       }
@@ -197,17 +216,34 @@ export function ColumnSearchTable<T extends object>({
       tempData = tempData.filter(row => String((row)[filterKey]) === String(filter));
     }
     if (search) {
-      const s = search.toLowerCase();
-      tempData = tempData.filter(row => Object.values(row).some(value => String(value).toLowerCase().includes(s)));
+      const s = search;
+      tempData = tempData.filter(row => Object.values(row).some(value => String(value).includes(s)));
     }
     
     Object.entries(debouncedColumnSearches).forEach(([columnKey, searchValue]) => {
       if (!isSearchable(columnKey)) return;
-      if (searchValue.trim()) {
-        const s = searchValue.toLowerCase();
+      if (searchValue) {
+        const s = searchValue;
         const column = columns.find(col => String(col.key) === columnKey);
-        if (column && column.accessor) {
-          tempData = tempData.filter(row => String(row[column.accessor!] ?? "").toLowerCase().includes(s));
+        if (column) {
+          tempData = tempData.filter(row => {
+            // Get the actual value from the row
+            let cellValue = "";
+            if (column.accessor) {
+              cellValue = String(row[column.accessor!] ?? "");
+            } else if (column.render) {
+              // For columns with custom render, we need to get the raw data
+              const rawValue = row[column.key as keyof T];
+              cellValue = String(rawValue ?? "");
+            } else {
+              // Fallback to direct key access
+              const rawValue = row[column.key as keyof T];
+              cellValue = String(rawValue ?? "");
+            }
+            
+            // Perform case-insensitive search with trimmed values
+            return cellValue.includes(s);
+          });
         }
       }
     });
@@ -217,8 +253,9 @@ export function ColumnSearchTable<T extends object>({
   const handleColumnSearch = (columnKey: string, value: string) => {
     setColumnSearches(prev => {
       const newSearches = { ...prev };
-      if (value.trim()) {
-        newSearches[columnKey] = value;
+      const trimmedValue = value;
+      if (trimmedValue) {
+        newSearches[columnKey] = trimmedValue;
       } else {
         delete newSearches[columnKey];
       }
@@ -237,7 +274,7 @@ export function ColumnSearchTable<T extends object>({
   };
 
   const handleSearchChange = (columnKey: string, value: string) => {
-    // Real-time filtering - update immediately
+    // Real-time filtering - update immediately with trimmed value
     handleColumnSearch(columnKey, value);
   };
 
@@ -245,6 +282,39 @@ export function ColumnSearchTable<T extends object>({
     if (e.key === "Escape") {
       clearColumnSearch(columnKey);
     }
+  };
+
+  // Add function to check if column is a date column
+  const isDateColumn = (columnKey: string) => {
+    return columnKey.includes('date') || 
+           columnKey.includes('created_at') || 
+           columnKey.includes('updated_at');
+  };
+
+  // Add function to initialize date picker
+  const initializeDatePicker = (columnKey: string, inputElement: HTMLInputElement) => {
+    if (datePickerRefs.current[columnKey]) {
+      datePickerRefs.current[columnKey]?.destroy();
+    }
+
+    const flatPickr = flatpickr(inputElement, {
+      dateFormat: "Y-m-d",
+      defaultDate: columnSearches[columnKey] ? new Date(columnSearches[columnKey]) : undefined,
+      onChange: function (selectedDates, dateStr) {
+        handleSearchChange(columnKey, dateStr);
+      },
+      static: false,  // Changed from true to false
+      monthSelectorType: "dropdown",  // Changed from "static" to "dropdown"
+      enableTime: false,
+      allowInput: true,
+      clickOpens: true,
+      position: "auto",  // Add this for better positioning
+      locale: {
+        firstDayOfWeek: 1
+      }
+    });
+
+    datePickerRefs.current[columnKey] = flatPickr;
   };
 
   const SubHeaderComponent = (
@@ -285,6 +355,18 @@ export function ColumnSearchTable<T extends object>({
     </div>
   );
 
+  // Add cleanup effect at the end of the component
+  useEffect(() => {
+    return () => {
+      // Cleanup all date picker instances
+      Object.values(datePickerRefs.current).forEach(instance => {
+        if (instance) {
+          instance.destroy();
+        }
+      });
+    };
+  }, []);
+
   if (groupByKey || (groupByKeys && groupByKeys.length)) {
     return (
       <div className="bg-white rounded-2xl shadow-md border p-4">
@@ -320,20 +402,61 @@ export function ColumnSearchTable<T extends object>({
                         {/* Search Input - Always visible for searchable columns */}
                         {searchable && (
                           <div className="flex items-center gap-1">
-                            <input
-                              ref={(el) => {
-                                searchInputRefs.current[columnKey] = el;
-                              }}
-                              type="text"
-                              placeholder={`Search...`}
-                              value={columnSearches[columnKey] || ""}
-                              onChange={(e) => handleSearchChange(columnKey, e.target.value)}
-                              onKeyDown={(e) => handleSearchKeyPress(e, columnKey)}
-                              className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full"
-                            />
+                            {isDateColumn(columnKey) ? (
+                              <div className="relative flex-1">
+                                <input
+                                  ref={(el) => {
+                                    searchInputRefs.current[columnKey] = el;
+                                    if (el && isDateColumn(columnKey)) {
+                                      // Initialize date picker after ref is set
+                                      setTimeout(() => initializeDatePicker(columnKey, el), 0);
+                                    }
+                                  }}
+                                  type="text"
+                                  placeholder="Select Date..."
+                                  value={columnSearches[columnKey] || ""}
+                                  onChange={(e) => handleSearchChange(columnKey, e.target.value)}
+                                  onKeyDown={(e) => handleSearchKeyPress(e, columnKey)}
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full"
+                                  readOnly
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (datePickerRefs.current[columnKey]) {
+                                      datePickerRefs.current[columnKey]?.open();
+                                    }
+                                  }}
+                                  className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+                                  title="Open calendar"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <input
+                                ref={(el) => {
+                                  searchInputRefs.current[columnKey] = el;
+                                }}
+                                type="text"
+                                placeholder={`Search...`}
+                                value={columnSearches[columnKey] || ""}
+                                onChange={(e) => handleSearchChange(columnKey, e.target.value)}
+                                onKeyDown={(e) => handleSearchKeyPress(e, columnKey)}
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-full"
+                              />
+                            )}
                             {hasSearchValue && (
                               <button
-                                onClick={() => clearColumnSearch(columnKey)}
+                                onClick={() => {
+                                  clearColumnSearch(columnKey);
+                                  // Clear date picker if it's a date column
+                                  if (isDateColumn(columnKey) && datePickerRefs.current[columnKey]) {
+                                    datePickerRefs.current[columnKey]?.clear();
+                                  }
+                                }}
                                 className="text-red-500 hover:text-red-700 text-xs p-1"
                                 title="Clear search"
                                 type="button"
