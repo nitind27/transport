@@ -52,8 +52,8 @@ interface ItemsData {
   हरभरा?: number;
   चवळी?: number;
   मटकी?: number;
-  मूग?: number;
-  वाटणा?: number;
+  मुग?: number;
+  वाटाणा?: number;
   सोया_वडी?: number;
   मसाला?: number;
   सोया_तेल?: number;

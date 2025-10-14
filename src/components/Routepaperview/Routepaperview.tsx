@@ -269,14 +269,14 @@ const handleDeleteRoute = async (routeNumber: string) => {
     // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
     const mrGrainColumns = [
         { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल', 'tandul', 'rice grains'] },
-        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ', 'green dal'] },
+        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मुगडाळ', 'green dal'] },
         { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal', 'red dal', 'red lentil'] },
         { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर', 'tur dal'] },
         { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram', 'bengal gram', 'besan'] },
         { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
         { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
         { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
-        { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas', 'green peas'] },
+        { key: 'वाटाणा', aliases: ['वाटाणा', 'वाटाणा', 'vatana', 'peas', 'green peas'] },
         { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
         { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
         { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
@@ -1034,7 +1034,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
         <div className="space-y-4">
             <div className="flex items-center gap-4">
                 <div className="flex flex-col">
-                    <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+                    {/* <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span> */}
                     <div className="relative">
                         <input
                             ref={datePickerRef}
@@ -1061,15 +1061,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
                     </div>
                 </div>
 
-                <div className="flex items-end">
-                    <button
-                        type="button"
-                        onClick={fetchDispatchList}
-                        className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium"
-                    >
-                        Refresh Data
-                    </button>
-                </div>
+               
             </div>
         </div>
     );

@@ -114,8 +114,8 @@ type DispatchListRow = {
   "grain_हरभरा"?: string;
   "grain_चवळी"?: string;
   "grain_मटकी"?: string;
-  "grain_मूग"?: string;
-  "grain_वाटणा"?: string;
+  "grain_मुग"?: string;
+  "grain_वाटाणा"?: string;
   "grain_सोया वडी"?: string;
   "grain_मसाला"?: string;
   "grain_सोया तेल"?: string;
@@ -202,7 +202,7 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, di
       // Create grain mapping with all required columns
       const grainColumns = [
         'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
-        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
+        'मटकी', 'मुग', 'वाटाणा', 'सोया वडी', 'मसाला', 'सोया तेल',
         'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'
       ];
 
@@ -219,12 +219,10 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, di
         // Simple mapping based on common names
         if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
           grainQuantities['तांदुळ'] += Number(item.qty) || 0;
-        } else if (itemName.includes('मुंग') || itemName.includes('moong')) {
-          if (itemName.includes('दाळ') || itemName.includes('dal')) {
-            grainQuantities['मुंगदाळ'] += Number(item.qty) || 0;
-          } else {
-            grainQuantities['मूग'] += Number(item.qty) || 0;
-          }
+        } else if (itemName.includes('मुंगदाळ') || itemName.includes('moong dal') || itemName.includes('moongdal')) {
+          grainQuantities['मुंगदाळ'] += Number(item.qty) || 0;
+        } else if (itemName.includes('मुग') || itemName.includes('moong') || itemName.includes('green gram')) {
+          grainQuantities['मुग'] += Number(item.qty) || 0;
         } else if (itemName.includes('मसूर') || itemName.includes('masoor')) {
           grainQuantities['मसूरदाळ'] += Number(item.qty) || 0;
         } else if (itemName.includes('तूर') || itemName.includes('toor') || itemName.includes('अरहर')) {
@@ -235,8 +233,8 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ isOpen, onClose, di
           grainQuantities['चवळी'] += Number(item.qty) || 0;
         } else if (itemName.includes('मटकी') || itemName.includes('matki')) {
           grainQuantities['मटकी'] += Number(item.qty) || 0;
-        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटणा') || itemName.includes('vatana') || itemName.includes('peas')) {
-          grainQuantities['वाटणा'] += Number(item.qty) || 0;
+        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटाणा') || itemName.includes('vatana') || itemName.includes('peas')) {
+          grainQuantities['वाटाणा'] += Number(item.qty) || 0;
         } else if (itemName.includes('सोया') || itemName.includes('soya')) {
           if (itemName.includes('वडी') || itemName.includes('chunks')) {
             grainQuantities['सोया वडी'] += Number(item.qty) || 0;
@@ -730,7 +728,7 @@ const DispatchView = () => {
       // Create grain mapping with all required columns
       const grainColumns = [
         'पट संख्या', 'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
-        'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
+        'मटकी', 'मुग', 'वाटाणा', 'सोया वडी', 'मसाला', 'सोया तेल',
         'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
       ];
 
@@ -780,7 +778,7 @@ const DispatchView = () => {
         [
           'अ. क्र.', 'केंद्र', 'UDISE Code', 'शाळा', 'वर्ग', 'पट संख्या',
           'तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी',
-          'मटकी', 'मूग', 'वाटणा', 'सोया वडी', 'मसाला', 'सोया तेल',
+          'मटकी', 'मुग', 'वाटाणा', 'सोया वडी', 'मसाला', 'सोया तेल',
           'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा', 'एकूण वजन'
         ]
       ];
@@ -790,7 +788,7 @@ const DispatchView = () => {
         // Initialize grain quantities
         const grainQuantities = {
           'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
-          'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+          'मटकी': 0, 'मुग': 0, 'वाटाणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
           'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
         };
 
@@ -802,12 +800,10 @@ const DispatchView = () => {
           // Simple mapping based on common names
           if (name.includes('तांदुळ') || name.includes('rice') || name.includes('चावल')) {
             grainQuantities['तांदुळ'] += quantity;
-          } else if (name.includes('मुंग') || name.includes('moong')) {
-            if (name.includes('दाळ') || name.includes('dal')) {
-              grainQuantities['मुंगदाळ'] += quantity;
-            } else {
-              grainQuantities['मूग'] += quantity;
-            }
+          } else if (name.includes('मुंगदाळ') || name.includes('moong dal') || name.includes('moongdal')) {
+            grainQuantities['मुंगदाळ'] += quantity;
+          } else if (name.includes('मुग') || name.includes('moong') || name.includes('green gram')) {
+            grainQuantities['मुग'] += quantity;
           } else if (name.includes('मसूर') || name.includes('masoor')) {
             grainQuantities['मसूरदाळ'] += quantity;
           } else if (name.includes('तूर') || name.includes('toor') || name.includes('अरहर')) {
@@ -818,8 +814,8 @@ const DispatchView = () => {
             grainQuantities['चवळी'] += quantity;
           } else if (name.includes('मटकी') || name.includes('matki')) {
             grainQuantities['मटकी'] += quantity;
-          } else if (name.includes('वाटाणा') || name.includes('वाटणा') || name.includes('vatana') || name.includes('peas')) {
-            grainQuantities['वाटणा'] += quantity;
+          } else if (name.includes('वाटाणा') || name.includes('वाटाणा') || name.includes('vatana') || name.includes('peas')) {
+            grainQuantities['वाटाणा'] += quantity;
           } else if (name.includes('सोया') || name.includes('soya')) {
             if (name.includes('वडी') || name.includes('chunks')) {
               grainQuantities['सोया वडी'] += quantity;
@@ -859,8 +855,8 @@ const DispatchView = () => {
           grainQuantities['हरभरा'].toFixed(3),
           grainQuantities['चवळी'].toFixed(3),
           grainQuantities['मटकी'].toFixed(3),
-          grainQuantities['मूग'].toFixed(3),
-          grainQuantities['वाटणा'].toFixed(3),
+          grainQuantities['मुग'].toFixed(3),
+          grainQuantities['वाटाणा'].toFixed(3),
           grainQuantities['सोया वडी'].toFixed(3),
           grainQuantities['मसाला'].toFixed(3),
           grainQuantities['सोया तेल'].toFixed(3),
@@ -913,7 +909,7 @@ const DispatchView = () => {
     uniqueDispatchCodes.forEach(dispatchCode => {
       const grainQuantities = {
         'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
-        'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+        'मटकी': 0, 'मुग': 0, 'वाटाणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
         'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
       };
 
@@ -927,12 +923,10 @@ const DispatchView = () => {
         // Map items to grain quantities
         if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
           grainQuantities['तांदुळ'] += quantity;
-        } else if (itemName.includes('मुंग') || itemName.includes('moong')) {
-          if (itemName.includes('दाळ') || itemName.includes('dal')) {
-            grainQuantities['मुंगदाळ'] += quantity;
-          } else {
-            grainQuantities['मूग'] += quantity;
-          }
+        } else if (itemName.includes('मुंगदाळ') || itemName.includes('moong dal') || itemName.includes('moongdal')) {
+          grainQuantities['मुंगदाळ'] += quantity;
+        } else if (itemName.includes('मुग') || itemName.includes('moong') || itemName.includes('green gram')) {
+          grainQuantities['मुग'] += quantity;
         } else if (itemName.includes('मसूर') || itemName.includes('masoor')) {
           grainQuantities['मसूरदाळ'] += quantity;
         } else if (itemName.includes('तूर') || itemName.includes('toor') || itemName.includes('अरहर')) {
@@ -943,8 +937,8 @@ const DispatchView = () => {
           grainQuantities['चवळी'] += quantity;
         } else if (itemName.includes('मटकी') || itemName.includes('matki')) {
           grainQuantities['मटकी'] += quantity;
-        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटणा') || itemName.includes('vatana') || itemName.includes('peas')) {
-          grainQuantities['वाटणा'] += quantity;
+        } else if (itemName.includes('वाटाणा') || itemName.includes('वाटाणा') || itemName.includes('vatana') || itemName.includes('peas')) {
+          grainQuantities['वाटाणा'] += quantity;
         } else if (itemName.includes('सोया') || itemName.includes('soya')) {
           if (itemName.includes('वडी') || itemName.includes('chunks')) {
             grainQuantities['सोया वडी'] += quantity;
@@ -984,7 +978,7 @@ const DispatchView = () => {
     { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
     { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
     { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
-    { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas', 'green peas'] },
+    { key: 'वाटाणा', aliases: ['वाटाणा', 'वाटाणा', 'vatana', 'peas', 'green peas'] },
     { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
     { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
     { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
@@ -2515,19 +2509,19 @@ const DispatchView = () => {
       }
     },
     {
-      key: 'grain_मूग',
-      label: 'मूग',
+      key: 'grain_मुग',
+      label: 'मुग',
       render: (r) => {
-        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मूग': 0 };
-        return <span>{quantities['मूग'].toFixed(3)}</span>;
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'मुग': 0 };
+        return <span>{quantities['मुग'].toFixed(3)}</span>;
       }
     },
     {
-      key: 'grain_वाटणा',
-      label: 'वाटणा',
+      key: 'grain_वाटाणा',
+      label: 'वाटाणा',
       render: (r) => {
-        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'वाटणा': 0 };
-        return <span>{quantities['वाटणा'].toFixed(3)}</span>;
+        const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'वाटाणा': 0 };
+        return <span>{quantities['वाटाणा'].toFixed(3)}</span>;
       }
     },
     {
@@ -2849,7 +2843,7 @@ const DispatchView = () => {
           searchKey="schoolname"
           searchableKeys={['order_no', 'schoolname', 'class_range', 'taluka_id', 'dispatch_code', 'center_name', 'udaisno', 'truckNo', 'created_at','taluka_name']}
           groupByKeys={['dispatch_code', 'taluka_name','truckNo']}
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "delete", "created_at","taluka_name"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मुग", "grain_वाटाणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "delete", "created_at","taluka_name"]}
         />
 
       )}

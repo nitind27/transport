@@ -22,6 +22,7 @@ interface SchoolWiseOrder {
   class_range?: string;
   patsankhya?: number;
   is_dispatched?: boolean | 0;
+  remaining_quantities?: Record<string, number>;
 }
 
 interface TalukaRow {
@@ -81,6 +82,7 @@ type PendingOrderRow = {
   items_data: Record<string, number>;
   center_id: number;
   taluka_id: number;
+  remaining_quantities: Record<string, number>;
 };
 
 type DispatchCartItem = {
@@ -102,7 +104,6 @@ type DispatchCartItem = {
   center_id: number;
   taluka_id: number;
 };
-
 
 type DispatchListRow = {
   id: number;
@@ -132,7 +133,6 @@ type DispatchListRow = {
   udaisno?: string;
   patsankhya?: string;
   action?: string;
-  // Add all grain properties as optional string types
   "grain_तांदुळ"?: string;
   "grain_मुंगदाळ"?: string;
   "grain_मसूरदाळ"?: string;
@@ -140,8 +140,8 @@ type DispatchListRow = {
   "grain_हरभरा"?: string;
   "grain_चवळी"?: string;
   "grain_मटकी"?: string;
-  "grain_मूग"?: string;
-  "grain_वाटणा"?: string;
+  "grain_मुग"?: string;
+  "grain_वाटाणा"?: string;
   "grain_सोया वडी"?: string;
   "grain_मसाला"?: string;
   "grain_सोया तेल"?: string;
@@ -161,9 +161,11 @@ const PendingOrderDetails = () => {
   const [schoolWiseOrders, setSchoolWiseOrders] = useState<SchoolWiseOrder[]>([]);
   const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
   const [truckData, setTruckData] = useState<TruckData[]>([]);
-// Add these state variables for typehead functionality
-const [showTruckSuggestions, setShowTruckSuggestions] = useState(false);
-const [truckInputValue, setTruckInputValue] = useState('');
+
+  // Add these state variables for typehead functionality
+  const [showTruckSuggestions, setShowTruckSuggestions] = useState(false);
+  const [truckInputValue, setTruckInputValue] = useState('');
+
   // Dispatch cart state
   const [dispatchCart, setDispatchCart] = useState<DispatchCartItem[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
@@ -193,11 +195,11 @@ const [truckInputValue, setTruckInputValue] = useState('');
     total_weight: ''
   });
 
-  // FIXED: State management for quantities - properly separated by school_id and class_range
+  // UPDATED: State management for quantities with remaining tracking
   const [editableQuantities, setEditableQuantities] = useState<Map<string, Record<string, number>>>(new Map());
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [originalQuantities, setOriginalQuantities] = useState<Map<string, Record<string, number>>>(new Map());
-  const [dispatchedQuantities, setDispatchedQuantities] = useState<Map<string, Record<string, number>>>(new Map());
+  const [remainingQuantities, setRemainingQuantities] = useState<Map<string, Record<string, number>>>(new Map());
 
   // Grain columns definition
   const mrGrainColumns = [
@@ -208,8 +210,8 @@ const [truckInputValue, setTruckInputValue] = useState('');
     { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram'] },
     { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया'] },
     { key: 'मटकी', aliases: ['मटकी', 'matki', 'मोठ'] },
-    { key: 'मूग', aliases: ['मुंग', 'moong'] },
-    { key: 'वाटणा', aliases: ['वाटणा', 'vatana', 'हरभरा'] },
+    { key: 'मुग', aliases: ['मुग', 'moong'] },
+    { key: 'वाटाणा', aliases: ['वाटाणा', 'vatana'] },
     { key: 'सोया वडी', aliases: ['सोया वडी', 'soya vadi', 'सोया_वडी'] },
     { key: 'मसाला', aliases: ['मसाला', 'masala', 'spice'] },
     { key: 'सोया तेल', aliases: ['सोया तेल', 'soya oil', 'सोया_तेल'] },
@@ -225,7 +227,7 @@ const [truckInputValue, setTruckInputValue] = useState('');
     const sums: Record<string, number> = {};
     Object.entries(items).forEach(([name, qty]) => {
       const nm = (name || '').toLowerCase().trim();
-      const match = mrGrainColumns.find(c => 
+      const match = mrGrainColumns.find(c =>
         c.aliases.some(a => {
           const aliasLower = a.toLowerCase();
           if (nm === aliasLower) return true;
@@ -236,6 +238,11 @@ const [truckInputValue, setTruckInputValue] = useState('');
       sums[key] = (sums[key] || 0) + Number(qty || 0);
     });
     return sums;
+  };
+
+  // NEW: Check if all quantities are zero for a specific row
+  const areAllQuantitiesZero = (quantities: Record<string, number>): boolean => {
+    return Object.values(quantities).every(qty => Number(qty) === 0);
   };
 
   // Get UDISE by school ID
@@ -257,72 +264,68 @@ const [truckInputValue, setTruckInputValue] = useState('');
   };
 
   // Create truck options for typehead
-const truckOptions = useMemo(() => [
-  ...truckData.map(t => ({ value: String(t.id), label: t.truckNo }))
-], [truckData]);
+  const truckOptions = useMemo(() => [
+    ...truckData.map(t => ({ value: String(t.id), label: t.truckNo }))
+  ], [truckData]);
 
-// Filter truck suggestions based on input
-const filteredTruckSuggestions = useMemo(() => {
-  if (!truckInputValue.trim()) return [];
-  return truckOptions.filter(option =>
-    option.label.toLowerCase().includes(truckInputValue.toLowerCase())
-  );
-}, [truckOptions, truckInputValue]);
+  // Filter truck suggestions based on input
+  const filteredTruckSuggestions = useMemo(() => {
+    if (!truckInputValue.trim()) return [];
+    return truckOptions.filter(option =>
+      option.label.toLowerCase().includes(truckInputValue.toLowerCase())
+    );
+  }, [truckOptions, truckInputValue]);
 
-  // FIXED: Store original quantities for each class range separately
+  // Store original quantities for each class range separately
   const storeOriginalQuantities = (row: PendingOrderRow) => {
     const rowKey = `${row.school_id}_${row.class_range}`;
-    
+
     // Check if we already have stored original quantities for this row
     if (originalQuantities.has(rowKey)) {
       return;
     }
 
-    const quantities: Record<string, number> = {};
-    
-    mrGrainColumns.forEach(grain => {
-      let quantity = 0;
-      Object.entries(row.items_data).forEach(([itemName, qty]) => {
-        const nm = (itemName || '').toLowerCase().trim();
-        const match = grain.aliases.some(alias => {
-          const aliasLower = alias.toLowerCase();
-          if (nm === aliasLower) return true;
-          return nm.includes(aliasLower);
-        });
-        if (match) {
-          quantity += Number(qty || 0);
-        }
-      });
-      quantities[grain.key] = quantity;
-    });
-    
+    // Use the remaining quantities as original quantities since API already calculated them
+    const quantities = { ...row.remaining_quantities };
+
     setOriginalQuantities(prev => {
       const newMap = new Map(prev);
       newMap.set(rowKey, quantities);
       return newMap;
     });
+
+    // Initialize remaining quantities with the same values
+    setRemainingQuantities(prev => {
+      const newMap = new Map(prev);
+      if (!newMap.has(rowKey)) {
+        newMap.set(rowKey, { ...quantities });
+      }
+      return newMap;
+    });
   };
 
-  // FIXED: Handle quantity change with proper validation for specific class range
+  // Handle quantity change with proper validation for specific class range
   const handleQuantityChange = (rowKey: string, grainKey: string, value: string) => {
     const numericValue = parseFloat(value) || 0;
     const originalQty = originalQuantities.get(rowKey)?.[grainKey] || 0;
-    
+
     // Validate against original quantity
     if (numericValue > originalQty) {
       toast.error(`Value cannot be greater than ${originalQty} for ${grainKey}`);
       return;
     }
-    
+
     if (numericValue < 0) {
       toast.error(`Value cannot be negative for ${grainKey}`);
       return;
     }
-    
+
     setEditableQuantities(prev => {
       const newMap = new Map(prev);
       if (!newMap.has(rowKey)) {
-        newMap.set(rowKey, {});
+        // Initialize with original quantities if not exists
+        const original = originalQuantities.get(rowKey) || {};
+        newMap.set(rowKey, { ...original });
       }
       const rowQuantities = newMap.get(rowKey)!;
       rowQuantities[grainKey] = numericValue;
@@ -330,44 +333,26 @@ const filteredTruckSuggestions = useMemo(() => {
     });
   };
 
-  // FIXED: Calculate remaining quantities correctly for each class range
-  const getRemainingQuantities = (rowKey: string) => {
-    const original = originalQuantities.get(rowKey) || {};
-    const dispatched = dispatchedQuantities.get(rowKey) || {};
-    
-    const remaining: Record<string, number> = {};
-    
-    mrGrainColumns.forEach(grain => {
-      const originalQty = original[grain.key] || 0;
-      const dispatchedQty = dispatched[grain.key] || 0;
-      const remainingQty = Math.max(0, originalQty - dispatchedQty);
-      
-      remaining[grain.key] = remainingQty;
-    });
-    
-    return remaining;
-  };
-
   // Calculate total weight from quantities
   const calculateTotalWeight = (quantities: Record<string, number>) => {
     return Object.values(quantities).reduce((sum, qty) => sum + Number(qty), 0);
   };
 
-  // FIXED: Add to dispatch cart with proper quantity handling for specific class range
+  // Add to dispatch cart with proper quantity handling for specific class range
   const addToDispatchCartWithEdits = (row: PendingOrderRow) => {
     const rowKey = `${row.school_id}_${row.class_range}`;
     const editedQuantities = editableQuantities.get(rowKey);
     const original = originalQuantities.get(rowKey) || {};
-    
+
     // Create final quantities: use edited values where available, otherwise use original
     const finalQuantities: Record<string, number> = {};
-    
+
     mrGrainColumns.forEach(grain => {
       const originalQty = original[grain.key] || 0;
       const editedQty = editedQuantities?.[grain.key];
-      
-      // Use edited value if available, otherwise use original
-      finalQuantities[grain.key] = editedQty !== undefined ? editedQty : originalQty;
+
+      // Use edited value if available and > 0, otherwise use original
+      finalQuantities[grain.key] = (editedQty !== undefined && editedQty > 0) ? editedQty : originalQty;
     });
 
     // Validate all quantities
@@ -388,58 +373,33 @@ const filteredTruckSuggestions = useMemo(() => {
       return;
     }
 
-    // Create modified items_data with final quantities
-    const modifiedItemsData: Record<string, number> = {};
-    
-    // Apply final quantities to the items_data proportionally
-    Object.entries(finalQuantities).forEach(([grainKey, finalValue]) => {
-      const grain = mrGrainColumns.find(g => g.key === grainKey);
-      if (grain && finalValue > 0) {
-        let totalOriginalQuantity = 0;
-        const matchingItems: string[] = [];
-        
-        Object.entries(row.items_data).forEach(([itemName, qty]) => {
-          const nm = (itemName || '').toLowerCase().trim();
-          const match = grain.aliases.some(alias => {
-            const aliasLower = alias.toLowerCase();
-            if (nm === aliasLower) return true;
-            return nm.includes(aliasLower);
-          });
-          if (match) {
-            totalOriginalQuantity += Number(qty || 0);
-            matchingItems.push(itemName);
-          }
-        });
-
-        if (totalOriginalQuantity > 0 && matchingItems.length > 0) {
-          // Distribute the final quantity proportionally among matching items
-          const ratio = finalValue / totalOriginalQuantity;
-          matchingItems.forEach(itemName => {
-            const originalQty = Number(row.items_data[itemName] || 0);
-            modifiedItemsData[itemName] = Math.round(originalQty * ratio * 100) / 100; // Round to 2 decimal places
-          });
-        }
-      }
-    });
-
-    // Create cart item with modified data
+    // Create cart item with final quantities
     const cartItem: DispatchCartItem = {
       ...row,
-      items_data: modifiedItemsData,
+      items_data: finalQuantities, // Use the final quantities directly
       total_weight: calculateTotalWeight(finalQuantities)
     };
 
     setDispatchCart(prev => [...prev, cartItem]);
-    
-    // Store dispatched quantities for remaining calculation (only for this specific class range)
-    setDispatchedQuantities(prev => {
+
+    // Update remaining quantities after dispatch
+    setRemainingQuantities(prev => {
       const newMap = new Map(prev);
-      newMap.set(rowKey, finalQuantities);
+      const currentRemaining = newMap.get(rowKey) || original;
+      const updatedRemaining: Record<string, number> = {};
+
+      mrGrainColumns.forEach(grain => {
+        const currentRemainingQty = currentRemaining[grain.key] || 0;
+        const dispatchedQty = finalQuantities[grain.key] || 0;
+        updatedRemaining[grain.key] = Math.max(0, currentRemainingQty - dispatchedQty);
+      });
+
+      newMap.set(rowKey, updatedRemaining);
       return newMap;
     });
-    
+
     toast.success(`Added to dispatch cart for ${row.class_range} class`);
-    
+
     // Clear edits for this row
     setEditableQuantities(prev => {
       const newMap = new Map(prev);
@@ -449,21 +409,28 @@ const filteredTruckSuggestions = useMemo(() => {
     setEditingRow(null);
   };
 
-  // FIXED: Modified pendingOrdersData processing to handle remaining quantities correctly per class range
+  // Process pending orders data - only show non-dispatched school + class_range combinations
   const pendingOrdersData = useMemo(() => {
-    // Filter out ONLY dispatched schools - show only pending schools
-    const pendingOrders = schoolWiseOrders.filter(order =>
+    console.log('Processing schoolWiseOrders:', schoolWiseOrders.length);
+    
+    // First filter: Only show schools that are NOT dispatched yet
+    const nonDispatchedOrders = schoolWiseOrders.filter(order =>
       order.is_dispatched === 0 || order.is_dispatched === false
     );
+    
+    console.log('Non-dispatched orders:', nonDispatchedOrders.length);
 
+    // Rest of the code remains the same...
     // Group by school and process data
     const schoolGroups = new Map<number, SchoolWiseOrder[]>();
-    pendingOrders.forEach(order => {
+    nonDispatchedOrders.forEach(order => {
       if (!schoolGroups.has(order.school_id)) {
         schoolGroups.set(order.school_id, []);
       }
       schoolGroups.get(order.school_id)!.push(order);
     });
+
+    console.log('School groups:', schoolGroups.size);
 
     const processedData: PendingOrderRow[] = [];
 
@@ -486,32 +453,24 @@ const filteredTruckSuggestions = useMemo(() => {
       // Create separate row for each class range
       classRangeGroups.forEach((classOrders, classRange) => {
         const uniqueKey = `${schoolId}_${classRange}`;
-        
+
         // Skip if this specific school + class range is already in cart
-        if (dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey)) {
+        const isInCart = dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey);
+        
+        if (isInCart) {
           return;
         }
 
-        // Combine items from orders in this class range only
-        const combinedItems: Record<string, number> = {};
-        let totalWeight = 0;
-        let totalPatsankhya = 0;
+        // Use remaining_quantities from API
+        const remainingQuantities = typeof firstOrder.remaining_quantities === 'string'
+          ? JSON.parse(firstOrder.remaining_quantities)
+          : (firstOrder.remaining_quantities || {});
 
-        classOrders.forEach(order => {
-          const items = typeof order.items_data === 'string'
-            ? JSON.parse(order.items_data)
-            : (order.items_data || {});
-
-          Object.entries(items).forEach(([itemName, qty]) => {
-            combinedItems[itemName] = (combinedItems[itemName] || 0) + Number(qty);
-          });
-
-          totalWeight += Number(order.total_weight || 0);
-          totalPatsankhya += Number(order.patsankhya || 0);
-        });
+        // Calculate total weight from remaining quantities
+        const totalWeight = Number(Object.values(remainingQuantities).reduce((sum: number, qty) => sum + Number(qty), 0));
 
         // Create the row data
-        const rowData = {
+        const rowData: PendingOrderRow = {
           id: firstOrder.id,
           order_id: firstOrder.order_id,
           school_id: schoolId,
@@ -521,44 +480,33 @@ const filteredTruckSuggestions = useMemo(() => {
           taluka_name: talukaName,
           center_name: centerName,
           class_range: classRange,
-          patsankhya: totalPatsankhya,
+          patsankhya: Number(firstOrder.patsankhya) || 0,
           period: firstOrder.period,
           financial_year: firstOrder.financial_year,
-          no_of_days: firstOrder.no_of_days,
+          no_of_days: Number(firstOrder.no_of_days) || 0,
           total_weight: totalWeight,
-          items_count: Object.keys(combinedItems).length,
-          items_data: combinedItems,
-          center_id: sd?.center || 0,
-          taluka_id: sd?.taluka_id || 0
+          items_count: Object.keys(remainingQuantities).length,
+          items_data: remainingQuantities,
+          center_id: Number(sd?.center) || 0,
+          taluka_id: Number(sd?.taluka_id) || 0,
+          remaining_quantities: remainingQuantities
         };
 
         // Store original quantities for this specific class range
         storeOriginalQuantities(rowData);
 
-        // Get remaining quantities after dispatch for this specific class range
-        const remainingQuantities = getRemainingQuantities(uniqueKey);
-        
-        // Calculate remaining total weight
-        const remainingTotalWeight = calculateTotalWeight(remainingQuantities);
-        
-        // Only show row if there are remaining quantities
-        if (remainingTotalWeight > 0) {
-          processedData.push({
-            ...rowData,
-            total_weight: remainingTotalWeight,
-            items_count: Object.keys(remainingQuantities).length,
-            items_data: remainingQuantities
-          });
-        }
+        processedData.push(rowData);
       });
     });
 
+    console.log('Final processed data:', processedData.length);
+    
     return processedData.sort((a, b) => {
       const schoolCompare = a.schoolname.localeCompare(b.schoolname);
       if (schoolCompare !== 0) return schoolCompare;
       return a.class_range.localeCompare(b.class_range);
     });
-  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart, originalQuantities, dispatchedQuantities]);
+  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
 
   // Apply search filters to the data
   const filteredData = useMemo(() => {
@@ -605,148 +553,149 @@ const filteredTruckSuggestions = useMemo(() => {
     setDispatchCart(prev => prev.filter(item =>
       !(item.school_id === schoolId && item.class_range === classRange)
     ));
-    
-    // Clear dispatched quantities for this row when removed from cart
-    setDispatchedQuantities(prev => {
+
+    // Restore remaining quantities when removed from cart
+    const original = originalQuantities.get(rowKey) || {};
+    setRemainingQuantities(prev => {
       const newMap = new Map(prev);
-      newMap.delete(rowKey);
+      newMap.set(rowKey, { ...original });
       return newMap;
     });
     
-    toast.success('Removed from dispatch cart');
+    toast.success('Removed from dispatch cart - Row will reappear in table');
   };
 
-// Update the submitDispatch function to also submit to route_paper
-const submitDispatch = async () => {
-  if (dispatchCart.length === 0) {
-    toast.error('No items in dispatch cart');
-    return;
-  }
-
-  // Check if truck is selected either by ID or by input value
-  if (!selectedTruckId && !truckInputValue.trim()) {
-    toast.error('Please select a truck');
-    return;
-  }
-
-  // If truckInputValue is provided but no selectedTruckId, try to find exact match
-  let finalTruckId = selectedTruckId;
-  if (!selectedTruckId && truckInputValue.trim()) {
-    const exactMatch = truckOptions.find(truck => 
-      truck.label.toLowerCase() === truckInputValue.toLowerCase()
-    );
-    if (exactMatch) {
-      finalTruckId = exactMatch.value;
-    } else {
-      toast.error('Please select a valid truck from the list');
+  // Update the submitDispatch function to also submit to route_paper
+  const submitDispatch = async () => {
+    if (dispatchCart.length === 0) {
+      toast.error('No items in dispatch cart');
       return;
     }
-  }
 
-  try {
-    setLoading(true);
-
-    // Group by order_id for dispatch
-    const orderGroups = new Map<number, DispatchCartItem[]>();
-    dispatchCart.forEach(item => {
-      if (!orderGroups.has(item.order_id)) {
-        orderGroups.set(item.order_id, []);
-      }
-      orderGroups.get(item.order_id)!.push(item);
-    });
-
-    const dispatchIds: number[] = [];
-
-    // Submit each order group to dispatch_details
-    for (const [orderId, items] of orderGroups) {
-      const firstItem = items[0];
-
-      // Convert items_data to lines format
-      const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
-        grain,
-        unit: 'kg',
-        totalQty: Number(totalQty),
-        qtyDispatch: Number(totalQty)
-      }));
-
-      const payload = {
-        order_id: orderId,
-        school_id: firstItem.school_id,
-        center_id: firstItem.center_id,
-        truck_id: Number(finalTruckId),
-        class_range: firstItem.class_range,
-        lines
-      };
-
-      const response = await fetch('/api/dispatchdetails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit dispatch');
-      }
-
-      const result = await response.json();
-      
-      // Get the dispatch IDs for route paper submission
-      if (result.dispatch_code) {
-        // Fetch the dispatch IDs for this dispatch_code
-        const dispatchResponse = await fetch('/api/dispatchdetails');
-        const dispatchData = await dispatchResponse.json();
-        const newDispatchIds = dispatchData
-          .filter((d: DispatchListRow) => d.dispatch_code === result.dispatch_code)
-          .map((d: DispatchListRow) => d.id);
-        dispatchIds.push(...newDispatchIds);
-      }
+    // Check if truck is selected either by ID or by input value
+    if (!selectedTruckId && !truckInputValue.trim()) {
+      toast.error('Please select a truck');
+      return;
     }
 
-    // Submit to route_paper with all dispatch IDs using the same route_number
-    if (dispatchIds.length > 0) {
-      const routePayload = {
-        routes: [{
-          dispatch_ids: dispatchIds
-        }]
-      };
-
-      const routeResponse = await fetch('/api/routepaper', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(routePayload),
-      });
-
-      if (!routeResponse.ok) {
-        console.warn('Failed to submit to route paper, but dispatch was successful');
+    // If truckInputValue is provided but no selectedTruckId, try to find exact match
+    let finalTruckId = selectedTruckId;
+    if (!selectedTruckId && truckInputValue.trim()) {
+      const exactMatch = truckOptions.find(truck =>
+        truck.label.toLowerCase() === truckInputValue.toLowerCase()
+      );
+      if (exactMatch) {
+        finalTruckId = exactMatch.value;
       } else {
-        const routeResult = await routeResponse.json();
-        console.log('Route paper submitted with route_number:', routeResult.route_number);
+        toast.error('Please select a valid truck from the list');
+        return;
       }
     }
 
-    toast.success('Dispatch submitted successfully');
-    setDispatchCart([]);
-    setShowCartModal(false);
-    setShowTruckModal(false);
-    setShowSubmitConfirm(false);
-    setSelectedTruckId('');
-    setTruckInputValue('');
-    setShowTruckSuggestions(false);
+    try {
+      setLoading(true);
 
-    // Refresh data
-    await fetchSchoolWiseOrders();
+      // Group by order_id for dispatch
+      const orderGroups = new Map<number, DispatchCartItem[]>();
+      dispatchCart.forEach(item => {
+        if (!orderGroups.has(item.order_id)) {
+          orderGroups.set(item.order_id, []);
+        }
+        orderGroups.get(item.order_id)!.push(item);
+      });
 
-  } catch (error) {
-    console.error('Error submitting dispatch:', error);
-    toast.error('Failed to submit dispatch');
-  } finally {
-    setLoading(false);
-  }
-};
+      const dispatchIds: number[] = [];
+
+      // Submit each order group to dispatch_details
+      for (const [orderId, items] of orderGroups) {
+        const firstItem = items[0];
+
+        // Convert items_data to lines format
+        const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
+          grain,
+          unit: 'kg',
+          totalQty: Number(totalQty),
+          qtyDispatch: Number(totalQty)
+        }));
+
+        const payload = {
+          order_id: orderId,
+          school_id: firstItem.school_id,
+          center_id: firstItem.center_id,
+          truck_id: Number(finalTruckId),
+          class_range: firstItem.class_range,
+          lines
+        };
+
+        const response = await fetch('/api/dispatchdetails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to submit dispatch');
+        }
+
+        const result = await response.json();
+
+        // Get the dispatch IDs for route paper submission
+        if (result.dispatch_code) {
+          // Fetch the dispatch IDs for this dispatch_code
+          const dispatchResponse = await fetch('/api/dispatchdetails');
+          const dispatchData = await dispatchResponse.json();
+          const newDispatchIds = dispatchData
+            .filter((d: DispatchListRow) => d.dispatch_code === result.dispatch_code)
+            .map((d: DispatchListRow) => d.id);
+          dispatchIds.push(...newDispatchIds);
+        }
+      }
+
+      // Submit to route_paper with all dispatch IDs using the same route_number
+      if (dispatchIds.length > 0) {
+        const routePayload = {
+          routes: [{
+            dispatch_ids: dispatchIds
+          }]
+        };
+
+        const routeResponse = await fetch('/api/routepaper', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(routePayload),
+        });
+
+        if (!routeResponse.ok) {
+          console.warn('Failed to submit to route paper, but dispatch was successful');
+        } else {
+          const routeResult = await routeResponse.json();
+          console.log('Route paper submitted with route_number:', routeResult.route_number);
+        }
+      }
+
+      toast.success('Dispatch submitted successfully');
+      setDispatchCart([]);
+      setShowCartModal(false);
+      setShowTruckModal(false);
+      setShowSubmitConfirm(false);
+      setSelectedTruckId('');
+      setTruckInputValue('');
+      setShowTruckSuggestions(false);
+
+      // Refresh data
+      await fetchSchoolWiseOrders();
+
+    } catch (error) {
+      console.error('Error submitting dispatch:', error);
+      toast.error('Failed to submit dispatch');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch functions
   const fetchTalukas = async () => {
@@ -769,11 +718,21 @@ const submitDispatch = async () => {
 
   const fetchSchoolWiseOrders = async () => {
     try {
-      const response = await fetch('/api/schoolwiseorders/schoolwisedashtaluka');
+      console.log('Fetching school-wise orders...');
+      const response = await fetch('/api/schoolwiseorders/remainingquantities');
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Data received:', data.length, 'records');
+      console.log('Sample data:', data[0]);
+      
       setSchoolWiseOrders(data);
     } catch (error) {
-      console.error('Error fetching school-wise orders:', error);
+      console.error('Error fetching school-wise orders with remaining quantities:', error);
       toast.error('Failed to fetch school-wise orders');
     }
   };
@@ -851,7 +810,7 @@ const submitDispatch = async () => {
   const cartStats = useMemo(() => {
     const uniqueSchools = new Set(dispatchCart.map(item => item.school_id));
     const totalWeight = dispatchCart.reduce((sum, item) => sum + item.total_weight, 0);
-    
+
     return {
       schoolCount: uniqueSchools.size,
       totalWeight: totalWeight
@@ -971,33 +930,14 @@ const submitDispatch = async () => {
                 const isEditing = editingRow === rowKey;
                 const rowEdits = editableQuantities.get(rowKey) || {};
                 const original = originalQuantities.get(rowKey) || {};
-                
-                // FIXED: Calculate current quantities properly for this specific class range
-                const currentQuantities: Record<string, number> = {};
-                
-                mrGrainColumns.forEach(grain => {
-                  // Get remaining quantity from row data (already filtered by dispatched quantities)
-                  let remainingQuantity = 0;
-                  Object.entries(row.items_data).forEach(([itemName, qty]) => {
-                    const nm = (itemName || '').toLowerCase().trim();
-                    const match = grain.aliases.some(alias => {
-                      const aliasLower = alias.toLowerCase();
-                      if (nm === aliasLower) return true;
-                      return nm.includes(aliasLower);
-                    });
-                    if (match) {
-                      remainingQuantity += Number(qty || 0);
-                    }
-                  });
-                  
-                  // Use edited value if available and in editing mode, otherwise use remaining quantity
-                  currentQuantities[grain.key] = isEditing && rowEdits[grain.key] !== undefined 
-                    ? rowEdits[grain.key] 
-                    : remainingQuantity;
-                });
-                
+                const remaining = remainingQuantities.get(rowKey) || original;
+
+                // Get current quantities properly for display
+                const currentQuantities = isEditing ? 
+                  (rowEdits && Object.keys(rowEdits).length > 0 ? rowEdits : remaining) : 
+                  remaining;
                 const currentTotalWeight = calculateTotalWeight(currentQuantities);
-                
+
                 return (
                   <tr key={rowKey} className="hover:bg-gray-50 whitespace-nowrap">
                     <td className="border px-3 py-2 text-center">{startIndex + index + 1}</td>
@@ -1008,7 +948,7 @@ const submitDispatch = async () => {
                             onClick={() => addToDispatchCartWithEdits(row)}
                             className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
                           >
-                            Add
+                            Add to Cart
                           </button>
                           <button
                             onClick={() => {
@@ -1029,7 +969,7 @@ const submitDispatch = async () => {
                           onClick={() => setEditingRow(rowKey)}
                           className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Edit
+                          Edit & Add
                         </button>
                       )}
                     </td>
@@ -1043,43 +983,55 @@ const submitDispatch = async () => {
                     <td className="border px-3 py-2">{row.period}</td>
                     <td className="border px-3 py-2 text-right">{row.no_of_days}</td>
                     <td className="border px-3 py-2">{row.financial_year}</td>
-                    
-                    {/* Modified grain data section with correct remaining quantities */}
-                    {mrGrainColumns.map(grain => {
-                      const currentValue = currentQuantities[grain.key] || 0;
-                      const originalQty = original[grain.key] || 0;
 
-                      return (
-                        <td key={grain.key} className="border px-3 py-2 text-right">
-                          {isEditing ? (
-                            <div className="flex flex-col">
-                              <input
-                                type="number"
-                                min="0"
-                                max={originalQty}
-                                step="0.01"
-                                value={currentValue}
-                                onChange={(e) => handleQuantityChange(rowKey, grain.key, e.target.value)}
-                                className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right"
-                              />
-                              <div className="text-xs text-gray-500 mt-1">
-                                Available: {originalQty.toFixed(2)}
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              {currentValue > 0 ? currentValue.toFixed(2) : '0'}
-                              {originalQty > currentValue && (
-                                <div className="text-xs text-blue-600">
-                                  (Original: {originalQty.toFixed(2)})
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                    
+             {/* Grain data section */}
+{mrGrainColumns.map(grain => {
+  const originalQty = original[grain.key] || 0;
+  const remainingQty = remaining[grain.key] || originalQty;
+  const editedQty = rowEdits[grain.key];
+  const currentValue = isEditing ? 
+    (editedQty !== undefined ? editedQty : remainingQty) : 
+    remainingQty;
+
+  // Ensure currentValue is a number
+  const numericValue = Number(currentValue) || 0;
+
+  return (
+    <td key={grain.key} className="border px-3 py-2 text-right">
+      {isEditing ? (
+        <div className="flex flex-col">
+          <input
+            type="number"
+            min="0"
+            max={remainingQty}
+            step="0.01"
+            value={numericValue}
+            onChange={(e) => handleQuantityChange(rowKey, grain.key, e.target.value)}
+            className="w-full px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right"
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            Remaining: {Number(remainingQty).toFixed(2)}
+          </div>
+          <div className="text-xs text-blue-500 mt-1">
+            Original: {Number(originalQty).toFixed(2)}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="text-sm">
+            {numericValue > 0 ? numericValue.toFixed(2) : '0'}
+          </div>
+          {remainingQty < originalQty && (
+            <div className="text-xs text-orange-500">
+              (Remaining)
+            </div>
+          )}
+        </div>
+      )}
+    </td>
+  );
+})}
+
                     <td className="border px-3 py-2 text-right font-semibold text-green-600">
                       {currentTotalWeight.toFixed(2)} kg
                       {isEditing && (
@@ -1242,115 +1194,114 @@ const submitDispatch = async () => {
       )}
 
       {/* Truck Selection Modal */}
-    {/* Enhanced Truck Selection Modal with Typehead */}
-{showTruckModal && (
-  <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Select Truck</h2>
-        <button
-          onClick={() => {
-            setShowTruckModal(false);
-            setTruckInputValue('');
-            setShowTruckSuggestions(false);
-          }}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          ✕
-        </button>
-      </div>
+      {showTruckModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center p-4 z-99999">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Select Truck</h2>
+              <button
+                onClick={() => {
+                  setShowTruckModal(false);
+                  setTruckInputValue('');
+                  setShowTruckSuggestions(false);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Truck Number
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Type truck number..."
-            className="w-full h-10 rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={truckInputValue}
-            onChange={(e) => {
-              const value = e.target.value;
-              setTruckInputValue(value);
-              setShowTruckSuggestions(value.length > 0);
-              
-              // Find exact match and set selectedTruckId
-              const exactMatch = truckOptions.find(truck => 
-                truck.label.toLowerCase() === value.toLowerCase()
-              );
-              if (exactMatch) {
-                setSelectedTruckId(exactMatch.value);
-              } else {
-                setSelectedTruckId('');
-              }
-            }}
-            onFocus={() => {
-              if (truckInputValue.length > 0) {
-                setShowTruckSuggestions(true);
-              }
-            }}
-            onBlur={() => {
-              // Delay hiding suggestions to allow option selection
-              setTimeout(() => setShowTruckSuggestions(false), 200);
-            }}
-          />
-          
-          {/* Custom Typeahead Suggestions */}
-          {showTruckSuggestions && filteredTruckSuggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-              <div className="max-h-48 overflow-y-auto">
-                {filteredTruckSuggestions.map((option) => (
-                  <div
-                    key={option.value}
-                    className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 text-gray-900"
-                    onClick={() => {
-                      setTruckInputValue(option.label);
-                      setSelectedTruckId(option.value);
-                      setShowTruckSuggestions(false);
-                    }}
-                  >
-                    {option.label}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Truck Number
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Type truck number..."
+                  className="w-full h-10 rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={truckInputValue}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTruckInputValue(value);
+                    setShowTruckSuggestions(value.length > 0);
+
+                    // Find exact match and set selectedTruckId
+                    const exactMatch = truckOptions.find(truck =>
+                      truck.label.toLowerCase() === value.toLowerCase()
+                    );
+                    if (exactMatch) {
+                      setSelectedTruckId(exactMatch.value);
+                    } else {
+                      setSelectedTruckId('');
+                    }
+                  }}
+                  onFocus={() => {
+                    if (truckInputValue.length > 0) {
+                      setShowTruckSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay hiding suggestions to allow option selection
+                    setTimeout(() => setShowTruckSuggestions(false), 200);
+                  }}
+                />
+
+                {/* Custom Typeahead Suggestions */}
+                {showTruckSuggestions && filteredTruckSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredTruckSuggestions.map((option) => (
+                        <div
+                          key={option.value}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 text-gray-900"
+                          onClick={() => {
+                            setTruckInputValue(option.label);
+                            setSelectedTruckId(option.value);
+                            setShowTruckSuggestions(false);
+                          }}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* No results message */}
+                {showTruckSuggestions && filteredTruckSuggestions.length === 0 && truckInputValue.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                    <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-          
-          {/* No results message */}
-          {showTruckSuggestions && filteredTruckSuggestions.length === 0 && truckInputValue.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-              <div className="px-3 py-2 text-sm text-gray-500">No trucks found</div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={() => {
-            setShowTruckModal(false);
-            setTruckInputValue('');
-            setShowTruckSuggestions(false);
-          }}
-          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => {
-            setShowTruckModal(false);
-            setShowSubmitConfirm(true);
-          }}
-          disabled={!selectedTruckId}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Submit Dispatch
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowTruckModal(false);
+                  setTruckInputValue('');
+                  setShowTruckSuggestions(false);
+                }}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowTruckModal(false);
+                  setShowSubmitConfirm(true);
+                }}
+                disabled={!selectedTruckId}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Submit Dispatch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Submit Confirmation Modal */}
       {showSubmitConfirm && (

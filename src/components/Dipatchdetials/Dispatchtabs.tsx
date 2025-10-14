@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Dipatchdetials from './Dipatchdetials';
 import DispatchView from './DispatchView';
 import PendingOrderDetails from './PendingOrderDetails';
+import Routepaperview from '../Routepaperview/Routepaperview';
 
 const DispatchTabs = () => {
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'view' | 'pending'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'view' | 'pending' | 'routepaperview'>('dispatch');
 
   return (
     <div className="w-full">
@@ -43,6 +44,16 @@ const DispatchTabs = () => {
           >
             Pending Order Details
           </button>
+          <button
+            onClick={() => setActiveTab('routepaperview')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'routepaperview'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            View Route Paper
+          </button>
         </nav>
       </div>
 
@@ -51,6 +62,7 @@ const DispatchTabs = () => {
         {activeTab === 'dispatch' && <Dipatchdetials />}
         {activeTab === 'view' && <DispatchView />}
         {activeTab === 'pending' && <PendingOrderDetails />}
+        {activeTab === 'routepaperview' && <Routepaperview />}
       </div>
     </div>
   );

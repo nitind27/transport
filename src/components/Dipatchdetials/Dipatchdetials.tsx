@@ -111,8 +111,8 @@ type DispatchListRow = {
   grain_हरभरा?: string;
   grain_चवळी?: string;
   grain_मटकी?: string;
-  grain_मूग?: string;
-  grain_वाटणा?: string;
+  grain_मुग?: string;
+  grain_वाटाणा?: string;
   grain_सोया_वडी?: string;
   grain_मसाला?: string;
   grain_सोया_तेल?: string;
@@ -998,7 +998,7 @@ const [isLoading, setIsLoading] = useState(true);
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
   const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
-console.log('filteredDispatchList',filteredDispatchList)
+console.log('filteredDispatchList',dispatchList)
   // State to gate input mode and reset when filters change
   const [didSearch, setDidSearch] = useState(false);
 
@@ -1562,8 +1562,8 @@ console.log('filteredDispatchList',filteredDispatchList)
 
     { key: 'patsankhya', label: 'पट संख्या', render: (r) => <span>{r.patsankhya || 0}</span> },
     // item columns (same as DispatchView)
-    ...['तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 'मटकी', 'मूग', 'वाटणा', 'सोया_वडी', 'मसाला', 'सोया_तेल', 'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'].map(grain => ({
-      key: `grain_${grain}`, // make each grain column key unique
+    ...['तांदुळ', 'मुंगदाळ', 'मसूरदाळ', 'तूरदाळ', 'हरभरा', 'चवळी', 'मटकी', 'मुग', 'वाटाणा', 'सोया वडी', 'मसाला', 'सोया तेल', 'हळद', 'मीठ', 'मोहरी', 'चना', 'जीरा'].map(grain => ({
+      key: `grain_${grain.replace(/ /g, '_')}`, // make each grain column key unique
       label: grain,
       render: (r: DispatchListRow) => {
         const q = grainByDispatch.get(r.dispatch_code) || {};
@@ -1991,7 +1991,7 @@ console.log('filteredDispatchList',filteredDispatchList)
   const calcGrainQtyFor = (dispatchCode: string) => {
     const q = {
       'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
-      'मटकी': 0, 'मूग': 0, 'वाटणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
+      'मटकी': 0, 'मुग': 0, 'वाटाणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
       'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
     } as Record<string, number>;
 
@@ -1999,13 +1999,14 @@ console.log('filteredDispatchList',filteredDispatchList)
       const n = (item.item_name || '').toLowerCase().trim();
       const v = Number(item.qty_dispatch || 0);
       if (n.includes('तांदुळ') || n.includes('rice') || n.includes('चावल')) q['तांदुळ'] += v;
-      // else if (n.includes('मुंग') || n.includes('moong')) (n.includes('दाळ') || n.includes('dal') ? q['मुंगदाळ'] : q['मूग']) += v;
+      else if (n.includes('मुंगदाळ') || n.includes('moong dal') || n.includes('moongdal')) q['मुंगदाळ'] += v;
+      else if (n.includes('मुग') || n.includes('moong') || n.includes('green gram')) q['मुग'] += v;
       else if (n.includes('मसूर') || n.includes('masoor')) q['मसूरदाळ'] += v;
       else if (n.includes('तूर') || n.includes('toor') || n.includes('अरहर')) q['तूरदाळ'] += v;
       else if (n.includes('हरभरा') || n.includes('chana') || n.includes('gram')) q['हरभरा'] += v;
       else if (n.includes('चवळी') || n.includes('chawli') || n.includes('लोबिया')) q['चवळी'] += v;
       else if (n.includes('मटकी') || n.includes('matki')) q['मटकी'] += v;
-      else if (n.includes('वाटाणा') || n.includes('vatana') || n.includes('peas')) q['वाटणा'] += v;
+      else if (n.includes('वाटाणा') || n.includes('vatana') || n.includes('peas')) q['वाटाणा'] += v;
       else if (n.includes('सोया') || n.includes('soya')) {
         if (n.includes('वडी') || n.includes('chunks')) q['सोया वडी'] += v;
         else if (n.includes('तेल') || n.includes('oil')) q['सोया तेल'] += v;
@@ -2131,9 +2132,7 @@ console.log('filteredDispatchList',filteredDispatchList)
           filterKey={undefined}
           toolbar={toolbar}
           groupByKey="dispatch_code"
-
-
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मूग", "grain_वाटणा", "grain_सोया_वडी", "grain_मसाला", "grain_सोया_तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मुग", "grain_वाटाणा", "grain_सोया_वडी", "grain_मसाला", "grain_सोया_तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action"]}
         />
       )}
 

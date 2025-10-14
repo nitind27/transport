@@ -675,14 +675,14 @@ const Routepaper = ({ onSubmitted }: { onSubmitted?: () => void }) => {
     }, [dispatchInputs, storageKey]);
     const mrGrainColumns = [
         { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल'] },
-        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ'] },
+        { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मुगडाळ'] },
         { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal'] },
         { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर'] },
         { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram'] },
         { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea'] },
         { key: 'मटकी', aliases: ['मटकी', 'matki'] },
         { key: 'मुग', aliases: ['मुग', 'moong'] },
-        { key: 'वाटणा', aliases: ['वाटाणा', 'वाटणा', 'vatana', 'peas'] },
+        { key: 'वाटाणा', aliases: ['वाटाणा', 'वाटाणा', 'vatana', 'peas'] },
         { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi'] },
         { key: 'मसाला', aliases: ['मसाला', 'spices'] },
         { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल'] },
