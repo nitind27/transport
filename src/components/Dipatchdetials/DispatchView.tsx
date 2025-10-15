@@ -1953,295 +1953,295 @@ const [toDate, setToDate] = useState<string>(() => {
 // };
 
   // FIXED: Print DC function using the same approach as Dipatchdetials.tsx
-  const printDC = (dispatchData: DispatchData) => {
-    try {
-      console.log('Print DC clicked:', dispatchData);
+//   const printDC = (dispatchData: DispatchData) => {
+//     try {
+//       console.log('Print DC clicked:', dispatchData);
       
-      const printContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Delivery Challan - ${dispatchData.dispatch_code}</title>
-  <style>
-    @page {
-      margin: 0;
-      size: A4;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      padding: 10px;
-      font-size: 12px;
-      line-height: 1.3;
-      color: #000;
-      background: white;
-    }
-    .copy-container {
-      width: 100%;
-      margin-bottom: 20px;
-      page-break-after: always;
-    }
-    .copy-container:last-child {
-      page-break-after: avoid;
-    }
-    .container {
-      max-width: 100%;
-      margin: 0 auto;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 15px;
-    }
-    .title {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 6px;
-      position: relative;
-      margin-top: 10px;
-    }
-    .center-item {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: nowrap;
-    }
-    .end-item {
-      margin-left: auto;
-    }
-    .subtitle {
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-    .subtitle-small {
-      font-size: 12px;
-      margin-bottom: 4px;
-    }
-    .info-section {
-      margin-bottom: 12px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 12px;
-    }
-    .info-left, .info-right {
-      flex-basis: 50%;
-    }
-    .info-left {
-      text-align: left;
-    }
-    .info-right {
-      text-align: right;
-    }
-    .recipient-info {
-      margin: 12px 0;
-    }
-    .recipient-info div {
-      margin-bottom: 4px;
-    }
-    .description-text {
-      margin: 12px 0;
-      font-size: 12px;
-      line-height: 1.4;
-      text-align: justify;
-    }
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 11px;
-    }
-    .table th, .table td {
-      border: 1px solid #000;
-      padding: 6px;
-      text-align: center;
-      font-size: 11px;
-    }
-    .table th {
-      background-color: #f0f0f0;
-      font-weight: bold;
-    }
-    .table td:first-child {
-      width: 40px;
-    }
-    .table td:nth-child(2) {
-      text-align: left;
-      width: 60%;
-    }
-    .table td:last-child {
-      width: 80px;
-    }
-    .footer {
-      margin-top: 25px;
-    }
-    .signature-section {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 30px;
-      font-size: 12px;
-    }
-    .signature-left {
-      text-align: left;
-      width: 50%;
-    }
-    .signature-right {
-      text-align: right;
-      width: 50%;
-    }
+//       const printContent = `
+// <!DOCTYPE html>
+// <html>
+// <head>
+//   <meta charset="UTF-8">
+//   <title>Delivery Challan - ${dispatchData.dispatch_code}</title>
+//   <style>
+//     @page {
+//       margin: 0;
+//       size: A4;
+//     }
+//     * {
+//       margin: 0;
+//       padding: 0;
+//       box-sizing: border-box;
+//     }
+//     body {
+//       font-family: 'Arial', sans-serif;
+//       margin: 0;
+//       padding: 10px;
+//       font-size: 12px;
+//       line-height: 1.3;
+//       color: #000;
+//       background: white;
+//     }
+//     .copy-container {
+//       width: 100%;
+//       margin-bottom: 20px;
+//       page-break-after: always;
+//     }
+//     .copy-container:last-child {
+//       page-break-after: avoid;
+//     }
+//     .container {
+//       max-width: 100%;
+//       margin: 0 auto;
+//     }
+//     .header {
+//       text-align: center;
+//       margin-bottom: 15px;
+//     }
+//     .title {
+//       display: flex;
+//       align-items: center;
+//       justify-content: center;
+//       font-size: 16px;
+//       font-weight: bold;
+//       margin-bottom: 6px;
+//       position: relative;
+//       margin-top: 10px;
+//     }
+//     .center-item {
+//       position: absolute;
+//       left: 50%;
+//       transform: translateX(-50%);
+//       white-space: nowrap;
+//     }
+//     .end-item {
+//       margin-left: auto;
+//     }
+//     .subtitle {
+//       font-size: 13px;
+//       font-weight: 500;
+//       margin-bottom: 4px;
+//     }
+//     .subtitle-small {
+//       font-size: 12px;
+//       margin-bottom: 4px;
+//     }
+//     .info-section {
+//       margin-bottom: 12px;
+//     }
+//     .info-row {
+//       display: flex;
+//       justify-content: space-between;
+//       margin-bottom: 6px;
+//       font-size: 12px;
+//     }
+//     .info-left, .info-right {
+//       flex-basis: 50%;
+//     }
+//     .info-left {
+//       text-align: left;
+//     }
+//     .info-right {
+//       text-align: right;
+//     }
+//     .recipient-info {
+//       margin: 12px 0;
+//     }
+//     .recipient-info div {
+//       margin-bottom: 4px;
+//     }
+//     .description-text {
+//       margin: 12px 0;
+//       font-size: 12px;
+//       line-height: 1.4;
+//       text-align: justify;
+//     }
+//     .table {
+//       width: 100%;
+//       border-collapse: collapse;
+//       margin: 15px 0;
+//       font-size: 11px;
+//     }
+//     .table th, .table td {
+//       border: 1px solid #000;
+//       padding: 6px;
+//       text-align: center;
+//       font-size: 11px;
+//     }
+//     .table th {
+//       background-color: #f0f0f0;
+//       font-weight: bold;
+//     }
+//     .table td:first-child {
+//       width: 40px;
+//     }
+//     .table td:nth-child(2) {
+//       text-align: left;
+//       width: 60%;
+//     }
+//     .table td:last-child {
+//       width: 80px;
+//     }
+//     .footer {
+//       margin-top: 25px;
+//     }
+//     .signature-section {
+//       display: flex;
+//       justify-content: space-between;
+//       margin-top: 30px;
+//       font-size: 12px;
+//     }
+//     .signature-left {
+//       text-align: left;
+//       width: 50%;
+//     }
+//     .signature-right {
+//       text-align: right;
+//       width: 50%;
+//     }
     
-    /* Hide elements when printing */
-    @media print {
-      body {
-        padding: 10px;
-      }
-      @page {
-        margin: 0;
-        size: A4;
-        marks: none;
-        -webkit-print-color-adjust: exact;
-      }
-      ::after, ::before {
-        content: none !important;
-      }
-    }
-  </style>
-</head>
-<body>
- ${Array.from({ length: 4 }, (_, copyIndex) => `
-    <div class="copy-container">
-      <div class="container">
-        <div class="header">
-          <div class="title">
-            <div class="center-item">डिलीव्हरी चलन</div>
-            <div class="end-item">Copy ${copyIndex + 1}</div>
-          </div>
+//     /* Hide elements when printing */
+//     @media print {
+//       body {
+//         padding: 10px;
+//       }
+//       @page {
+//         margin: 0;
+//         size: A4;
+//         marks: none;
+//         -webkit-print-color-adjust: exact;
+//       }
+//       ::after, ::before {
+//         content: none !important;
+//       }
+//     }
+//   </style>
+// </head>
+// <body>
+//  ${Array.from({ length: 4 }, (_, copyIndex) => `
+//     <div class="copy-container">
+//       <div class="container">
+//         <div class="header">
+//           <div class="title">
+//             <div class="center-item">डिलीव्हरी चलन</div>
+//             <div class="end-item">Copy ${copyIndex + 1}</div>
+//           </div>
 
-          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-          <div class="subtitle">ता. भोकरधन जि. जालना</div>
-          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
-        </div>
+//           <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+//           <div class="subtitle">ता. भोकरधन जि. जालना</div>
+//           <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+//         </div>
 
-        <div class="info-section">
-          <div class="info-row">
-            <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
-            <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
-          </div>
-          <div class="info-row">
-            <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
-          </div>
-        </div>
+//         <div class="info-section">
+//           <div class="info-row">
+//             <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+//             <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+//           </div>
+//           <div class="info-row">
+//             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+//             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+//           </div>
+//         </div>
 
-        <div class="recipient-info">
-          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
-          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
-          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
-        </div>
+//         <div class="recipient-info">
+//           <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+//           <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+//           <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+//         </div>
 
-        <div class="description-text">
-          आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
-        </div>
+//         <div class="description-text">
+//           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+//         </div>
 
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
-          <table class="table" style="flex: 1;">
-            <thead>
-              <tr>
-                <th>अ.क्रं.</th>
-                <th>धान्याचे नाव</th>
-                <th>वजन किलो ग्रॅम</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dispatchData.items.slice(0, 10).map((item: DispatchItem, index: number) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${item.name}</td>
-                  <td>${item.qty}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+//         <div style="display: flex; gap: 20px; align-items: flex-start;">
+//           <table class="table" style="flex: 1;">
+//             <thead>
+//               <tr>
+//                 <th>अ.क्रं.</th>
+//                 <th>धान्याचे नाव</th>
+//                 <th>वजन किलो ग्रॅम</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               ${dispatchData.items.slice(0, 10).map((item: DispatchItem, index: number) => `
+//                 <tr>
+//                   <td>${index + 1}</td>
+//                   <td>${item.name}</td>
+//                   <td>${item.qty}</td>
+//                 </tr>
+//               `).join('')}
+//             </tbody>
+//           </table>
 
-          ${dispatchData.items.length > 10 ? `
-          <table class="table" style="flex: 1;">
-            <thead>
-              <tr>
-                <th>अ.क्रं.</th>
-                <th>धान्याचे नाव</th>
-                <th>वजन किलो ग्रॅम</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dispatchData.items.slice(10).map((item: DispatchItem, index: number) => `
-                <tr>
-                  <td>${index + 11}</td>
-                  <td>${item.name}</td>
-                  <td>${item.qty}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          ` : ''}
-        </div>
+//           ${dispatchData.items.length > 10 ? `
+//           <table class="table" style="flex: 1;">
+//             <thead>
+//               <tr>
+//                 <th>अ.क्रं.</th>
+//                 <th>धान्याचे नाव</th>
+//                 <th>वजन किलो ग्रॅम</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               ${dispatchData.items.slice(10).map((item: DispatchItem, index: number) => `
+//                 <tr>
+//                   <td>${index + 11}</td>
+//                   <td>${item.name}</td>
+//                   <td>${item.qty}</td>
+//                 </tr>
+//               `).join('')}
+//             </tbody>
+//           </table>
+//           ` : ''}
+//         </div>
 
-        <div class="description-text">
-          वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
-        </div>
+//         <div class="description-text">
+//           वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+//         </div>
 
-        <div class="footer">
-          <div class="signature-section">
-            <div class="signature-left">
-              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
-            </div>
-            <div class="signature-right">
-              माल ताब्यात घेणाऱ्याची सही व शिक्का
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `).join('')}
-</body>
-</html>
-    `;
+//         <div class="footer">
+//           <div class="signature-section">
+//             <div class="signature-left">
+//               मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+//             </div>
+//             <div class="signature-right">
+//               माल ताब्यात घेणाऱ्याची सही व शिक्का
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   `).join('')}
+// </body>
+// </html>
+//     `;
 
-      // Open print window
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        toast.error('Unable to open print window. Please check popup blocker.');
-        return;
-      }
+//       // Open print window
+//       const printWindow = window.open('', '_blank');
+//       if (!printWindow) {
+//         toast.error('Unable to open print window. Please check popup blocker.');
+//         return;
+//       }
       
-      printWindow.document.write(printContent);
-      // printWindow.document.close();
+//       printWindow.document.write(printContent);
+//       // printWindow.document.close();
 
-      // Wait for content to load before printing - SAME AS DIPATCHDETIALS.TSX
-      printWindow.onload = () => {
-        printWindow.focus();
+//       // Wait for content to load before printing - SAME AS DIPATCHDETIALS.TSX
+//       printWindow.onload = () => {
+//         printWindow.focus();
 
-        // Add a small delay to ensure all content is rendered
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
+//         // Add a small delay to ensure all content is rendered
+//         setTimeout(() => {
+//           printWindow.print();
+//         }, 500);
+//       };
 
-      toast.success('DC print window opened');
-    } catch (error) {
-      console.error('Error printing DC:', error);
-      toast.error('Failed to print DC');
-    }
-  };
+//       toast.success('DC print window opened');
+//     } catch (error) {
+//       console.error('Error printing DC:', error);
+//       toast.error('Failed to print DC');
+//     }
+//   };
 
   // Updated table columns with proper delete button
   const listColumns: Column<DispatchListRow>[] = [
@@ -2323,14 +2323,14 @@ const [toDate, setToDate] = useState<string>(() => {
               Print Route Paper
             </button>
              */}
-            <button
+            {/* <button
               onClick={() => printDC(payload)}
               className="px-2 py-1 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 text-xs"
               title="Print DC"
               disabled={loading}
             >
               Print DC
-            </button>
+            </button> */}
           </div>
         );
       }
