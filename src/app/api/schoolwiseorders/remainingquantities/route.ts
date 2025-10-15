@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
-// GET - Fetch school-wise orders with remaining quantities after dispatch
+// GET - Fetch school-wise orders with proper filtering logic
 export async function GET() {
     try {
         const [rows] = await pool.query<RowDataPacket[]>(`
@@ -26,7 +26,7 @@ export async function GET() {
                       AND dd.class_range = swo.class_range
                       AND dd.status = 'Active'
                     THEN 
-                        -- Calculate remaining quantities
+                        -- Calculate remaining quantities for each item
                         JSON_OBJECT(
                             'तांदुळ', GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.तांदुळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'तांदुळ' THEN dd.qty_dispatch ELSE 0 END), 0)),
                             'मुंगदाळ', GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मुंगदाळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मुंगदाळ' THEN dd.qty_dispatch ELSE 0 END), 0)),
@@ -72,6 +72,30 @@ export async function GET() {
                 AND dd.status = 'Active'
             WHERE swo.status = 'Active'
             GROUP BY swo.id, swo.order_id, swo.school_id, swo.class_range
+            HAVING 
+                -- Show only if not dispatched at all
+                (is_dispatched = 0)
+                OR 
+                -- Or if dispatched but has remaining quantities (not all items fully dispatched)
+                (is_dispatched = 1 AND (
+                    GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.तांदुळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'तांदुळ' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मुंगदाळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मुंगदाळ' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मसूरदाळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मसूरदाळ' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.तूरदाळ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'तूरदाळ' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.हरभरा')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'हरभरा' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.चवळी')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'चवळी' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मटकी')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मटकी' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मुग')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मुग' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.वाटाणा')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'वाटाणा' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.सोया वडी')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'सोया वडी' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मसाला')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मसाला' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.सोया तेल')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'सोया तेल' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.हळद')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'हळद' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मीठ')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मीठ' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.मोहरी')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'मोहरी' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.चना')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'चना' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                    OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.जीरा')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'जीरा' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
+                ))
             ORDER BY s.schoolname, swo.class_range, swo.created_at DESC
         `);
         

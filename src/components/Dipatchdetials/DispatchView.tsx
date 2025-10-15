@@ -388,10 +388,15 @@ const DispatchView = () => {
   const [selectedSchoolId] = useState<string>('');
   const [selectedClassRange] = useState<string>('');
 
-  // Date range filters
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
-
+// Date range filters - Set current date as default
+const [fromDate, setFromDate] = useState<string>(() => {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+});
+const [toDate, setToDate] = useState<string>(() => {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+});
   // Masters
   const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
   const [centerList, setCenterList] = useState<CenterRow[]>([]);
@@ -969,107 +974,39 @@ const DispatchView = () => {
   }, [filteredDispatchList, dispatchList]);
 
   // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
-  const mrGrainColumns = [
-    { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल', 'tandul', 'rice grains'] },
-    { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ', 'green dal'] },
-    { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal', 'red dal', 'red lentil'] },
-    { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर', 'tur dal'] },
-    { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram', 'bengal gram', 'besan'] },
-    { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
-    { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
-    { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
-    { key: 'वाटाणा', aliases: ['वाटाणा', 'वाटाणा', 'vatana', 'peas', 'green peas'] },
-    { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
-    { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
-    { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
-    { key: 'हळद', aliases: ['हळद', 'turmeric', 'haldi', 'turmeric powder'] },
-    { key: 'मीठ', aliases: ['मीठ', 'salt', 'common salt'] },
-    { key: 'मोहरी', aliases: ['मोहरी', 'mustard', 'mustard seeds'] },
-  ];
+  // const mrGrainColumns = [
+  //   { key: 'तांदुळ', aliases: ['तांदुळ', 'rice', 'चावल', 'tandul', 'rice grains'] },
+  //   { key: 'मुगदाळ', aliases: ['मुगदाळ', 'मुग डाळ', 'moong dal', 'मूगडाळ', 'green dal'] },
+  //   { key: 'मसूरदाळ', aliases: ['मसूरदाळ', 'मसूर डाळ', 'masoor dal', 'red dal', 'red lentil'] },
+  //   { key: 'तूरदाळ', aliases: ['तूरदाळ', 'तूर डाळ', 'toor dal', 'अरहर', 'tur dal'] },
+  //   { key: 'हरभरा', aliases: ['हरभरा', 'चना', 'chana', 'gram', 'bengal gram', 'besan'] },
+  //   { key: 'चवळी', aliases: ['चवळी', 'chawli', 'लोबिया', 'cowpea', 'black eyed peas'] },
+  //   { key: 'मटकी', aliases: ['मटकी', 'matki', 'moth beans'] },
+  //   { key: 'मुग', aliases: ['मुग', 'moong', 'green gram', 'whole moong'] },
+  //   { key: 'वाटाणा', aliases: ['वाटाणा', 'वाटाणा', 'vatana', 'peas', 'green peas'] },
+  //   { key: 'सोया वडी', aliases: ['सोया वडी', 'soya chunks', 'soy wadi', 'सोया चंक्स'] },
+  //   { key: 'मसाला', aliases: ['मसाला', 'spices', 'गरम मसाला'] },
+  //   { key: 'सोया तेल', aliases: ['सोया तेल', 'refined oil', 'soy oil', 'तेल', 'vegetable oil'] },
+  //   { key: 'हळद', aliases: ['हळद', 'turmeric', 'haldi', 'turmeric powder'] },
+  //   { key: 'मीठ', aliases: ['मीठ', 'salt', 'common salt'] },
+  //   { key: 'मोहरी', aliases: ['मोहरी', 'mustard', 'mustard seeds'] },
+  // ];
 
-  // Enhanced function to calculate grain totals - includes all items
-  const sumGrainsForGroup = (items: Array<{ name: string; qty: number }>) => {
-    const sums: Record<string, number> = {};
-    const mappedItems: string[] = [];
-    
-    items.forEach(it => {
-      if (!it.name || it.qty === 0) return;
-      
-      const nm = (it.name || '').toLowerCase().trim();
-      const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-      
-      if (match) {
-        const key = match.key;
-        sums[key] = (sums[key] || 0) + Number(it.qty || 0);
-        mappedItems.push(key);
-      } else {
-        // For unmapped items, keep the original name
-        sums[it.name] = (sums[it.name] || 0) + Number(it.qty || 0);
-      }
-    });
-    
-    return sums;
-  };
 
-  // Get all unique item names from the data (both mapped and unmapped)
-  const getAllItemNames = (data: DispatchListRow[]) => {
-    const allItems = new Map<string, boolean>();
-    
-    data.forEach(row => {
-      if (row.item_name) {
-        const nm = row.item_name.toLowerCase().trim();
-        const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-        
-        if (match) {
-          allItems.set(match.key, true);
-        } else {
-          allItems.set(row.item_name, true);
-        }
-      }
-    });
-    
-    // Create array with mapped items first, then unmapped items
-    const mappedKeys = mrGrainColumns.map(g => g.key);
-    const orderedItems: string[] = [];
-    
-    // Add mapped items in order
-    mappedKeys.forEach(key => {
-      if (allItems.has(key)) {
-        orderedItems.push(key);
-        allItems.delete(key);
-      }
-    });
-    
-    // Add unmapped items alphabetically
-    const unmappedItems = Array.from(allItems.keys()).sort();
-    orderedItems.push(...unmappedItems);
-    
-    return orderedItems;
-  };
 
-  // Get taluka name by school ID
-  const getTalukaNameBySchoolId = (schoolId: number): string => {
-    const schoolData = schoolDataById.get(schoolId);
-    if (schoolData) {
-      const taluka = talukaList.find(t => t.taluka_id === schoolData.taluka_id);
-      return taluka?.name || '';
-    }
-    return '';
-  };
 
-  // Get UDISE number by school ID
-  const getUdiseNumberBySchoolId = (schoolId: number): string => {
-    const schoolData = schoolDataById.get(schoolId);
-    return schoolData?.udaisno || '';
-  };
+  // // Get taluka name by school ID
+  // const getTalukaNameBySchoolId = (schoolId: number): string => {
+  //   const schoolData = schoolDataById.get(schoolId);
+  //   if (schoolData) {
+  //     const taluka = talukaList.find(t => t.taluka_id === schoolData.taluka_id);
+  //     return taluka?.name || '';
+  //   }
+  //   return '';
+  // };
 
-  // Format date function
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-GB');
-  };
+
+
 
   // Add delete functionality
   const handleDeleteDispatch = async (dispatchCode: string) => {
@@ -1707,313 +1644,313 @@ const DispatchView = () => {
     }
   };
 
-  // FIXED: Print Route Paper function using the same approach as Dipatchdetials.tsx
-  const printRoutePaper = (dispatchCode: string) => {
-    const dispatchData = dispatchList.filter(item => item.dispatch_code === dispatchCode);
+//   // FIXED: Print Route Paper function using the same approach as Dipatchdetials.tsx
+//   const printRoutePaper = (dispatchCode: string) => {
+//     const dispatchData = dispatchList.filter(item => item.dispatch_code === dispatchCode);
     
-    if (dispatchData.length === 0) {
-        toast.error('Dispatch data not found for printing');
-        return;
-    }
+//     if (dispatchData.length === 0) {
+//         toast.error('Dispatch data not found for printing');
+//         return;
+//     }
 
-    // Get all unique items in the dispatch
-    const allItemNames = getAllItemNames(dispatchData);
+//     // Get all unique items in the dispatch
+//     const allItemNames = getAllItemNames(dispatchData);
 
-    // Group by school and calculate totals
-    const schoolsMap = new Map();
-    dispatchData.forEach(row => {
-        const schoolKey = `${row.school_id}-${row.class_range || ''}`;
-        if (!schoolsMap.has(schoolKey)) {
-            const talukaName = getTalukaNameBySchoolId(row.school_id);
-            const udiseNumber = getUdiseNumberBySchoolId(row.school_id);
-            schoolsMap.set(schoolKey, {
-                schoolname: row.schoolname || '',
-                class_range: row.class_range || '',
-                center_name: row.center_name || '',
-                taluka_name: talukaName,
-                udise_number: udiseNumber,
-                patsankhya: row.patsankhya || '',
-                items: [],
-                receipts: new Set<string>(),
-            });
-        }
+//     // Group by school and calculate totals
+//     const schoolsMap = new Map();
+//     dispatchData.forEach(row => {
+//         const schoolKey = `${row.school_id}-${row.class_range || ''}`;
+//         if (!schoolsMap.has(schoolKey)) {
+//             const talukaName = getTalukaNameBySchoolId(row.school_id);
+//             const udiseNumber = getUdiseNumberBySchoolId(row.school_id);
+//             schoolsMap.set(schoolKey, {
+//                 schoolname: row.schoolname || '',
+//                 class_range: row.class_range || '',
+//                 center_name: row.center_name || '',
+//                 taluka_name: talukaName,
+//                 udise_number: udiseNumber,
+//                 patsankhya: row.patsankhya || '',
+//                 items: [],
+//                 receipts: new Set<string>(),
+//             });
+//         }
         
-        schoolsMap.get(schoolKey).items.push({
-            name: row.item_name,
-            qty: row.qty_dispatch,
-            unit: row.unit
-        });
+//         schoolsMap.get(schoolKey).items.push({
+//             name: row.item_name,
+//             qty: row.qty_dispatch,
+//             unit: row.unit
+//         });
         
-        if (row.dispatch_code) {
-            schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
-        }
-    });
+//         if (row.dispatch_code) {
+//             schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
+//         }
+//     });
 
-    const schools = Array.from(schoolsMap.values());
+//     const schools = Array.from(schoolsMap.values());
 
-    // Calculate grand totals for all items
-    const grandTotals: Record<string, number> = {};
+//     // Calculate grand totals for all items
+//     const grandTotals: Record<string, number> = {};
     
-    schools.forEach(school => {
-        const schoolSums = sumGrainsForGroup(school.items);
-        Object.entries(schoolSums).forEach(([itemName, qty]) => {
-            grandTotals[itemName] = (grandTotals[itemName] || 0) + qty;
-        });
-    });
+//     schools.forEach(school => {
+//         const schoolSums = sumGrainsForGroup(school.items);
+//         Object.entries(schoolSums).forEach(([itemName, qty]) => {
+//             grandTotals[itemName] = (grandTotals[itemName] || 0) + qty;
+//         });
+//     });
 
-    // Calculate overall total
-    const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
+//     // Calculate overall total
+//     const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
 
-    // Get dynamic data from first dispatch item
-    const firstDispatchItem = dispatchData[0];
-    const dispatchDate = firstDispatchItem?.created_at ? formatDate(firstDispatchItem.created_at) : '';
-    const orderNo = firstDispatchItem?.order_no || '';
-    const dispatchCodeValue = firstDispatchItem?.dispatch_code || '';
-    const vehicleNo = firstDispatchItem?.truckNo || '';
-    const periodText = firstDispatchItem?.period || 'Aug-Sept-2025';
-    const daysText = firstDispatchItem?.no_of_days ? `${firstDispatchItem.no_of_days} Days` : '42 Days';
+//     // Get dynamic data from first dispatch item
+//     const firstDispatchItem = dispatchData[0];
+//     const dispatchDate = firstDispatchItem?.created_at ? formatDate(firstDispatchItem.created_at) : '';
+//     const orderNo = firstDispatchItem?.order_no || '';
+//     const dispatchCodeValue = firstDispatchItem?.dispatch_code || '';
+//     const vehicleNo = firstDispatchItem?.truckNo || '';
+//     const periodText = firstDispatchItem?.period || 'Aug-Sept-2025';
+//     const daysText = firstDispatchItem?.no_of_days ? `${firstDispatchItem.no_of_days} Days` : '42 Days';
 
-    // Open print window with Excel-style formatting
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Route Paper - ${dispatchCode}</title>
-                    <style>
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            margin: 10px; 
-                            font-size: 12px;
-                        }
-                        .header-table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-bottom: 14px;
-                        }
-                        .header-table td {
-                            vertical-align: top;
-                            padding: 0 5px;
-                        }
-                        .header-org {
-                            font-size: 13px; 
-                            font-weight: bold; 
-                            line-height: 1.25; 
-                            text-align: center;
-                            margin-bottom: 10px;
-                        }
-                        .header-logo {
-                            width: 78px;
-                            height: auto;
-                            display: block;
-                            margin: 6px auto 3px auto;
-                        }
-                        .dispatch-detail {
-                            text-align: left;
-                            font-size: 12px;
-                            line-height: 1.55;
-                        }
-                        .driver-detail {
-                            text-align: right;
-                            font-size: 12px;
-                            line-height: 1.55;
-                        }
-                        .header-center { 
-                            font-size: 12px;
-                            font-weight: bold;
-                            text-align: right;
-                            margin-top: 6px; 
-                        }
-                        .dataflex {
-                            display: flex;
-                            justify-content: space-around;
-                            align-items: flex-start;
-                            margin-top: 10px;
-                            width: 100%;
-                        }
-                        .dataflex > div {
-                            flex: 1;
-                            text-align: center;
-                            padding: 0 10px;
-                        }
-                        .dataflex > div:first-child {
-                            text-align: left;
-                        }
-                        .dataflex > div:last-child {
-                            text-align: right;
-                        }
-                        .center-title {
-                            font-size: 12px;
-                            font-weight: bold;
-                            text-align: center;
-                            margin-top: 10px;
-                        }
-                        .table { 
-                            width: 100%; 
-                            border-collapse: collapse; 
-                            border: 1px solid #000;
-                        }
-                        .table th, .table td { 
-                            border: 1px solid #000; 
-                            padding: 4px 6px; 
-                            text-align: center;
-                            font-size: 11px;
-                        }
-                        .table th { 
-                            background-color: #f0f0f0; 
-                            font-weight: bold;
-                        }
-                        .total-row { 
-                            background-color: #e6e6e6; 
-                            font-weight: bold;
-                        }
-                        .grain-column {
-                            min-width: 60px;
-                        }
-                        .serial-column {
-                            min-width: 30px;
-                        }
-                        .center-align {
-                            text-align: center;
-                        }
-                        .left-align {
-                            text-align: left;
-                        }
-                        .right-align {
-                            text-align: right;
-                        }
-                        .footer { 
-                            margin-top: 15px; 
-                            text-align: center;
-                            font-size: 11px;
-                            border-top: 1px solid #000;
-                            padding-top: 5px;
-                        }
-                        @media print {
-                            body { margin: 5mm; }
-                            .table { font-size: 10px; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <table class="header-table">
-                        <tr>
-                            <td style="width:44%; text-align:center;">
-                                <div class="header-org">
-                                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
-                                    शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
-                                </div>
-                                <div class="dataflex">
-                                    <div>
-                                        Dispatch No. - ${dispatchCodeValue}<br>
-                                        Dispatch date - ${dispatchDate}<br>
-                                        पुरवठा माहे - ${periodText} (${daysText})<br>
-                                        Order No. - ${orderNo}<br>
-                                        Total Weight - <b>${overallTotal.toFixed(2)}</b>
-                                    </div>
-                                    <div>
-                                        <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
-                                    </div>
-                                    <div>
-                                        Driver MOTIRAM PADAVI<br>
-                                        Mob 9022899429<br>
-                                        Vehicle No ${vehicleNo}<br>
-                                        <div class="header-center"> तळोदे जि. नंदुरबार</div>
-                                    </div>
-                                </div>
-                                <div class="center-title">
-                                    मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
+//     // Open print window with Excel-style formatting
+//     const printWindow = window.open('', '_blank');
+//     if (printWindow) {
+//         printWindow.document.write(`
+//             <html>
+//                 <head>
+//                     <title>Route Paper - ${dispatchCode}</title>
+//                     <style>
+//                         body { 
+//                             font-family: Arial, sans-serif; 
+//                             margin: 10px; 
+//                             font-size: 12px;
+//                         }
+//                         .header-table {
+//                             width: 100%;
+//                             border-collapse: collapse;
+//                             margin-bottom: 14px;
+//                         }
+//                         .header-table td {
+//                             vertical-align: top;
+//                             padding: 0 5px;
+//                         }
+//                         .header-org {
+//                             font-size: 13px; 
+//                             font-weight: bold; 
+//                             line-height: 1.25; 
+//                             text-align: center;
+//                             margin-bottom: 10px;
+//                         }
+//                         .header-logo {
+//                             width: 78px;
+//                             height: auto;
+//                             display: block;
+//                             margin: 6px auto 3px auto;
+//                         }
+//                         .dispatch-detail {
+//                             text-align: left;
+//                             font-size: 12px;
+//                             line-height: 1.55;
+//                         }
+//                         .driver-detail {
+//                             text-align: right;
+//                             font-size: 12px;
+//                             line-height: 1.55;
+//                         }
+//                         .header-center { 
+//                             font-size: 12px;
+//                             font-weight: bold;
+//                             text-align: right;
+//                             margin-top: 6px; 
+//                         }
+//                         .dataflex {
+//                             display: flex;
+//                             justify-content: space-around;
+//                             align-items: flex-start;
+//                             margin-top: 10px;
+//                             width: 100%;
+//                         }
+//                         .dataflex > div {
+//                             flex: 1;
+//                             text-align: center;
+//                             padding: 0 10px;
+//                         }
+//                         .dataflex > div:first-child {
+//                             text-align: left;
+//                         }
+//                         .dataflex > div:last-child {
+//                             text-align: right;
+//                         }
+//                         .center-title {
+//                             font-size: 12px;
+//                             font-weight: bold;
+//                             text-align: center;
+//                             margin-top: 10px;
+//                         }
+//                         .table { 
+//                             width: 100%; 
+//                             border-collapse: collapse; 
+//                             border: 1px solid #000;
+//                         }
+//                         .table th, .table td { 
+//                             border: 1px solid #000; 
+//                             padding: 4px 6px; 
+//                             text-align: center;
+//                             font-size: 11px;
+//                         }
+//                         .table th { 
+//                             background-color: #f0f0f0; 
+//                             font-weight: bold;
+//                         }
+//                         .total-row { 
+//                             background-color: #e6e6e6; 
+//                             font-weight: bold;
+//                         }
+//                         .grain-column {
+//                             min-width: 60px;
+//                         }
+//                         .serial-column {
+//                             min-width: 30px;
+//                         }
+//                         .center-align {
+//                             text-align: center;
+//                         }
+//                         .left-align {
+//                             text-align: left;
+//                         }
+//                         .right-align {
+//                             text-align: right;
+//                         }
+//                         .footer { 
+//                             margin-top: 15px; 
+//                             text-align: center;
+//                             font-size: 11px;
+//                             border-top: 1px solid #000;
+//                             padding-top: 5px;
+//                         }
+//                         @media print {
+//                             body { margin: 5mm; }
+//                             .table { font-size: 10px; }
+//                         }
+//                     </style>
+//                 </head>
+//                 <body>
+//                     <table class="header-table">
+//                         <tr>
+//                             <td style="width:44%; text-align:center;">
+//                                 <div class="header-org">
+//                                     मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
+//                                     शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
+//                                 </div>
+//                                 <div class="dataflex">
+//                                     <div>
+//                                         Dispatch No. - ${dispatchCodeValue}<br>
+//                                         Dispatch date - ${dispatchDate}<br>
+//                                         पुरवठा माहे - ${periodText} (${daysText})<br>
+//                                         Order No. - ${orderNo}<br>
+//                                         Total Weight - <b>${overallTotal.toFixed(2)}</b>
+//                                     </div>
+//                                     <div>
+//                                         <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+//                                     </div>
+//                                     <div>
+//                                         Driver MOTIRAM PADAVI<br>
+//                                         Mob 9022899429<br>
+//                                         Vehicle No ${vehicleNo}<br>
+//                                         <div class="header-center"> तळोदे जि. नंदुरबार</div>
+//                                     </div>
+//                                 </div>
+//                                 <div class="center-title">
+//                                     मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
+//                                 </div>
+//                             </td>
+//                         </tr>
+//                     </table>
             
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th class="serial-column">अ. क्र.</th>
-                                <th class="left-align">तालुका</th>
-                                <th class="left-align">पावती क्रमांक</th>
-                                <th class="left-align">केंद्र</th>
-                                <th class="left-align">UDISE Code</th>
-                                <th class="left-align">शाळा</th>
-                                <th class="center-align">वर्ग</th>
-                                <th class="center-align">पट संख्या</th>
-                                ${allItemNames.map(item =>
-                                    `<th class="grain-column">${item}</th>`
-                                ).join('')}
-                                <th class="center-align">एकूण</th>
-                                <th class="center-align">हेड मास्टर मोबाइल No.</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${schools.map((school, index) => {
-                                const grainSums = sumGrainsForGroup(school.items);
-                                const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
-                                return `
-                                    <tr>
-                                        <td class="center-align">${index + 1}</td>
-                                        <td class="left-align">${school.taluka_name || '-'}</td>
-                                        <td class="left-align">${receipts}</td>
-                                        <td class="left-align">${school.center_name}</td>
-                                        <td class="center-align">${school.udise_number || '-'}</td>
-                                        <td class="left-align">${school.schoolname}</td>
-                                        <td class="center-align">${school.class_range}</td>
-                                        <td class="center-align">${school.patsankhya || '-'}</td>
-                                        ${allItemNames.map(item =>
-                                            `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
-                                        ).join('')}
-                                        <td class="right-align">${schoolTotal.toFixed(2)}</td>
-                                        <td class="center-align">-</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                            <tr class="total-row">
-                                <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
-                                ${allItemNames.map(item =>
-                                    `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
-                                ).join('')}
-                                <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
-                                <td class="center-align"></td>
-                            </tr>
-                        </tbody>
-                    </table>
+//                     <table class="table">
+//                         <thead>
+//                             <tr>
+//                                 <th class="serial-column">अ. क्र.</th>
+//                                 <th class="left-align">तालुका</th>
+//                                 <th class="left-align">पावती क्रमांक</th>
+//                                 <th class="left-align">केंद्र</th>
+//                                 <th class="left-align">UDISE Code</th>
+//                                 <th class="left-align">शाळा</th>
+//                                 <th class="center-align">वर्ग</th>
+//                                 <th class="center-align">पट संख्या</th>
+//                                 ${allItemNames.map(item =>
+//                                     `<th class="grain-column">${item}</th>`
+//                                 ).join('')}
+//                                 <th class="center-align">एकूण</th>
+//                                 <th class="center-align">हेड मास्टर मोबाइल No.</th>
+//                             </tr>
+//                         </thead>
+//                         <tbody>
+//                             ${schools.map((school, index) => {
+//                                 const grainSums = sumGrainsForGroup(school.items);
+//                                 const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+//                                 const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+//                                 return `
+//                                     <tr>
+//                                         <td class="center-align">${index + 1}</td>
+//                                         <td class="left-align">${school.taluka_name || '-'}</td>
+//                                         <td class="left-align">${receipts}</td>
+//                                         <td class="left-align">${school.center_name}</td>
+//                                         <td class="center-align">${school.udise_number || '-'}</td>
+//                                         <td class="left-align">${school.schoolname}</td>
+//                                         <td class="center-align">${school.class_range}</td>
+//                                         <td class="center-align">${school.patsankhya || '-'}</td>
+//                                         ${allItemNames.map(item =>
+//                                             `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
+//                                         ).join('')}
+//                                         <td class="right-align">${schoolTotal.toFixed(2)}</td>
+//                                         <td class="center-align">-</td>
+//                                     </tr>
+//                                 `;
+//                             }).join('')}
+//                             <tr class="total-row">
+//                                 <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
+//                                 ${allItemNames.map(item =>
+//                                     `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
+//                                 ).join('')}
+//                                 <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
+//                                 <td class="center-align"></td>
+//                             </tr>
+//                         </tbody>
+//                     </table>
             
-                    <div class="footer">
-                        <table style="width: 100%; margin-top: 20px;">
-                            <tr>
-                                <td style="width: 33%; text-align: center;">
-                                    <p>तपासणी अधिकारी</p>
-                                    <p>___________________________________</p>
-                                </td>
-                                <td style="width: 33%; text-align: center;">
-                                    <p>वाहन चालक</p>
-                                    <p>___________________________________</p>
-                                </td>
-                                <td style="width: 33%; text-align: center;">
-                                    <p>सह्या</p>
-                                    <p>___________________________________</p>
-                                </td>
-                            </tr>
-                        </table>
-                        <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
-                        <p style="margin-top: 5px;">Dispatch: ${dispatchCode} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
-                    </div>
+//                     <div class="footer">
+//                         <table style="width: 100%; margin-top: 20px;">
+//                             <tr>
+//                                 <td style="width: 33%; text-align: center;">
+//                                     <p>तपासणी अधिकारी</p>
+//                                     <p>___________________________________</p>
+//                                 </td>
+//                                 <td style="width: 33%; text-align: center;">
+//                                     <p>वाहन चालक</p>
+//                                     <p>___________________________________</p>
+//                                 </td>
+//                                 <td style="width: 33%; text-align: center;">
+//                                     <p>सह्या</p>
+//                                     <p>___________________________________</p>
+//                                 </td>
+//                             </tr>
+//                         </table>
+//                         <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
+//                         <p style="margin-top: 5px;">Dispatch: ${dispatchCode} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
+//                     </div>
             
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 1000);
-                        }
-                    </script>
-                </body>
-            </html>
-        `);
-    }
-};
+//                     <script>
+//                         window.onload = function() {
+//                             window.print();
+//                             setTimeout(function() {
+//                                 window.close();
+//                             }, 1000);
+//                         }
+//                     </script>
+//                 </body>
+//             </html>
+//         `);
+//     }
+// };
 
   // FIXED: Print DC function using the same approach as Dipatchdetials.tsx
   const printDC = (dispatchData: DispatchData) => {
@@ -2377,7 +2314,7 @@ const DispatchView = () => {
               Print Kirana
             </button>
             
-            <button
+            {/* <button
               onClick={() => printRoutePaper(r.dispatch_code)}
               className="px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs"
               title="Print Route Paper"
@@ -2385,7 +2322,7 @@ const DispatchView = () => {
             >
               Print Route Paper
             </button>
-            
+             */}
             <button
               onClick={() => printDC(payload)}
               className="px-2 py-1 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 text-xs"

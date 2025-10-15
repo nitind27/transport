@@ -240,10 +240,6 @@ const PendingOrderDetails = () => {
     return sums;
   };
 
-  // NEW: Check if all quantities are zero for a specific row
-  const areAllQuantitiesZero = (quantities: Record<string, number>): boolean => {
-    return Object.values(quantities).every(qty => Number(qty) === 0);
-  };
 
   // Get UDISE by school ID
   const getUdiseBySchool = (schoolId: number) => {
@@ -409,105 +405,104 @@ const PendingOrderDetails = () => {
     setEditingRow(null);
   };
 
-  // Process pending orders data - only show non-dispatched school + class_range combinations
-  const pendingOrdersData = useMemo(() => {
-    console.log('Processing schoolWiseOrders:', schoolWiseOrders.length);
-    
-    // First filter: Only show schools that are NOT dispatched yet
-    const nonDispatchedOrders = schoolWiseOrders.filter(order =>
-      order.is_dispatched === 0 || order.is_dispatched === false
-    );
-    
-    console.log('Non-dispatched orders:', nonDispatchedOrders.length);
+// Update the pendingOrdersData useMemo function (around line 413)
+const pendingOrdersData = useMemo(() => {
+  console.log('Processing schoolWiseOrders:', schoolWiseOrders.length);
+  
+  // The API now handles the filtering logic, so we just process the data
+  // Group by school and process data
+  const schoolGroups = new Map<number, SchoolWiseOrder[]>();
+  schoolWiseOrders.forEach(order => {
+    if (!schoolGroups.has(order.school_id)) {
+      schoolGroups.set(order.school_id, []);
+    }
+    schoolGroups.get(order.school_id)!.push(order);
+  });
 
-    // Rest of the code remains the same...
-    // Group by school and process data
-    const schoolGroups = new Map<number, SchoolWiseOrder[]>();
-    nonDispatchedOrders.forEach(order => {
-      if (!schoolGroups.has(order.school_id)) {
-        schoolGroups.set(order.school_id, []);
+  console.log('School groups:', schoolGroups.size);
+
+  const processedData: PendingOrderRow[] = [];
+
+  schoolGroups.forEach((orders, schoolId) => {
+    const firstOrder = orders[0];
+    const sd = schoolDataById.get(schoolId);
+    const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+    const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
+
+    // Group orders by class range to create separate rows
+    const classRangeGroups = new Map<string, SchoolWiseOrder[]>();
+    orders.forEach(order => {
+      const classRange = order.class_range || 'Unknown';
+      if (!classRangeGroups.has(classRange)) {
+        classRangeGroups.set(classRange, []);
       }
-      schoolGroups.get(order.school_id)!.push(order);
+      classRangeGroups.get(classRange)!.push(order);
     });
 
-    console.log('School groups:', schoolGroups.size);
+    // Create separate row for each class range
+    classRangeGroups.forEach((classOrders, classRange) => {
+      const uniqueKey = `${schoolId}_${classRange}`;
 
-    const processedData: PendingOrderRow[] = [];
+      // Skip if this specific school + class range is already in cart
+      const isInCart = dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey);
+      
+      if (isInCart) {
+        return;
+      }
 
-    schoolGroups.forEach((orders, schoolId) => {
-      const firstOrder = orders[0];
-      const sd = schoolDataById.get(schoolId);
-      const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-      const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
+      // Use remaining_quantities from API
+      const remainingQuantities = typeof firstOrder.remaining_quantities === 'string'
+        ? JSON.parse(firstOrder.remaining_quantities)
+        : (firstOrder.remaining_quantities || {});
 
-      // Group orders by class range to create separate rows
-      const classRangeGroups = new Map<string, SchoolWiseOrder[]>();
-      orders.forEach(order => {
-        const classRange = order.class_range || 'Unknown';
-        if (!classRangeGroups.has(classRange)) {
-          classRangeGroups.set(classRange, []);
-        }
-        classRangeGroups.get(classRange)!.push(order);
-      });
+      // Calculate total weight from remaining quantities
+      const totalWeight = Number(Object.values(remainingQuantities).reduce((sum: number, qty) => sum + Number(qty), 0));
 
-      // Create separate row for each class range
-      classRangeGroups.forEach((classOrders, classRange) => {
-        const uniqueKey = `${schoolId}_${classRange}`;
+      // Only show if there are remaining quantities (not all zero)
+      const hasRemainingQuantities = Object.values(remainingQuantities).some(qty => Number(qty) > 0);
+      
+      if (!hasRemainingQuantities) {
+        return; // Skip this row if no remaining quantities
+      }
 
-        // Skip if this specific school + class range is already in cart
-        const isInCart = dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey);
-        
-        if (isInCart) {
-          return;
-        }
+      // Create the row data
+      const rowData: PendingOrderRow = {
+        id: firstOrder.id,
+        order_id: firstOrder.order_id,
+        school_id: schoolId,
+        order_no: firstOrder.order_no,
+        schoolname: firstOrder.schoolname,
+        udaisno: firstOrder.udaisno,
+        taluka_name: talukaName,
+        center_name: centerName,
+        class_range: classRange,
+        patsankhya: Number(firstOrder.patsankhya) || 0,
+        period: firstOrder.period,
+        financial_year: firstOrder.financial_year,
+        no_of_days: Number(firstOrder.no_of_days) || 0,
+        total_weight: totalWeight,
+        items_count: Object.keys(remainingQuantities).length,
+        items_data: remainingQuantities,
+        center_id: Number(sd?.center) || 0,
+        taluka_id: Number(sd?.taluka_id) || 0,
+        remaining_quantities: remainingQuantities
+      };
 
-        // Use remaining_quantities from API
-        const remainingQuantities = typeof firstOrder.remaining_quantities === 'string'
-          ? JSON.parse(firstOrder.remaining_quantities)
-          : (firstOrder.remaining_quantities || {});
+      // Store original quantities for this specific class range
+      storeOriginalQuantities(rowData);
 
-        // Calculate total weight from remaining quantities
-        const totalWeight = Number(Object.values(remainingQuantities).reduce((sum: number, qty) => sum + Number(qty), 0));
-
-        // Create the row data
-        const rowData: PendingOrderRow = {
-          id: firstOrder.id,
-          order_id: firstOrder.order_id,
-          school_id: schoolId,
-          order_no: firstOrder.order_no,
-          schoolname: firstOrder.schoolname,
-          udaisno: firstOrder.udaisno,
-          taluka_name: talukaName,
-          center_name: centerName,
-          class_range: classRange,
-          patsankhya: Number(firstOrder.patsankhya) || 0,
-          period: firstOrder.period,
-          financial_year: firstOrder.financial_year,
-          no_of_days: Number(firstOrder.no_of_days) || 0,
-          total_weight: totalWeight,
-          items_count: Object.keys(remainingQuantities).length,
-          items_data: remainingQuantities,
-          center_id: Number(sd?.center) || 0,
-          taluka_id: Number(sd?.taluka_id) || 0,
-          remaining_quantities: remainingQuantities
-        };
-
-        // Store original quantities for this specific class range
-        storeOriginalQuantities(rowData);
-
-        processedData.push(rowData);
-      });
+      processedData.push(rowData);
     });
+  });
 
-    console.log('Final processed data:', processedData.length);
-    
-    return processedData.sort((a, b) => {
-      const schoolCompare = a.schoolname.localeCompare(b.schoolname);
-      if (schoolCompare !== 0) return schoolCompare;
-      return a.class_range.localeCompare(b.class_range);
-    });
-  }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
-
+  console.log('Final processed data:', processedData.length);
+  
+  return processedData.sort((a, b) => {
+    const schoolCompare = a.schoolname.localeCompare(b.schoolname);
+    if (schoolCompare !== 0) return schoolCompare;
+    return a.class_range.localeCompare(b.class_range);
+  });
+}, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
   // Apply search filters to the data
   const filteredData = useMemo(() => {
     return filterData(pendingOrdersData);
