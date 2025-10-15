@@ -951,6 +951,11 @@ const handleDeleteRoute = async (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
         const firstItem = routeData[0];
 
+        // Count unique school + class_range combinations instead of just school_id
+        const uniqueSchoolClassCombinations = new Set(
+            routeData.map(item => `${item.school_id}_${item.class_range || ''}`)
+        ).size;
+
         return {
             route_number: routeNumber,
             dispatch_code: firstItem?.dispatch_code || '',
@@ -960,7 +965,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
             truckNo: firstItem?.truckNo || '',
             class_range: firstItem?.class_range || '',
             create_at: firstItem?.create_at || '',
-            school_count: new Set(routeData.map(item => item.school_id)).size,
+            school_count: uniqueSchoolClassCombinations, // Use unique combinations
             total_items: routeData.length
         };
     });

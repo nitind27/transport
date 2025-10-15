@@ -54,7 +54,6 @@ export async function POST(req: Request) {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
-    // Get the last route_number from DB and increment by 1
     type MaxRow = RowDataPacket & { lastNum: number | null };
     const [rows] = await conn.query<MaxRow[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
     const routeNumber = ((rows && rows[0]?.lastNum) ? Number(rows[0].lastNum) : 0) + 1;
@@ -83,12 +82,19 @@ export async function POST(req: Request) {
         dispatch_code = String(dcRows[0].dispatch_code || '');
       }
 
+      // Get class_range from dispatch_details
+      const [classRows] = await conn.query<RowDataPacket[]>(
+        `SELECT DISTINCT class_range FROM dispatch_details WHERE id IN (${placeholders})`,
+        r.dispatch_ids
+      );
+      const class_range = classRows[0]?.class_range || null;
+
       // Use the same routeNumber for all items in this batch
       const routecode = `RP-${dateStr}-${routeNumber}`;
       await conn.query<ResultSetHeader>(
-        `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code)
-         VALUES (?, 'Active', NOW(), ?, ?, ?)`,
-        [JSON.stringify(r.dispatch_ids), routeNumber, routecode, dispatch_code]
+        `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code, class_range)
+         VALUES (?, 'Active', NOW(), ?, ?, ?, ?)`,
+        [JSON.stringify(r.dispatch_ids), routeNumber, routecode, dispatch_code, class_range]
       );
     }
 
@@ -100,7 +106,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     if (conn) try { await conn.rollback(); } catch { }
-    console.error('route_paper insert error:', e);
+    console.error(e);
     return NextResponse.json({ message: 'Failed to save route paper' }, { status: 500 });
   } finally {
     if (conn) conn.release();

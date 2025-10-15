@@ -105,52 +105,52 @@ type DispatchCartItem = {
   taluka_id: number;
 };
 
-type DispatchListRow = {
-  id: number;
-  dispatch_code: string;
-  order_id: number;
-  school_id: number;
-  center_id: number;
-  truck_id: number;
-  item_name: string;
-  unit: string;
-  total_qty: number;
-  qty_dispatch: number;
-  bal_qty: number;
-  status: string;
-  created_at: string;
-  order_no?: string;
-  schoolname?: string;
-  center_name?: string;
-  total_weight?: string;
-  truckNo?: string;
-  class_range?: string;
-  taluka_id?: string;
-  taluka_name?: string;
-  period?: string;
-  no_of_days?: number;
-  financial_year?: string;
-  udaisno?: string;
-  patsankhya?: string;
-  action?: string;
-  "grain_तांदुळ"?: string;
-  "grain_मुंगदाळ"?: string;
-  "grain_मसूरदाळ"?: string;
-  "grain_तूरदाळ"?: string;
-  "grain_हरभरा"?: string;
-  "grain_चवळी"?: string;
-  "grain_मटकी"?: string;
-  "grain_मुग"?: string;
-  "grain_वाटाणा"?: string;
-  "grain_सोया वडी"?: string;
-  "grain_मसाला"?: string;
-  "grain_सोया तेल"?: string;
-  "grain_हळद"?: string;
-  "grain_मीठ"?: string;
-  "grain_मोहरी"?: string;
-  "grain_चना"?: string;
-  "grain_जीरा"?: string;
-};
+// type DispatchListRow = {
+//   id: number;
+//   dispatch_code: string;
+//   order_id: number;
+//   school_id: number;
+//   center_id: number;
+//   truck_id: number;
+//   item_name: string;
+//   unit: string;
+//   total_qty: number;
+//   qty_dispatch: number;
+//   bal_qty: number;
+//   status: string;
+//   created_at: string;
+//   order_no?: string;
+//   schoolname?: string;
+//   center_name?: string;
+//   total_weight?: string;
+//   truckNo?: string;
+//   class_range?: string;
+//   taluka_id?: string;
+//   taluka_name?: string;
+//   period?: string;
+//   no_of_days?: number;
+//   financial_year?: string;
+//   udaisno?: string;
+//   patsankhya?: string;
+//   action?: string;
+//   "grain_तांदुळ"?: string;
+//   "grain_मुंगदाळ"?: string;
+//   "grain_मसूरदाळ"?: string;
+//   "grain_तूरदाळ"?: string;
+//   "grain_हरभरा"?: string;
+//   "grain_चवळी"?: string;
+//   "grain_मटकी"?: string;
+//   "grain_मुग"?: string;
+//   "grain_वाटाणा"?: string;
+//   "grain_सोया वडी"?: string;
+//   "grain_मसाला"?: string;
+//   "grain_सोया तेल"?: string;
+//   "grain_हळद"?: string;
+//   "grain_मीठ"?: string;
+//   "grain_मोहरी"?: string;
+//   "grain_चना"?: string;
+//   "grain_जीरा"?: string;
+// };
 
 const PendingOrderDetails = () => {
   const [loading, setLoading] = useState(true);
@@ -583,7 +583,7 @@ const pendingOrdersData = useMemo(() => {
     toast.success('Removed from dispatch cart - Row will reappear in table');
   };
 
-  // Update the submitDispatch function to also submit to route_paper
+  // Update the submitDispatch function to handle batch route numbering
   const submitDispatch = async () => {
     if (dispatchCart.length === 0) {
       toast.error('No items in dispatch cart');
@@ -613,23 +613,13 @@ const pendingOrdersData = useMemo(() => {
     try {
       setLoading(true);
 
-      // Group by order_id for dispatch
-      const orderGroups = new Map<number, DispatchCartItem[]>();
-      dispatchCart.forEach(item => {
-        if (!orderGroups.has(item.order_id)) {
-          orderGroups.set(item.order_id, []);
-        }
-        orderGroups.get(item.order_id)!.push(item);
-      });
+      const allDispatchIds: number[] = [];
+      let routeResult: { route_number?: number; class_ranges?: string[] } | null = null;
 
-      const dispatchIds: number[] = [];
-
-      // Submit each order group to dispatch_details
-      for (const [orderId, items] of orderGroups) {
-        const firstItem = items[0];
-
-        // Convert items_data to lines format
-        const lines = Object.entries(firstItem.items_data).map(([grain, totalQty]) => ({
+      // Process each item in dispatch cart separately
+      for (const item of dispatchCart) {
+        // Convert items_data to lines format for this specific item
+        const lines = Object.entries(item.items_data).map(([grain, totalQty]) => ({
           grain,
           unit: 'kg',
           totalQty: Number(totalQty),
@@ -637,11 +627,11 @@ const pendingOrdersData = useMemo(() => {
         }));
 
         const payload = {
-          order_id: orderId,
-          school_id: firstItem.school_id,
-          center_id: firstItem.center_id,
+          order_id: item.order_id,
+          school_id: item.school_id,
+          center_id: item.center_id,
           truck_id: Number(finalTruckId),
-          class_range: firstItem.class_range,
+          class_range: item.class_range,
           lines
         };
 
@@ -654,48 +644,39 @@ const pendingOrdersData = useMemo(() => {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to submit dispatch');
+          throw new Error(`Failed to submit dispatch for ${item.schoolname} - ${item.class_range}`);
         }
 
         const result = await response.json();
-
-        // Get the dispatch IDs for route paper submission
-        if (result.dispatch_code) {
-          // Fetch the dispatch IDs for this dispatch_code
-          const dispatchResponse = await fetch('/api/dispatchdetails');
-          const dispatchData = await dispatchResponse.json();
-          const newDispatchIds = dispatchData
-            .filter((d: DispatchListRow) => d.dispatch_code === result.dispatch_code)
-            .map((d: DispatchListRow) => d.id);
-          dispatchIds.push(...newDispatchIds);
+        console.log(`Dispatch created for ${item.schoolname} - ${item.class_range}:`, result);
+        
+        // Collect all dispatch IDs for batch route paper
+        if (result.dispatch_ids && Array.isArray(result.dispatch_ids)) {
+          allDispatchIds.push(...result.dispatch_ids);
         }
       }
 
-      // Submit to route_paper with all dispatch IDs using the same route_number
-      if (dispatchIds.length > 0) {
-        const routePayload = {
-          routes: [{
-            dispatch_ids: dispatchIds
-          }]
-        };
-
-        const routeResponse = await fetch('/api/routepaper', {
+      // Now create route paper for all dispatch IDs in this batch
+      if (allDispatchIds.length > 0) {
+        const routeResponse = await fetch('/api/dispatchdetails/batchroute', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(routePayload),
+          body: JSON.stringify({
+            dispatch_ids: allDispatchIds
+          }),
         });
 
         if (!routeResponse.ok) {
-          console.warn('Failed to submit to route paper, but dispatch was successful');
-        } else {
-          const routeResult = await routeResponse.json();
-          console.log('Route paper submitted with route_number:', routeResult.route_number);
+          throw new Error('Failed to create route paper');
         }
+
+        routeResult = await routeResponse.json();
+        console.log('Route Paper created for batch:', routeResult);
       }
 
-      toast.success('Dispatch submitted successfully');
+      toast.success(`Dispatch and Route Paper submitted successfully! Route Number: ${routeResult?.route_number || 'N/A'} - Class Ranges: ${routeResult?.class_ranges?.join(', ') || 'N/A'}`);
       setDispatchCart([]);
       setShowCartModal(false);
       setShowTruckModal(false);

@@ -14,26 +14,26 @@ SELECT d.*,
        z.period,
        z.no_of_days,
        z.financial_year,
-       tl.name AS taluka_name,
        s.schoolname,
+       s.taluka_id,   
+       s.udaisno,
+       ta.name AS taluka_name,
        c.marathi_name AS center_name,
        t.truckNo,
-       sh.patsankhya,
-       r.route_number,
-       r.create_at
+       MAX(sh.patsankhya) as patsankhya,
+       rp.route_number,
+       rp.class_range as route_class_range
 FROM dispatch_details d
 LEFT JOIN zp_order_details z ON d.order_id = z.id
 LEFT JOIN schooldata s ON d.school_id = s.schoolid
-LEFT JOIN taluka tl ON s.taluka_id = tl.taluka_id      -- Join taluka by taluka_id in schooldata
+LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id
 LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
-LEFT JOIN route_paper r ON d.dispatch_code = r.dispatch_code
+LEFT JOIN route_paper rp ON rp.dispatch_ids LIKE CONCAT('%', d.id, '%')
 WHERE d.status = 'Active'
-  AND r.dispatch_code = d.dispatch_code
-  AND r.route_number IS NOT NULL;
-
-
+GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo, rp.route_number, rp.class_range
+ORDER BY d.created_at DESC;
     `);
     return NextResponse.json(rows);
   } catch (e) {
