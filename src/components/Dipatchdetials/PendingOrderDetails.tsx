@@ -304,18 +304,19 @@ const PendingOrderDetails = () => {
   const handleQuantityChange = (rowKey: string, grainKey: string, value: string) => {
     const numericValue = parseFloat(value) || 0;
     const originalQty = originalQuantities.get(rowKey)?.[grainKey] || 0;
-
+  
     // Validate against original quantity
     if (numericValue > originalQty) {
       toast.error(`Value cannot be greater than ${originalQty} for ${grainKey}`);
       return;
     }
-
+  
     if (numericValue < 0) {
       toast.error(`Value cannot be negative for ${grainKey}`);
       return;
     }
-
+  
+    // Update editable quantities
     setEditableQuantities(prev => {
       const newMap = new Map(prev);
       if (!newMap.has(rowKey)) {
@@ -325,6 +326,25 @@ const PendingOrderDetails = () => {
       }
       const rowQuantities = newMap.get(rowKey)!;
       rowQuantities[grainKey] = numericValue;
+      return newMap;
+    });
+  
+    // Update remaining quantities in real-time
+    setRemainingQuantities(prev => {
+      const newMap = new Map(prev);
+      const original = originalQuantities.get(rowKey) || {};
+      
+      if (!newMap.has(rowKey)) {
+        newMap.set(rowKey, { ...original });
+      }
+      
+      const currentRemaining = newMap.get(rowKey)!;
+      const updatedRemaining = { ...currentRemaining };
+      
+      // Calculate remaining quantity for this specific grain
+      updatedRemaining[grainKey] = Math.max(0, originalQty - numericValue);
+      
+      newMap.set(rowKey, updatedRemaining);
       return newMap;
     });
   };
@@ -946,7 +966,7 @@ const pendingOrdersData = useMemo(() => {
                             onClick={() => addToDispatchCartWithEdits(row)}
                             className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
                           >
-                            Add to Cart
+                            Add
                           </button>
                           <button
                             onClick={() => {
@@ -967,7 +987,7 @@ const pendingOrdersData = useMemo(() => {
                           onClick={() => setEditingRow(rowKey)}
                           className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Edit & Add
+                          Edit
                         </button>
                       )}
                     </td>
@@ -1010,9 +1030,7 @@ const pendingOrdersData = useMemo(() => {
           <div className="text-xs text-gray-500 mt-1">
             Remaining: {Number(remainingQty).toFixed(2)}
           </div>
-          <div className="text-xs text-blue-500 mt-1">
-            Original: {Number(originalQty).toFixed(2)}
-          </div>
+          
         </div>
       ) : (
         <div>

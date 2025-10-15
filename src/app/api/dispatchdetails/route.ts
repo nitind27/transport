@@ -6,30 +6,30 @@ import pool from '@/lib/db';
 function generateDispatchCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
-
 export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(`
-  SELECT d.*,
+SELECT d.*,
        z.order_no,
        z.period,
        z.no_of_days,
        z.financial_year,
        s.schoolname,
        s.taluka_id,   
-       s.udaisno,         -- taluka_id from schooldata table
-       ta.name AS taluka_name, -- taluka name from taluka table
-       c.marathi_name	 AS center_name,
+       s.udaisno,
+       ta.name AS taluka_name,
+       c.marathi_name AS center_name,
        t.truckNo,
-       sh.patsankhya
+       MAX(sh.patsankhya) as patsankhya
 FROM dispatch_details d
 LEFT JOIN zp_order_details z ON d.order_id = z.id
 LEFT JOIN schooldata s ON d.school_id = s.schoolid
-LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id   -- join taluka table on schooldata's taluka_id
+LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id
 LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 WHERE d.status = 'Active'
+GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
 
     `);
@@ -39,7 +39,6 @@ ORDER BY d.created_at DESC;
     return NextResponse.json({ message: 'Failed to fetch dispatch' }, { status: 500 });
   }
 }
-
 export async function POST(req: Request) {
   const conn = await pool.getConnection();
   try {
