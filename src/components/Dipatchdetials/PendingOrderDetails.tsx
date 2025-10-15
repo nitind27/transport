@@ -424,7 +424,7 @@ const pendingOrdersData = useMemo(() => {
   const processedData: PendingOrderRow[] = [];
 
   schoolGroups.forEach((orders, schoolId) => {
-    const firstOrder = orders[0];
+    // const firstOrder = orders[0];
     const sd = schoolDataById.get(schoolId);
     const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
     const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
@@ -450,10 +450,13 @@ const pendingOrdersData = useMemo(() => {
         return;
       }
 
-      // Use remaining_quantities from API
-      const remainingQuantities = typeof firstOrder.remaining_quantities === 'string'
-        ? JSON.parse(firstOrder.remaining_quantities)
-        : (firstOrder.remaining_quantities || {});
+      // Find the specific order for this class range
+      const classOrder = classOrders[0]; // Get the first order for this specific class range
+      
+      // Use remaining_quantities from the specific class range order, not firstOrder
+      const remainingQuantities = typeof classOrder.remaining_quantities === 'string'
+        ? JSON.parse(classOrder.remaining_quantities)
+        : (classOrder.remaining_quantities || {});
 
       // Calculate total weight from remaining quantities
       const totalWeight = Number(Object.values(remainingQuantities).reduce((sum: number, qty) => sum + Number(qty), 0));
@@ -467,19 +470,19 @@ const pendingOrdersData = useMemo(() => {
 
       // Create the row data
       const rowData: PendingOrderRow = {
-        id: firstOrder.id,
-        order_id: firstOrder.order_id,
+        id: classOrder.id, // Use classOrder.id instead of firstOrder.id
+        order_id: classOrder.order_id, // Use classOrder.order_id instead of firstOrder.order_id
         school_id: schoolId,
-        order_no: firstOrder.order_no,
-        schoolname: firstOrder.schoolname,
-        udaisno: firstOrder.udaisno,
+        order_no: classOrder.order_no, // Use classOrder.order_no instead of firstOrder.order_no
+        schoolname: classOrder.schoolname, // Use classOrder.schoolname instead of firstOrder.schoolname
+        udaisno: classOrder.udaisno, // Use classOrder.udaisno instead of firstOrder.udaisno
         taluka_name: talukaName,
         center_name: centerName,
         class_range: classRange,
-        patsankhya: Number(firstOrder.patsankhya) || 0,
-        period: firstOrder.period,
-        financial_year: firstOrder.financial_year,
-        no_of_days: Number(firstOrder.no_of_days) || 0,
+        patsankhya: Number(classOrder.patsankhya) || 0, // Use classOrder.patsankhya instead of firstOrder.patsankhya
+        period: classOrder.period, // Use classOrder.period instead of firstOrder.period
+        financial_year: classOrder.financial_year, // Use classOrder.financial_year instead of firstOrder.financial_year
+        no_of_days: Number(classOrder.no_of_days) || 0, // Use classOrder.no_of_days instead of firstOrder.no_of_days
         total_weight: totalWeight,
         items_count: Object.keys(remainingQuantities).length,
         items_data: remainingQuantities,
