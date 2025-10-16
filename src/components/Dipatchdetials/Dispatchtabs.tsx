@@ -5,9 +5,10 @@ import Dipatchdetials from './Dipatchdetials';
 import DispatchView from './DispatchView';
 import PendingOrderDetails from './PendingOrderDetails';
 import Routepaperview from '../Routepaperview/Routepaperview';
+import CellsReturn from './CellsReturn';
 
 const DispatchTabs = () => {
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'view' | 'pending' | 'routepaperview'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'view' | 'pending' | 'routepaperview' | 'cellsreturn'>('dispatch');
 
   return (
     <div className="w-full">
@@ -54,6 +55,16 @@ const DispatchTabs = () => {
           >
             View Route Paper
           </button>
+          <button
+            onClick={() => setActiveTab('cellsreturn')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'cellsreturn'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Sales return
+          </button>
         </nav>
       </div>
 
@@ -63,6 +74,7 @@ const DispatchTabs = () => {
         {activeTab === 'view' && <DispatchView />}
         {activeTab === 'pending' && <PendingOrderDetails />}
         {activeTab === 'routepaperview' && <Routepaperview />}
+        {activeTab === 'cellsreturn' && <CellsReturn />}
       </div>
     </div>
   );

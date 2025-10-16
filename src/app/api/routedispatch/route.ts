@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
-
-function generateDispatchCode() {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
+import { generateDispatchCode } from '@/lib/dispatchCodeGenerator';
 
 export async function GET() {
   try {
@@ -54,7 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const code = generateDispatchCode();
+    const code = await generateDispatchCode();
     await conn.beginTransaction();
 
     for (const l of lines) {

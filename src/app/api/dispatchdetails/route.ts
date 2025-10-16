@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { db } from '@/lib/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '@/lib/db';
-
-function generateDispatchCode() {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
+import { generateDispatchCode } from '@/lib/dispatchCodeGenerator';
 export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(`
@@ -29,7 +26,7 @@ LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 WHERE d.status = 'Active'
-GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
+GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.new_qty_dispatch, d.dispatch_return, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
 
     `);
@@ -49,26 +46,26 @@ export async function POST(req: Request) {
       center_id: number;
       truck_id: number;
       class_range?: string;
-      lines: Array<{ grain: string; unit: string; totalQty: number; qtyDispatch: number }>;
+      lines: Array<{ grain: string; unit: string; totalQty: number; qtyDispatch: number; return_qty: number }>;
     };
 
     if (!order_id || !school_id || !center_id || !truck_id || !Array.isArray(lines) || lines.length === 0) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const code = generateDispatchCode();
+    const code = await generateDispatchCode();
     await conn.beginTransaction();
 
     const insertedDispatchIds: number[] = [];
 
     // Insert dispatch details and collect IDs
     for (const l of lines) {
-      const bal = Math.max(0, Number(l.totalQty) - Number(l.qtyDispatch || 0));
+      const bal = Math.max(0, Number(l.totalQty) - Number(l.qtyDispatch || 0) - Number(l.return_qty || 0));
       const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO dispatch_details
-         (dispatch_code, order_id, school_id, center_id, truck_id, class_range, item_name, unit, total_qty, qty_dispatch, bal_qty, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
-        [code, order_id, school_id, center_id, truck_id, class_range || null, l.grain, l.unit || '', Number(l.totalQty) || 0, Number(l.qtyDispatch) || 0, bal]
+         (dispatch_code, order_id, school_id, center_id, truck_id, class_range, item_name, unit, total_qty, qty_dispatch, new_qty_dispatch, dispatch_return, bal_qty, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
+        [code, order_id, school_id, center_id, truck_id, class_range || null, l.grain, l.unit || '', Number(l.totalQty) || 0, Number(l.qtyDispatch) || 0, Number(l.qtyDispatch) || 0, Number(l.return_qty) || 0, bal]
       );
       
       insertedDispatchIds.push(result.insertId);
@@ -93,27 +90,36 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { id, qty_dispatch } = await req.json();
-    if (!id || typeof qty_dispatch === 'undefined') {
-      return NextResponse.json({ message: 'id and qty_dispatch required' }, { status: 400 });
+    const { id, qty_dispatch, return_qty, new_qty_dispatch } = await req.json();
+    if (!id) {
+      return NextResponse.json({ message: 'id is required' }, { status: 400 });
     }
+    
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT total_qty FROM dispatch_details WHERE id = ?',
+      'SELECT total_qty, qty_dispatch FROM dispatch_details WHERE id = ?',
       [id]
     );
     if (!rows || rows.length === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
 
     const total = Number(rows[0].total_qty) || 0;
-    const bal = Math.max(0, total - Number(qty_dispatch));
+    const originalDispatched = Number(rows[0].qty_dispatch) || 0;
+    
+    // Use provided values or keep existing values
+    const dispatched = typeof qty_dispatch !== 'undefined' ? Number(qty_dispatch) : originalDispatched;
+    const returned = typeof return_qty !== 'undefined' ? Number(return_qty) : 0;
+    const newDispatched = typeof new_qty_dispatch !== 'undefined' ? Number(new_qty_dispatch) : originalDispatched;
+    
+    // Calculate balance: total - new_qty_dispatch
+    const bal = Math.max(0, total - newDispatched);
 
     const [res] = await pool.query<ResultSetHeader>(
       `UPDATE dispatch_details
-       SET qty_dispatch = ?, bal_qty = ?, updated_at = NOW()
+       SET qty_dispatch = ?, dispatch_return = ?, new_qty_dispatch = ?, bal_qty = ?, updated_at = NOW()
        WHERE id = ?`,
-      [Number(qty_dispatch), bal, id]
+      [dispatched, returned, newDispatched, bal, id]
     );
     if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
-    return NextResponse.json({ message: 'Updated' });
+    return NextResponse.json({ message: 'Updated successfully' });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ message: 'Failed to update' }, { status: 500 });
