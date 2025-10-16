@@ -39,9 +39,10 @@ type RouteGroupRow = {
     center_name?: string;
     truckNo?: string;
     class_range?: string;
-    create_at: string;
+    created_at: string;
     school_count: number;
     total_items: number;
+    total_weight?: number; // Add this field
 };
 // interface CenterRow {
 //     center_id: number;
@@ -88,7 +89,7 @@ type DispatchListRow = {
     qty_dispatch: number;
     bal_qty: number;
     status: string;
-    create_at: string;
+    created_at: string;
     order_no?: string;
     schoolname?: string;
     center_name?: string;
@@ -156,7 +157,7 @@ const Routepaperview = () => {
         if (selectedDate && selectedDate.trim() !== '') {
             const selectedDateObj = new Date(selectedDate);
             filtered = filtered.filter(item => {
-                const itemDate = new Date(item.create_at);
+                const itemDate = new Date(item.created_at);
                 return itemDate.toDateString() === selectedDateObj.toDateString();
             });
         }
@@ -227,7 +228,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
                 const dataWithRoute = data.map((item: DispatchListRow) => ({
                     ...item,
                     route_number: item.route_number || item.dispatch_code,
-                    create_at: item.create_at || item.create_at || '',
+                    created_at: item.created_at || item.created_at || '',
                 }));
                 setDispatchList(dataWithRoute);
             }
@@ -377,15 +378,15 @@ const handleDeleteRoute = async (routeNumber: string) => {
         return filteredDispatchList.filter(item => item.route_number === routeNumber);
     };
 
-    function formatDateToDDMMYYYY(dateString: string | undefined | null): string {
-        if (!dateString) return '';
-        const date: Date = new Date(dateString);   // `Date` type here
-        if (isNaN(date.getTime())) return '';      // Invalid date check
-        const day: string = String(date.getDate()).padStart(2, '0');
-        const month: string = String(date.getMonth() + 1).padStart(2, '0');
-        const year: number = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      }
+    // function formatDateToDDMMYYYY(dateString: string | undefined | null): string {
+    //     if (!dateString) return '';
+    //     const date: Date = new Date(dateString);   // `Date` type here
+    //     if (isNaN(date.getTime())) return '';      // Invalid date check
+    //     const day: string = String(date.getDate()).padStart(2, '0');
+    //     const month: string = String(date.getMonth() + 1).padStart(2, '0');
+    //     const year: number = date.getFullYear();
+    //     return `${day}-${month}-${year}`;
+    //   }
       
       const handlePrintDc = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
@@ -405,7 +406,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
         const orderNo = first?.order_no || '';
         const dcNo = first?.dispatch_code || '';
         const vehicleNo = first?.truckNo || '';
-        const dateStr = first?.create_at ? formatDateToDDMMYYYY(first.create_at) : '';
+        const dateStr = first?.created_at ? first.created_at : '';
         const periodText = first?.period || 'Aug-Sept-2025';
         const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
     
@@ -639,7 +640,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
         `);
     };
 
-    // Print function for route number - completely rewritten for proper totals
+    // Update the handlePrint function around line 644
     const handlePrint = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
         if (routeData.length === 0) {
@@ -650,7 +651,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
         // Get all unique items in the route
         const allItemNames = getAllItemNames(routeData);
 
-        // Group by school and calculate totals
+        // Group by school and calculate totals - FIXED to prevent double counting
         const schoolsMap = new Map();
         routeData.forEach(row => {
             const schoolKey = `${row.school_id}-${row.class_range || ''}`;
@@ -664,23 +665,50 @@ const handleDeleteRoute = async (routeNumber: string) => {
                     taluka_name: talukaName,
                     udise_number: udiseNumber,
                     patsankhya: row.patsankhya || '',
-                    items: [],
+                    items: new Map(), // Use Map to prevent duplicate items
                     receipts: new Set<string>(),
                 });
             }
             
-            schoolsMap.get(schoolKey).items.push({
-                name: row.item_name,
-                qty: row.qty_dispatch,
-                unit: row.unit
-            });
+            // Use Map to aggregate quantities for the same item
+            const schoolData = schoolsMap.get(schoolKey);
+            const itemKey = `${row.item_name}-${row.unit}`;
+            
+            if (schoolData.items.has(itemKey)) {
+                // If item already exists, add to existing quantity
+                const existingItem = schoolData.items.get(itemKey);
+                existingItem.qty += Number(row.qty_dispatch) || 0;
+            } else {
+                // Add new item
+                schoolData.items.set(itemKey, {
+                    name: row.item_name,
+                    qty: Number(row.qty_dispatch) || 0,
+                    unit: row.unit
+                });
+            }
             
             if (row.dispatch_code) {
-                schoolsMap.get(schoolKey).receipts.add(String(row.dispatch_code));
+                schoolData.receipts.add(String(row.dispatch_code));
             }
         });
 
-        const schools = Array.from(schoolsMap.values());
+        // Convert Map items back to array for processing
+        const schools = Array.from(schoolsMap.values()).map(school => ({
+            ...school,
+            items: Array.from(school.items.values())
+        })).sort((a, b) => {
+            // Extract numbers from class_range for proper sorting
+            const getClassRangeNumber = (classRange: string) => {
+                if (!classRange) return 0;
+                const match = classRange.match(/(\d+)/);
+                return match ? parseInt(match[1]) : 0;
+            };
+            
+            const aNum = getClassRangeNumber(a.class_range);
+            const bNum = getClassRangeNumber(b.class_range);
+            
+            return aNum - bNum;
+        });
 
         // Calculate grand totals for all items
         const grandTotals: Record<string, number> = {};
@@ -697,7 +725,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
 
         // Get dynamic data from first route item
         const firstRouteItem = routeData[0];
-        const dispatchDate = firstRouteItem?.create_at ? formatDate(firstRouteItem.create_at) : '';
+        const dispatchDate = firstRouteItem?.created_at ? formatDate(firstRouteItem.created_at) : '';
         const orderNo = firstRouteItem?.order_no || '';
         const dispatchCode = firstRouteItem?.dispatch_code || '';
         const vehicleNo = firstRouteItem?.truckNo || '';
@@ -946,32 +974,59 @@ const handleDeleteRoute = async (routeNumber: string) => {
         }
     };
 
-    // Create grouped data by route_number
+    // Update the groupedByRoute creation logic (around line 950)
     const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
         const routeData = getDataByRouteNumber(routeNumber);
+        
+        if (routeData.length === 0) {
+            return {
+                route_number: routeNumber,
+                dispatch_code: '',
+                order_no: '',
+                taluka: '',
+                center_name: '',
+                truckNo: '',
+                class_range: '',
+                created_at: '',
+                school_count: 0,
+                total_items: 0,
+                total_weight: 0
+            };
+        }
+
+        // Group by dispatch_code to get unique dispatch codes for this route
+        const uniqueDispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
+        
+        // Get first item for basic info
         const firstItem = routeData[0];
 
-        // Count unique school + class_range combinations instead of just school_id
+        // Count unique school + class_range combinations
         const uniqueSchoolClassCombinations = new Set(
             routeData.map(item => `${item.school_id}_${item.class_range || ''}`)
         ).size;
 
+        // Calculate total weight for this route
+        const totalWeight = routeData.reduce((sum, item) => sum + (Number(item.qty_dispatch) || 0), 0);
+
+        // Get all class ranges for this route
+        const classRanges = [...new Set(routeData.map(item => item.class_range || '').filter(Boolean))];
+
         return {
             route_number: routeNumber,
-            dispatch_code: firstItem?.dispatch_code || '',
+            dispatch_code: uniqueDispatchCodes.join(', '), // Show all dispatch codes
             order_no: firstItem?.order_no || '',
-            taluka: firstItem?.taluka || '',
+            taluka: firstItem?.taluka_name || '',
             center_name: firstItem?.center_name || '',
             truckNo: firstItem?.truckNo || '',
-            class_range: firstItem?.class_range || '',
-            create_at: firstItem?.create_at || '',
-            school_count: uniqueSchoolClassCombinations, // Use unique combinations
-            total_items: routeData.length
+            class_range: classRanges.join(', '), // Show all class ranges
+            created_at: firstItem?.created_at || '',
+            school_count: uniqueSchoolClassCombinations,
+            total_items: routeData.length,
+            total_weight: totalWeight
         };
     });
 
-    // Table columns for route grouping
-    // Table columns for route grouping
+    // Update the table columns to show grouped data properly
     const listColumns: Column<RouteGroupRow>[] = [
         {
             key: 'action',
@@ -993,44 +1048,80 @@ const handleDeleteRoute = async (routeNumber: string) => {
                         Print_Dc
                     </button>
                     <button
-                    onClick={() => handleDeleteRoute(r.route_number)}
-                    className="px-2 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
-                    title="Delete Route"
-                >
-                    <TrashBinIcon />
-                    
-                </button>
+                        onClick={() => handleDeleteRoute(r.route_number)}
+                        className="px-2 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                        title="Delete Route"
+                    >
+                        <TrashBinIcon />
+                    </button>
                 </div>
             )
         },
         {
             key: 'route_number',
             label: 'Route Number',
-            render: (r) => <span className="font-semibold">{r.route_number}</span>,
+            render: (r) => <span className="font-semibold text-blue-600">{r.route_number}</span>,
         },
-
+        {
+            key: 'dispatch_code',
+            label: 'Dispatch Codes',
+            render: (r) => (
+                <div className="max-w-xs">
+                    <span className="text-sm">{r.dispatch_code}</span>
+                </div>
+            )
+        },
         {
             key: 'order_no',
             label: 'Order No',
             render: (r) => <span>{r.order_no || ''}</span>
         },
-
-
+        {
+            key: 'taluka',
+            label: 'Taluka',
+            render: (r) => <span>{r.taluka || ''}</span>
+        },
+        {
+            key: 'center_name',
+            label: 'Center',
+            render: (r) => <span>{r.center_name || ''}</span>
+        },
+        {
+            key: 'class_range',
+            label: 'Class Ranges',
+            render: (r) => (
+                <div className="max-w-xs">
+                    <span className="text-sm">{r.class_range || ''}</span>
+                </div>
+            )
+        },
         {
             key: 'school_count',
             label: 'Schools',
-            render: (r) => <span>{r.school_count} Schools</span>
+            render: (r) => (
+                <span className="font-semibold text-green-600">
+                    {r.school_count} Schools
+                </span>
+            )
         },
-
+        {
+            key: 'total_weight',
+            label: 'Total Weight',
+            render: (r) => (
+                <span className="font-semibold text-orange-600">
+                    {r.total_weight?.toFixed(2) || '0.00'} kg
+                </span>
+            )
+        },
         {
             key: 'truckNo',
             label: 'Truck',
             render: (r) => <span>{r.truckNo || ''}</span>
         },
         {
-            key: 'create_at',
+            key: 'created_at',
             label: 'Date',
-            render: (r) => <span>{formatDate(r.create_at)}</span>
+            render: (r) => <span>{formatDate(r.created_at)}</span>
         },
     ];
 

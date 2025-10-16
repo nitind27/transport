@@ -398,21 +398,22 @@ const PendingOrderDetails = () => {
 
     setDispatchCart(prev => [...prev, cartItem]);
 
-    // Update remaining quantities after dispatch
-    setRemainingQuantities(prev => {
-      const newMap = new Map(prev);
-      const currentRemaining = newMap.get(rowKey) || original;
-      const updatedRemaining: Record<string, number> = {};
+    // REMOVE THIS SECTION - Don't update remaining quantities here
+    // This was causing double subtraction
+    // setRemainingQuantities(prev => {
+    //   const newMap = new Map(prev);
+    //   const currentRemaining = newMap.get(rowKey) || original;
+    //   const updatedRemaining: Record<string, number> = {};
 
-      mrGrainColumns.forEach(grain => {
-        const currentRemainingQty = currentRemaining[grain.key] || 0;
-        const dispatchedQty = finalQuantities[grain.key] || 0;
-        updatedRemaining[grain.key] = Math.max(0, currentRemainingQty - dispatchedQty);
-      });
+    //   mrGrainColumns.forEach(grain => {
+    //     const currentRemainingQty = currentRemaining[grain.key] || 0;
+    //     const dispatchedQty = finalQuantities[grain.key] || 0;
+    //     updatedRemaining[grain.key] = Math.max(0, currentRemainingQty - dispatchedQty);
+    //   });
 
-      newMap.set(rowKey, updatedRemaining);
-      return newMap;
-    });
+    //   newMap.set(rowKey, updatedRemaining);
+    //   return newMap;
+    // });
 
     toast.success(`Added to dispatch cart for ${row.class_range} class`);
 
@@ -566,19 +567,20 @@ const pendingOrdersData = useMemo(() => {
 
   // Remove from dispatch cart - removes specific school + class range combination
   const removeFromDispatchCart = (schoolId: number, classRange: string) => {
-    const rowKey = `${schoolId}_${classRange}`;
+    // const rowKey = `${schoolId}_${classRange}`;
     
     setDispatchCart(prev => prev.filter(item =>
       !(item.school_id === schoolId && item.class_range === classRange)
     ));
 
-    // Restore remaining quantities when removed from cart
-    const original = originalQuantities.get(rowKey) || {};
-    setRemainingQuantities(prev => {
-      const newMap = new Map(prev);
-      newMap.set(rowKey, { ...original });
-      return newMap;
-    });
+    // REMOVE THIS SECTION - Don't restore remaining quantities here
+    // The remaining quantities should only be updated after actual API submission
+    // const original = originalQuantities.get(rowKey) || {};
+    // setRemainingQuantities(prev => {
+    //   const newMap = new Map(prev);
+    //   newMap.set(rowKey, { ...original });
+    //   return newMap;
+    // });
     
     toast.success('Removed from dispatch cart - Row will reappear in table');
   };
