@@ -1062,15 +1062,15 @@ const handleDeleteRoute = async (routeNumber: string) => {
             label: 'Route Number',
             render: (r) => <span className="font-semibold text-blue-600">{r.route_number}</span>,
         },
-        {
-            key: 'dispatch_code',
-            label: 'Dispatch Codes',
-            render: (r) => (
-                <div className="max-w-xs">
-                    <span className="text-sm">{r.dispatch_code}</span>
-                </div>
-            )
-        },
+        // {
+        //     key: 'dispatch_code',
+        //     label: 'Dispatch Codes',
+        //     render: (r) => (
+        //         <div className="max-w-xs">
+        //             <span className="text-sm">{r.dispatch_code}</span>
+        //         </div>
+        //     )
+        // },
         {
             key: 'order_no',
             label: 'Order No',
