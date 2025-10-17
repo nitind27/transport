@@ -116,7 +116,7 @@ export async function PUT(req: Request) {
       `UPDATE dispatch_details
        SET qty_dispatch = ?, dispatch_return = ?, new_qty_dispatch = ?, bal_qty = ?, updated_at = NOW()
        WHERE id = ?`,
-      [dispatched, returned, newDispatched, bal, id]
+      [newDispatched, returned, dispatched, bal, id]
     );
     if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
     return NextResponse.json({ message: 'Updated successfully' });

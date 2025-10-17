@@ -61,6 +61,7 @@ type DispatchListRow = {
     unit: string;
     total_qty: number;
     qty_dispatch: number;
+    new_qty_dispatch: number; // Add this field
     bal_qty: number;
     dispatch_return: number; // Add this new field
     status: string;
@@ -1145,12 +1146,25 @@ const CellsReturn = () => {
                                 const total = Number(row.totalQty);
                                 const originalDispatched = total - Number(row.remainingQty);
                                 const newQtyDispatch = newQtyDispatchInputs[row.grain] || (originalDispatched - returnQty);
+                                
+                                // Find the corresponding dispatch item to get its specific ID
+                                const dispatchItem = dispatchList.find(d => 
+                                    d.dispatch_code === selectedDispatchData.dispatch_code && 
+                                    d.item_name === row.grain
+                                );
+                                
+                                if (!dispatchItem) {
+                                    console.error(`Could not find dispatch item for grain: ${row.grain}`);
+                                    return null;
+                                }
+                                
                                 return {
-                                    id: selectedDispatchData.id,
+                                    id: dispatchItem.id, // Use the specific dispatch item ID
                                     return_qty: returnQty,
                                     new_qty_dispatch: newQtyDispatch
                                 };
-                            });
+                            })
+                            .filter(update => update !== null); // Remove any null entries
 
                         if (updates.length > 0) {
                             await Promise.all(
@@ -1222,7 +1236,7 @@ const CellsReturn = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Sr No</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Item</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Unit</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Quantity</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Order Quantity</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Qty Dispatch</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">New Qty Dispatch</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Return</th>
@@ -1233,19 +1247,27 @@ const CellsReturn = () => {
                             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                                 {dispatchRows.map((row, index) => {
                                     const total = Number(row.totalQty);
-                                    const dispatched = total - Number(row.remainingQty); // Original dispatched quantity
-
+                                    
+                                    // Get the actual database values from dispatchList
+                                    const dispatchItem = dispatchList.find(d => 
+                                        d.dispatch_code === selectedDispatchData?.dispatch_code && 
+                                        d.item_name === row.grain
+                                    );
+                                    
+                                    const newQtyDispatchFromDB = dispatchItem ? Number(dispatchItem.new_qty_dispatch || 0) : 0;
+                                    const qtyDispatchFromDB = dispatchItem ? Number(dispatchItem.qty_dispatch || 0) : 0;
+                                    
                                     // Get return value
                                     const returnValue = returnInputs[row.grain] !== undefined
                                         ? Number(returnInputs[row.grain])
                                         : 0;
 
-                                    // Get New Qty Dispatch value (initialized with original dispatched value)
+                                    // Get New Qty Dispatch value (initialized with qty_dispatch from DB)
                                     const newQtyDispatchValue = newQtyDispatchInputs[row.grain] !== undefined
                                         ? Number(newQtyDispatchInputs[row.grain])
-                                        : dispatched;
+                                        : qtyDispatchFromDB;
 
-                                    // CORRECTED: Calculate balance: total - newQtyDispatch
+                                    // Calculate balance: total - newQtyDispatchValue
                                     const bal = total - newQtyDispatchValue;
 
                                     return (
@@ -1257,7 +1279,7 @@ const CellsReturn = () => {
                                             <td className="px-4 py-3 border">
                                                 <input
                                                     type="number"
-                                                    value={dispatched}
+                                                    value={newQtyDispatchFromDB}
                                                     className="h-9 w-28 rounded border px-2 text-sm bg-gray-100"
                                                     disabled
                                                     readOnly
@@ -1269,22 +1291,21 @@ const CellsReturn = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 border">
-
                                                 <input
                                                     type="number"
                                                     min={0}
-                                                    max={dispatched}
+                                                    max={qtyDispatchFromDB}
                                                     className="h-9 w-28 rounded border px-2 text-sm"
                                                     value={returnValue}
                                                     onChange={(e) => {
                                                         if (e.target.value === '') {
                                                             setReturnInputs(prev => ({ ...prev, [row.grain]: 0 }));
-                                                            setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: dispatched }));
+                                                            setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: qtyDispatchFromDB }));
                                                             return;
                                                         }
                                                         const raw = Number(e.target.value);
                                                         const val = Number.isFinite(raw) ? raw : 0;
-                                                        const maxReturn = dispatched;
+                                                        const maxReturn = qtyDispatchFromDB;
                                                         if (val > maxReturn) {
                                                             toast.error(`Return quantity cannot exceed dispatched quantity. Max allowed: ${maxReturn}`);
                                                             return;
@@ -1292,14 +1313,14 @@ const CellsReturn = () => {
                                                         const capped = Math.min(Math.max(0, val), maxReturn);
                                                         setReturnInputs(prev => ({ ...prev, [row.grain]: capped }));
 
-                                                        // Update New Qty Dispatch: dispatched - return
-                                                        const newQtyDispatch = dispatched - capped;
+                                                        // Update New Qty Dispatch: qty_dispatch - return
+                                                        const newQtyDispatch = qtyDispatchFromDB - capped;
                                                         setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: newQtyDispatch }));
                                                     }}
                                                     onBlur={(e) => {
                                                         if (e.target.value === '') {
                                                             setReturnInputs(prev => ({ ...prev, [row.grain]: 0 }));
-                                                            setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: dispatched }));
+                                                            setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: qtyDispatchFromDB }));
                                                         }
                                                     }}
                                                 />

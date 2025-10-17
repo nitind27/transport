@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
-import { generateDispatchCode } from '@/lib/dispatchCodeGenerator';
+// import { generateDispatchCode } from '@/lib/dispatchCodeGenerator';
 
 export async function GET() {
   try {
@@ -27,7 +27,7 @@ LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id
 LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
-INNER JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
+LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code  -- Changed from INNER JOIN to LEFT JOIN
 WHERE d.status = 'Active'
 GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
@@ -43,38 +43,72 @@ export async function POST(req: Request) {
   const conn = await pool.getConnection();
   try {
     const body = await req.json();
-    const { order_id, school_id, center_id, truck_id, class_range, lines } = body as {
-      order_id: number;
-      school_id: number;
-      center_id: number;
-      truck_id: number;
-      class_range?: string;
-      lines: Array<{ grain: string; unit: string; totalQty: number; qtyDispatch: number }>;
+    const { dispatch_ids } = body as {
+      dispatch_ids: number[];
     };
 
-    if (!order_id || !school_id || !center_id || !truck_id || !Array.isArray(lines) || lines.length === 0) {
-      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    if (!Array.isArray(dispatch_ids) || dispatch_ids.length === 0) {
+      return NextResponse.json({ message: 'dispatch_ids array is required' }, { status: 400 });
     }
 
-    const code = await generateDispatchCode();
     await conn.beginTransaction();
 
-    for (const l of lines) {
-      const bal = Math.max(0, Number(l.totalQty) - Number(l.qtyDispatch || 0));
-      await conn.query<ResultSetHeader>(
-        `INSERT INTO dispatch_details
-         (dispatch_code, order_id, school_id, center_id, truck_id, class_range, item_name, unit, total_qty, qty_dispatch, bal_qty, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
-        [code, order_id, school_id, center_id, truck_id, class_range || null, l.grain, l.unit || '', Number(l.totalQty) || 0, Number(l.qtyDispatch) || 0, bal]
+    // Get the next route number for this batch
+    const [maxRows] = await conn.query<RowDataPacket[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
+    const routeNumber = ((maxRows && maxRows[0]?.lastNum) ? Number(maxRows[0].lastNum) : 0) + 1;
+    
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const routecode = `RP-${dateStr}-${routeNumber}`;
+
+    // Group dispatch_ids by class_range
+    const placeholders = dispatch_ids.map(() => '?').join(',');
+    const [dispatchDetails] = await conn.query<RowDataPacket[]>(
+      `SELECT id, dispatch_code, class_range FROM dispatch_details WHERE id IN (${placeholders})`,
+      dispatch_ids
+    );
+
+    console.log('Processing dispatch details:', dispatchDetails);
+
+    // Group by class_range
+    const classRangeGroups = new Map<string, number[]>();
+    dispatchDetails.forEach(detail => {
+      const classRange = detail.class_range || 'Unknown';
+      if (!classRangeGroups.has(classRange)) {
+        classRangeGroups.set(classRange, []);
+      }
+      classRangeGroups.get(classRange)!.push(detail.id);
+    });
+
+    console.log('Class range groups:', Array.from(classRangeGroups.entries()));
+
+    // Insert separate route_paper entry for each class_range
+    for (const [classRange, classDispatchIds] of classRangeGroups) {
+      const dispatch_code = dispatchDetails.find(d => d.id === classDispatchIds[0])?.dispatch_code || '';
+
+      const [result] = await conn.query<ResultSetHeader>(
+        `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code, class_range)
+         VALUES (?, 'Active', NOW(), ?, ?, ?, ?)`,
+        [JSON.stringify(classDispatchIds), routeNumber, routecode, dispatch_code, classRange]
       );
+
+      console.log(`Inserted route_paper entry for class_range ${classRange}:`, result.insertId);
     }
 
     await conn.commit();
-    return NextResponse.json({ message: 'Dispatch saved', dispatch_code: code });
+    
+    return NextResponse.json({ 
+      message: 'Route Paper saved for batch with separate class ranges', 
+      route_number: routeNumber,
+      routecode: routecode,
+      class_ranges: Array.from(classRangeGroups.keys()),
+      total_entries: classRangeGroups.size,
+      processed_dispatch_ids: dispatch_ids.length
+    });
   } catch (e) {
     await conn.rollback();
-    console.error(e);
-    return NextResponse.json({ message: 'Failed to save dispatch' }, { status: 500 });
+    console.error('Batch route creation error:', e);
+    return NextResponse.json({ message: 'Failed to save route paper' }, { status: 500 });
   } finally {
     conn.release();
   }

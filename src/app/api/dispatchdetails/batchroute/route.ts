@@ -24,46 +24,46 @@ export async function POST(req: Request) {
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
     const routecode = `RP-${dateStr}-${routeNumber}`;
 
-    // Group dispatch_ids by class_range
+    // Get all dispatch details
     const placeholders = dispatch_ids.map(() => '?').join(',');
     const [dispatchDetails] = await conn.query<RowDataPacket[]>(
       `SELECT id, dispatch_code, class_range FROM dispatch_details WHERE id IN (${placeholders})`,
       dispatch_ids
     );
 
-    // Group by class_range
-    const classRangeGroups = new Map<string, number[]>();
-    dispatchDetails.forEach(detail => {
-      const classRange = detail.class_range || 'Unknown';
-      if (!classRangeGroups.has(classRange)) {
-        classRangeGroups.set(classRange, []);
-      }
-      classRangeGroups.get(classRange)!.push(detail.id);
-    });
+    console.log('Processing dispatch details:', dispatchDetails);
 
-    // Insert separate route_paper entry for each class_range
-    for (const [classRange, classDispatchIds] of classRangeGroups) {
-      const dispatch_code = dispatchDetails.find(d => d.id === classDispatchIds[0])?.dispatch_code || '';
+    const insertedRoutePaperIds: number[] = [];
 
-      await conn.query<ResultSetHeader>(
+    // Insert separate route_paper entry for EACH individual dispatch record
+    for (const detail of dispatchDetails) {
+      const dispatch_code = detail.dispatch_code || '';
+      const class_range = detail.class_range || 'Unknown';
+      
+      // Create individual route_paper entry for each dispatch record
+      const [result] = await conn.query<ResultSetHeader>(
         `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code, class_range)
          VALUES (?, 'Active', NOW(), ?, ?, ?, ?)`,
-        [JSON.stringify(classDispatchIds), routeNumber, routecode, dispatch_code, classRange]
+        [JSON.stringify([detail.id]), routeNumber, routecode, dispatch_code, class_range]
       );
+
+      insertedRoutePaperIds.push(result.insertId);
+      console.log(`Inserted route_paper entry for dispatch_id ${detail.id}, class_range ${class_range}:`, result.insertId);
     }
 
     await conn.commit();
     
     return NextResponse.json({ 
-      message: 'Route Paper saved for batch with separate class ranges', 
+      message: 'Route Paper saved - each dispatch record has separate route_paper entry', 
       route_number: routeNumber,
       routecode: routecode,
-      class_ranges: Array.from(classRangeGroups.keys()),
-      total_entries: classRangeGroups.size
+      total_entries: insertedRoutePaperIds.length,
+      processed_dispatch_ids: dispatch_ids.length,
+      inserted_route_paper_ids: insertedRoutePaperIds
     });
   } catch (e) {
     await conn.rollback();
-    console.error(e);
+    console.error('Batch route creation error:', e);
     return NextResponse.json({ message: 'Failed to save route paper' }, { status: 500 });
   } finally {
     conn.release();

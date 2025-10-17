@@ -7,7 +7,7 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 import { TrashBinIcon } from '@/icons';
 import { Filterroutepaper } from '../tables/Filterroutepaper';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatDateToDDMMYYYY } from '@/lib/utils';
 
 // Add proper type declarations for flatpickr
 declare module 'flatpickr' {
@@ -404,7 +404,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
         const first = routeData[0];
         const talukaName = first?.taluka_name || '';
         const orderNo = first?.order_no || '';
-        const dcNo = first?.dispatch_code || '';
+        // const dcNo = first?.dispatch_code || '';
         const vehicleNo = first?.truckNo || '';
         const dateStr = first?.created_at ? first.created_at : '';
         const periodText = first?.period || 'Aug-Sept-2025';
@@ -585,12 +585,12 @@ const handleDeleteRoute = async (routeNumber: string) => {
                         <strong>Order No:</strong> ${orderNo}
                     </td>
                     <td style="text-align: right;">
-                        <strong>Date:</strong> ${dateStr}
+                        <strong>Date:</strong> ${formatDateToDDMMYYYY(dateStr)}
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <strong>DC पावती क्रमांक:</strong> ${dcNo}
+                        <strong>DC पावती क्रमांक:</strong> ${routeNumber}
                     </td>
                     <td style="text-align: right;">
                         <strong>गाडी नं.:</strong> ${vehicleNo}
@@ -672,12 +672,16 @@ const handleDeleteRoute = async (routeNumber: string) => {
             
             // Use Map to aggregate quantities for the same item
             const schoolData = schoolsMap.get(schoolKey);
+            if (!schoolData) return; // Safety check
+            
             const itemKey = `${row.item_name}-${row.unit}`;
             
             if (schoolData.items.has(itemKey)) {
                 // If item already exists, add to existing quantity
                 const existingItem = schoolData.items.get(itemKey);
-                existingItem.qty += Number(row.qty_dispatch) || 0;
+                if (existingItem) {
+                    existingItem.qty += Number(row.qty_dispatch) || 0;
+                }
             } else {
                 // Add new item
                 schoolData.items.set(itemKey, {
@@ -697,17 +701,25 @@ const handleDeleteRoute = async (routeNumber: string) => {
             ...school,
             items: Array.from(school.items.values())
         })).sort((a, b) => {
-            // Extract numbers from class_range for proper sorting
-            const getClassRangeNumber = (classRange: string) => {
-                if (!classRange) return 0;
-                const match = classRange.match(/(\d+)/);
-                return match ? parseInt(match[1]) : 0;
+            // Sort by पावती क्रमांक (Receipt Number) in descending order
+            const aReceipts = Array.from(a.receipts || new Set<string>()).sort().reverse();
+            const bReceipts = Array.from(b.receipts || new Set<string>()).sort().reverse();
+            
+            // Compare the first (highest) receipt number
+            const aFirstReceipt = aReceipts[0] || '';
+            const bFirstReceipt = bReceipts[0] || '';
+            
+            // Extract numeric part for proper sorting
+            const getReceiptNumber = (receipt: string) => {
+                if (!receipt || typeof receipt !== 'string') return 0;
+                const match = receipt.match(/(\d+)/);
+                return match ? parseInt(match[1], 10) : 0;
             };
-            
-            const aNum = getClassRangeNumber(a.class_range);
-            const bNum = getClassRangeNumber(b.class_range);
-            
-            return aNum - bNum;
+
+            const aNum = getReceiptNumber(String(aFirstReceipt));
+            const bNum = getReceiptNumber(String(bFirstReceipt));
+
+            return bNum - aNum; // Descending order (highest first)
         });
 
         // Calculate grand totals for all items
@@ -725,9 +737,9 @@ const handleDeleteRoute = async (routeNumber: string) => {
 
         // Get dynamic data from first route item
         const firstRouteItem = routeData[0];
-        const dispatchDate = firstRouteItem?.created_at ? formatDate(firstRouteItem.created_at) : '';
+        const dispatchDate = firstRouteItem?.created_at ? formatDateToDDMMYYYY(firstRouteItem.created_at) : '';
         const orderNo = firstRouteItem?.order_no || '';
-        const dispatchCode = firstRouteItem?.dispatch_code || '';
+        // const dispatchCode = firstRouteItem?.dispatch_code || '';
         const vehicleNo = firstRouteItem?.truckNo || '';
         const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
         const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
@@ -864,8 +876,8 @@ const handleDeleteRoute = async (routeNumber: string) => {
                                     </div>
                                     <div class="dataflex">
                                         <div>
-                                            Dispatch No. - ${dispatchCode}<br>
-                                            Dispatch date - ${dispatchDate}<br>
+                                            Route No. - ${routeNumber}<br>
+                                            Route Date - ${dispatchDate}<br>
                                             पुरवठा माहे - ${periodText} (${daysText})<br>
                                             Order No. - ${orderNo}<br>
                                             Total Weight - <b>${overallTotal.toFixed(2)}</b>
@@ -956,8 +968,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
                                     </td>
                                 </tr>
                             </table>
-                            <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
-                            <p style="margin-top: 5px;">Route: ${routeNumber} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
+                       
                         </div>
                 
                         <script>
@@ -973,6 +984,8 @@ const handleDeleteRoute = async (routeNumber: string) => {
             `);
         }
     };
+    // <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
+    // <p style="margin-top: 5px;">Route: ${routeNumber} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
 
     // Update the groupedByRoute creation logic (around line 950)
     const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
@@ -1071,27 +1084,28 @@ const handleDeleteRoute = async (routeNumber: string) => {
         //         </div>
         //     )
         // },
-        {
-            key: 'order_no',
-            label: 'Order No',
-            render: (r) => <span>{r.order_no || ''}</span>
-        },
-        {
-            key: 'taluka',
-            label: 'Taluka',
-            render: (r) => <span>{r.taluka || ''}</span>
-        },
-        {
-            key: 'center_name',
-            label: 'Center',
-            render: (r) => <span>{r.center_name || ''}</span>
-        },
+        // {
+        //     key: 'order_no',
+        //     label: 'Order No',
+        //     render: (r) => <span>{r.order_no || ''}</span>
+        // },
+        // {
+        //     key: 'taluka',
+        //     label: 'Taluka',
+        //     render: (r) => <span>{r.taluka || ''}</span>
+        // },Print Route Paper
+        // {
+        //     key: 'center_name',
+        //     label: 'Center',
+        //     render: (r) => <span>{r.center_name || ''}</span>
+        // },
         {
             key: 'class_range',
             label: 'Class Ranges',
-            render: (r) => (
+            render: () => (
                 <div className="max-w-xs">
-                    <span className="text-sm">{r.class_range || ''}</span>
+                    {/* <span className="text-sm">{r.class_range || ''}</span> */}
+                    <span className="text-sm">All Class</span>
                 </div>
             )
         },

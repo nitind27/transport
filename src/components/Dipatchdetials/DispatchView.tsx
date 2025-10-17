@@ -500,30 +500,46 @@ console.log(filteredDispatchList, "filteredDispatchList");
   }, []);
 
   // Filter dispatch list based on date range
-  useEffect(() => {
-    let filtered = [...dispatchList];
+// Filter dispatch list based on date range and sort by dispatch_code descending
+// Filter dispatch list based on date range
+useEffect(() => {
+  let filtered = [...dispatchList];
 
-    // Filter by date range if dates are selected
-    if (fromDate && fromDate.trim() !== '') {
-      const fromDateObj = new Date(fromDate);
-      filtered = filtered.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return itemDate >= fromDateObj;
-      });
-    }
+  // Filter by date range if dates are selected
+  if (fromDate && fromDate.trim() !== '') {
+    const fromDateObj = new Date(fromDate);
+    filtered = filtered.filter(item => {
+      const itemDate = new Date(item.created_at);
+      return itemDate >= fromDateObj;
+    });
+  }
 
-    if (toDate && toDate.trim() !== '') {
-      const toDateObj = new Date(toDate);
-      toDateObj.setHours(23, 59, 59, 999); // Include the entire day
-      filtered = filtered.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return itemDate <= toDateObj;
-      });
-    }
+  if (toDate && toDate.trim() !== '') {
+    const toDateObj = new Date(toDate);
+    toDateObj.setHours(23, 59, 59, 999); // Include the entire day
+    filtered = filtered.filter(item => {
+      const itemDate = new Date(item.created_at);
+      return itemDate <= toDateObj;
+    });
+  }
 
-    setFilteredDispatchList(filtered);
-  }, [dispatchList, fromDate, toDate]);
+  // Sort by dispatch_code in descending order
+  filtered = filtered.sort((a, b) => {
+    // Extract numeric part from dispatch_code for proper sorting
+    const getDispatchNumber = (code: string) => {
+      if (!code || typeof code !== 'string') return 0;
+      const match = code.match(/(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
 
+    const aNum = getDispatchNumber(a.dispatch_code);
+    const bNum = getDispatchNumber(b.dispatch_code);
+    
+    return bNum - aNum; // Descending order (highest first)
+  });
+
+  setFilteredDispatchList(filtered);
+}, [dispatchList, fromDate, toDate]);
   // Fetchers
   const fetchCenters = async () => {
     try {

@@ -426,7 +426,7 @@ const PendingOrderDetails = () => {
     setEditingRow(null);
   };
 
-// Update the pendingOrdersData useMemo function (around line 413)
+// Update the pendingOrdersData useMemo function to show separate rows for each class range
 const pendingOrdersData = useMemo(() => {
   console.log('Processing schoolWiseOrders:', schoolWiseOrders.length);
   
@@ -444,13 +444,13 @@ const pendingOrdersData = useMemo(() => {
 
   const processedData: PendingOrderRow[] = [];
 
+  // Process each school and create separate rows for each class range
   schoolGroups.forEach((orders, schoolId) => {
-    // const firstOrder = orders[0];
     const sd = schoolDataById.get(schoolId);
     const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
     const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
 
-    // Group orders by class range to create separate rows
+    // Group orders by class_range to create separate rows
     const classRangeGroups = new Map<string, SchoolWiseOrder[]>();
     orders.forEach(order => {
       const classRange = order.class_range || 'Unknown';
@@ -460,65 +460,73 @@ const pendingOrdersData = useMemo(() => {
       classRangeGroups.get(classRange)!.push(order);
     });
 
-    // Create separate row for each class range
+    // Create a separate row for each class range
     classRangeGroups.forEach((classOrders, classRange) => {
-      const uniqueKey = `${schoolId}_${classRange}`;
+      // Check if this specific school + class range combination has remaining quantities
+      let hasRemainingQuantities = false;
+      const classQuantities: Record<string, number> = {};
+      let totalPatsankhya = 0;
 
-      // Skip if this specific school + class range is already in cart
-      const isInCart = dispatchCart.some(item => `${item.school_id}_${item.class_range}` === uniqueKey);
-      
+      classOrders.forEach(order => {
+        const remainingQuantities = typeof order.remaining_quantities === 'string'
+          ? JSON.parse(order.remaining_quantities)
+          : (order.remaining_quantities || {});
+
+        // Sum up quantities for this specific class range
+        Object.entries(remainingQuantities).forEach(([grain, qty]) => {
+          classQuantities[grain] = (classQuantities[grain] || 0) + Number(qty);
+        });
+
+        if (Object.values(remainingQuantities).some(qty => Number(qty) > 0)) {
+          hasRemainingQuantities = true;
+        }
+
+        totalPatsankhya += Number(order.patsankhya) || 0;
+      });
+
+      if (!hasRemainingQuantities) {
+        return; // Skip if no remaining quantities for this class range
+      }
+
+      // Skip if already in cart for this specific school + class range combination
+      const isInCart = dispatchCart.some(item => 
+        item.school_id === schoolId && item.class_range === classRange
+      );
       if (isInCart) {
         return;
       }
 
-      // Find the specific order for this class range
-      const classOrder = classOrders[0]; // Get the first order for this specific class range
+      // Use the first order for basic info
+      const firstOrder = classOrders[0];
+      const totalWeight = Object.values(classQuantities).reduce((sum, qty) => sum + Number(qty), 0);
       
-      // Use remaining_quantities from the specific class range order, not firstOrder
-      const remainingQuantities = typeof classOrder.remaining_quantities === 'string'
-        ? JSON.parse(classOrder.remaining_quantities)
-        : (classOrder.remaining_quantities || {});
-
-      // Calculate total weight from remaining quantities
-      const totalWeight = Number(Object.values(remainingQuantities).reduce((sum: number, qty) => sum + Number(qty), 0));
-
-      // Only show if there are remaining quantities (not all zero)
-      const hasRemainingQuantities = Object.values(remainingQuantities).some(qty => Number(qty) > 0);
-      
-      if (!hasRemainingQuantities) {
-        return; // Skip this row if no remaining quantities
-      }
-
-      // Create the row data
       const rowData: PendingOrderRow = {
-        id: classOrder.id, // Use classOrder.id instead of firstOrder.id
-        order_id: classOrder.order_id, // Use classOrder.order_id instead of firstOrder.order_id
+        id: firstOrder.id,
+        order_id: firstOrder.order_id,
         school_id: schoolId,
-        order_no: classOrder.order_no, // Use classOrder.order_no instead of firstOrder.order_no
-        schoolname: classOrder.schoolname, // Use classOrder.schoolname instead of firstOrder.schoolname
-        udaisno: classOrder.udaisno, // Use classOrder.udaisno instead of firstOrder.udaisno
+        order_no: firstOrder.order_no,
+        schoolname: firstOrder.schoolname,
+        udaisno: firstOrder.udaisno,
         taluka_name: talukaName,
         center_name: centerName,
-        class_range: classRange,
-        patsankhya: Number(classOrder.patsankhya) || 0, // Use classOrder.patsankhya instead of firstOrder.patsankhya
-        period: classOrder.period, // Use classOrder.period instead of firstOrder.period
-        financial_year: classOrder.financial_year, // Use classOrder.financial_year instead of firstOrder.financial_year
-        no_of_days: Number(classOrder.no_of_days) || 0, // Use classOrder.no_of_days instead of firstOrder.no_of_days
+        class_range: classRange, // Individual class range (e.g., "1-5", "6-8")
+        patsankhya: totalPatsankhya,
+        period: firstOrder.period,
+        financial_year: firstOrder.financial_year,
+        no_of_days: Number(firstOrder.no_of_days) || 0,
         total_weight: totalWeight,
-        items_count: Object.keys(remainingQuantities).length,
-        items_data: remainingQuantities,
+        items_count: Object.keys(classQuantities).length,
+        items_data: classQuantities,
         center_id: Number(sd?.center) || 0,
         taluka_id: Number(sd?.taluka_id) || 0,
-        remaining_quantities: remainingQuantities
+        remaining_quantities: classQuantities
       };
 
-      // Store original quantities for this specific class range
       storeOriginalQuantities(rowData);
-
       processedData.push(rowData);
     });
   });
-
+  
   console.log('Final processed data:', processedData.length);
   
   return processedData.sort((a, b) => {
@@ -859,9 +867,9 @@ const pendingOrdersData = useMemo(() => {
               <tr className="bg-gray-100 whitespace-nowrap">
                 <th className="border px-3 py-2 text-left font-semibold">SR NO</th>
                 <th className="border px-3 py-2 text-left font-semibold">ACTION</th>
-                <th className="border px-3 py-2 text-left font-semibold">
+                {/* <th className="border px-3 py-2 text-left font-semibold">
                   <div>ORDER NO</div>
-                </th>
+                </th> */}
                 <th className="border px-3 py-2 text-left font-semibold">
                   <div>TALUKA</div>
                   <input
@@ -913,9 +921,9 @@ const pendingOrdersData = useMemo(() => {
                   />
                 </th>
                 <th className="border px-3 py-2 text-left font-semibold">पट संख्या</th>
-                <th className="border px-3 py-2 text-left font-semibold">PERIOD</th>
-                <th className="border px-3 py-2 text-left font-semibold">NO OF DAYS</th>
-                <th className="border px-3 py-2 text-left font-semibold">FINANCIAL YEAR</th>
+                {/* <th className="border px-3 py-2 text-left font-semibold">PERIOD</th> */}
+                {/* <th className="border px-3 py-2 text-left font-semibold">NO OF DAYS</th> */}
+                {/* <th className="border px-3 py-2 text-left font-semibold">FINANCIAL YEAR</th> */}
                 {/* Add grain columns */}
                 {mrGrainColumns.map(grain => (
                   <th key={grain.key} className="border px-3 py-2 text-left font-semibold">
@@ -974,16 +982,16 @@ const pendingOrdersData = useMemo(() => {
                         </button>
                       )}
                     </td>
-                    <td className="border px-3 py-2">{row.order_no}</td>
+                    {/* <td className="border px-3 py-2">{row.order_no}</td> */}
                     <td className="border px-3 py-2">{row.taluka_name}</td>
                     <td className="border px-3 py-2">{row.center_name}</td>
                     <td className="border px-3 py-2">{row.schoolname}</td>
                     <td className="border px-3 py-2">{row.udaisno}</td>
                     <td className="border px-3 py-2">{row.class_range}</td>
                     <td className="border px-3 py-2 text-right">{row.patsankhya}</td>
-                    <td className="border px-3 py-2">{row.period}</td>
-                    <td className="border px-3 py-2 text-right">{row.no_of_days}</td>
-                    <td className="border px-3 py-2">{row.financial_year}</td>
+                    {/* <td className="border px-3 py-2">{row.period}</td> */}
+                    {/* <td className="border px-3 py-2 text-right">{row.no_of_days}</td> */}
+                    {/* <td className="border px-3 py-2">{row.financial_year}</td> */}
 
              {/* Grain data section */}
 {mrGrainColumns.map(grain => {
