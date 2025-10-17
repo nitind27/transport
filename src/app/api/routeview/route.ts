@@ -27,7 +27,7 @@ LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id
 LEFT JOIN centerdata c ON d.center_id = c.center_id
 LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
-LEFT JOIN route_paper rp ON rp.dispatch_ids LIKE CONCAT('%', d.id, '%')
+INNER JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
 WHERE d.status = 'Active'
 GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
