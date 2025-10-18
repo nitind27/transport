@@ -208,7 +208,7 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
     <div className="flex flex-wrap items-center gap-3 mb-4">
       <input
         type="text"
-        placeholder="Search by.. पावती क्रमांक/Challan No"
+        placeholder="Search by.. Route Number"
         className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-sm flex-1 min-w-[200px]"
         value={search}
         onChange={(e) => setSearch(e.target.value)}

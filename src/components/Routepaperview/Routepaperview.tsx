@@ -908,7 +908,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
                                     <th class="left-align">केंद्र</th>
                                     <th class="left-align">UDISE Code</th>
                                     <th class="left-align">शाळा</th>
-                                    <th class="center-align">वर्ग</th>
+                                    <th class="center-align whitespace-nowrap"> वर्ग </th>
                                     <th class="center-align">पट संख्या</th>
                                     ${allItemNames.map(item =>
                                         `<th class="grain-column">${item}</th>`
@@ -930,7 +930,7 @@ const handleDeleteRoute = async (routeNumber: string) => {
                                             <td class="left-align">${school.center_name}</td>
                                             <td class="center-align">${school.udise_number || '-'}</td>
                                             <td class="left-align">${school.schoolname}</td>
-                                            <td class="center-align">${school.class_range}</td>
+                                       <td class="center-align w-20 min-w-0" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${school.class_range}</td>
                                             <td class="center-align">${school.patsankhya || '-'}</td>
                                             ${allItemNames.map(item =>
                                                 `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
