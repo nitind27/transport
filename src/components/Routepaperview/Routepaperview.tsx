@@ -5,7 +5,7 @@ import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
-import { TrashBinIcon } from '@/icons';
+// import { TrashBinIcon } from '@/icons';
 import { Filterroutepaper } from '../tables/Filterroutepaper';
 import { formatDate, formatDateToDDMMYYYY } from '@/lib/utils';
 
@@ -184,42 +184,42 @@ const Routepaperview = () => {
         }
     };
 // Delete handler function
-const handleDeleteRoute = async (routeNumber: string) => {
-    if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
-        return;
-    }
+// const handleDeleteRoute = async (routeNumber: string) => {
+//     if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
+//         return;
+//     }
 
-    try {
-        // Get all dispatch codes for this route
-        const routeData = getDataByRouteNumber(routeNumber);
-        const dispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
+//     try {
+//         // Get all dispatch codes for this route
+//         const routeData = getDataByRouteNumber(routeNumber);
+//         const dispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
         
-        // Delete each dispatch code
-        for (const dispatchCode of dispatchCodes) {
-            const response = await fetch(`/api/routeview`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ dispatch_code: dispatchCode }),
-            });
+//         // Delete each dispatch code
+//         for (const dispatchCode of dispatchCodes) {
+//             const response = await fetch(`/api/routeview`, {
+//                 method: 'DELETE',
+//                 headers: {
+//                     'Content-Type': 'application/json',
+//                 },
+//                 body: JSON.stringify({ dispatch_code: dispatchCode }),
+//             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to delete dispatch');
-            }
-        }
+//             if (!response.ok) {
+//                 const errorData = await response.json();
+//                 throw new Error(errorData.message || 'Failed to delete dispatch');
+//             }
+//         }
 
-        // Remove deleted items from local state
-        setDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
-        setFilteredDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+//         // Remove deleted items from local state
+//         setDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+//         setFilteredDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
         
-        toast.success('Route deleted successfully!');
-    } catch (error) {
-        console.error('Error deleting route:', error);
-        toast.error('Failed to delete route');
-    }
-};
+//         toast.success('Route deleted successfully!');
+//     } catch (error) {
+//         console.error('Error deleting route:', error);
+//         toast.error('Failed to delete route');
+//     }
+// };
     const fetchDispatchList = async () => {
         try {
             const res = await fetch('/api/routeview');
@@ -370,7 +370,20 @@ const handleDeleteRoute = async (routeNumber: string) => {
                 routeNumbers.add(item.route_number);
             }
         });
-        return Array.from(routeNumbers).sort();
+        // Sort in descending order with proper numeric comparison
+        return Array.from(routeNumbers).sort((a, b) => {
+            // Extract numeric part from route numbers for proper sorting
+            const getNumericPart = (str: string) => {
+                const match = str.match(/\d+/);
+                return match ? parseInt(match[0], 10) : 0;
+            };
+            
+            const numA = getNumericPart(a);
+            const numB = getNumericPart(b);
+            
+            // Descending order (बड़े से छोटे क्रम में)
+            return numB - numA;
+        });
     };
 
     // Get data for a specific route number
@@ -1060,13 +1073,13 @@ const handleDeleteRoute = async (routeNumber: string) => {
                     >
                         Print_Dc
                     </button>
-                    <button
+                    {/* <button
                         onClick={() => handleDeleteRoute(r.route_number)}
                         className="px-2 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
                         title="Delete Route"
                     >
                         <TrashBinIcon />
-                    </button>
+                    </button> */}
                 </div>
             )
         },

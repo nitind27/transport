@@ -174,29 +174,53 @@ export async function PATCH(req: Request) {
 // } 
 
 // Add this new DELETE method that handles dispatch_code
+// Add this new DELETE method that handles dispatch_code
 export async function DELETE(req: Request) {
+  const conn = await pool.getConnection();
   try {
     const body = await req.json();
     const { id, dispatch_code } = body;
     
     if (dispatch_code) {
-      // Delete by dispatch_code (delete entire route)
-      const [res] = await pool.query<ResultSetHeader>(
+      // Delete by dispatch_code (delete entire route from both tables)
+      await conn.beginTransaction();
+      
+      // Delete from route_paper table
+      const [routePaperResult] = await conn.query<ResultSetHeader>(
+        'DELETE FROM route_paper WHERE dispatch_code = ?', 
+        [dispatch_code]
+      );
+      
+      // Delete from dispatch_details table
+      const [dispatchResult] = await conn.query<ResultSetHeader>(
         'DELETE FROM dispatch_details WHERE dispatch_code = ?', 
         [dispatch_code]
       );
-      if (res.affectedRows === 0) return NextResponse.json({ message: 'No records found' }, { status: 404 });
-      return NextResponse.json({ message: 'Route deleted successfully' });
+      
+      await conn.commit();
+      
+      if (dispatchResult.affectedRows === 0 && routePaperResult.affectedRows === 0) {
+        return NextResponse.json({ message: 'No records found' }, { status: 404 });
+      }
+      
+      return NextResponse.json({ 
+        message: 'Route deleted successfully',
+        deleted_from_dispatch_details: dispatchResult.affectedRows,
+        deleted_from_route_paper: routePaperResult.affectedRows
+      });
     } else if (id) {
       // Delete by individual ID (existing functionality)
-      const [res] = await pool.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
+      const [res] = await conn.query<ResultSetHeader>('DELETE FROM dispatch_details WHERE id = ?', [id]);
       if (res.affectedRows === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
       return NextResponse.json({ message: 'Deleted' });
     } else {
       return NextResponse.json({ message: 'id or dispatch_code required' }, { status: 400 });
     }
   } catch (e) {
+    await conn.rollback();
     console.error(e);
     return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
+  } finally {
+    conn.release();
   }
 }
