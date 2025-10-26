@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 // import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 
-// import flatpickr from 'flatpickr';
+import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 // import { Modal } from '../ui/modal';
 // import { TrashBinIcon } from '@/icons';
@@ -965,23 +965,80 @@ const CellsReturn = () => {
     // Return inputs state
     const [returnInputs, setReturnInputs] = useState<Record<string, number | undefined>>({});
 
-    // Filter dispatch list based on PAVTI NO search
+    // Add date filter state with default as current date
+    const [selectedDate, setSelectedDate] = useState<string>(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    });
+
+    const datePickerRef = useRef<HTMLInputElement>(null);
+    const flatpickrInstanceRef = useRef<flatpickr.Instance | null>(null);
+
+    // Initialize Flatpickr for date picker
+    useEffect(() => {
+        if (datePickerRef.current) {
+            const flatPickr = flatpickr(datePickerRef.current, {
+                dateFormat: "Y-m-d",
+                defaultDate: selectedDate ? new Date(selectedDate) : undefined,
+                onChange: function (selectedDates, dateStr) {
+                    setSelectedDate(dateStr);
+                },
+                static: true,
+                monthSelectorType: "static",
+                enableTime: false,
+                allowInput: true,
+                clickOpens: true,
+                locale: {
+                    firstDayOfWeek: 1
+                }
+            });
+
+            flatpickrInstanceRef.current = flatPickr;
+
+            return () => {
+                flatPickr.destroy();
+                flatpickrInstanceRef.current = null;
+            };
+        }
+    }, []);
+
+    // Filter dispatch list based on date ONLY (for returns display)
+    useEffect(() => {
+        let filtered = [...dispatchList];
+
+        // Filter by date
+        if (selectedDate && selectedDate.trim() !== '') {
+            const selectedDateObj = new Date(selectedDate);
+            filtered = filtered.filter(item => {
+                const itemDate = new Date(item.created_at);
+                return itemDate.toDateString() === selectedDateObj.toDateString();
+            });
+        }
+
+        setFilteredDispatchList(filtered);
+    }, [dispatchList, selectedDate]);
+
+    // Separate handler for PAVTI NO search - searches in ALL data, not filtered
     useEffect(() => {
         if (!pavtiNoSearch.trim()) {
-            setFilteredDispatchList([]);
             setShowInputMode(false);
             setSelectedDispatchData(null);
             return;
         }
 
-        const filtered = dispatchList.filter(item =>
+        // Search in the FULL dispatchList, not filteredDispatchList
+        const matchingDispatches = dispatchList.filter(item =>
             item.dispatch_code.toLowerCase().includes(pavtiNoSearch.toLowerCase())
         );
 
-        setFilteredDispatchList(filtered);
+        if (matchingDispatches.length === 0) {
+            setShowInputMode(false);
+            setSelectedDispatchData(null);
+            return;
+        }
 
-        // If exact match found, auto-select it
-        const exactMatch = dispatchList.find(item =>
+        // Check for exact match
+        const exactMatch = matchingDispatches.find(item =>
             item.dispatch_code.toLowerCase() === pavtiNoSearch.toLowerCase()
         );
 
@@ -1091,9 +1148,54 @@ const CellsReturn = () => {
         return rows;
     }, [selectedDispatchData, dispatchList, itemGrains]);
 
-    // Simple toolbar with only PAVTI NO search
+    // Updated toolbar with clear button
     const toolbar = (
         <div className="flex gap-4 items-end mb-4">
+            <div className="flex flex-col">
+                <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span>
+                <div className="relative">
+                    <input
+                        ref={datePickerRef}
+                        type="text"
+                        placeholder="Select Date"
+                        className="h-10 rounded-md border px-3 pr-20 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        readOnly
+                    />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSelectedDate('');
+                            if (flatpickrInstanceRef.current) {
+                                flatpickrInstanceRef.current.clear();
+                            }
+                        }}
+                        className="absolute inset-y-0 right-6 flex items-center pr-2 text-red-500 hover:text-red-700"
+                        title="Clear Date Filter"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const today = new Date();
+                            const todayStr = today.toISOString().split('T')[0];
+                            setSelectedDate(todayStr);
+                            if (flatpickrInstanceRef.current) {
+                                flatpickrInstanceRef.current.setDate(todayStr);
+                            }
+                        }}
+                        className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+                        title="Set Today"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             <div className="flex flex-col">
                 <span className="text-xs text-gray-600 mb-1 text-left">PAVTI NO Search</span>
                 <input
@@ -1113,7 +1215,6 @@ const CellsReturn = () => {
                         toast.error('Please enter PAVTI NO');
                         return;
                     }
-                    // Search logic is handled in useEffect above
                 }}
             >
                 Search
@@ -1129,7 +1230,6 @@ const CellsReturn = () => {
                             return;
                         }
 
-                        // Check if any return values are entered
                         const hasReturnValues = Object.values(returnInputs).some(val => val && val > 0);
                         if (!hasReturnValues) {
                             toast.error('Please enter at least one return quantity');
@@ -1138,7 +1238,6 @@ const CellsReturn = () => {
 
                         setLoading(true);
 
-                        // Update dispatch details with return quantities and new_qty_dispatch
                         const updates = dispatchRows
                             .filter(row => returnInputs[row.grain] !== undefined)
                             .map(row => {
@@ -1147,7 +1246,6 @@ const CellsReturn = () => {
                                 const originalDispatched = total - Number(row.remainingQty);
                                 const newQtyDispatch = newQtyDispatchInputs[row.grain] || (originalDispatched - returnQty);
                                 
-                                // Find the corresponding dispatch item to get its specific ID
                                 const dispatchItem = dispatchList.find(d => 
                                     d.dispatch_code === selectedDispatchData.dispatch_code && 
                                     d.item_name === row.grain
@@ -1159,12 +1257,12 @@ const CellsReturn = () => {
                                 }
                                 
                                 return {
-                                    id: dispatchItem.id, // Use the specific dispatch item ID
+                                    id: dispatchItem.id,
                                     return_qty: returnQty,
                                     new_qty_dispatch: newQtyDispatch
                                 };
                             })
-                            .filter(update => update !== null); // Remove any null entries
+                            .filter(update => update !== null);
 
                         if (updates.length > 0) {
                             await Promise.all(
@@ -1185,10 +1283,8 @@ const CellsReturn = () => {
 
                         toast.success('Return quantities and new dispatch quantities updated successfully');
 
-                        // Refresh data
                         await fetchDispatchList();
 
-                        // Clear inputs
                         setReturnInputs({});
                         setNewQtyDispatchInputs({});
                         setPavtiNoSearch('');
@@ -1207,6 +1303,44 @@ const CellsReturn = () => {
             </button>
         </div>
     );
+
+    // Get items with returns for table display
+    const returnItems = useMemo(() => {
+        return filteredDispatchList.filter(item => item.dispatch_return && item.dispatch_return > 0);
+    }, [filteredDispatchList]);
+
+    // Group return items by dispatch code for table display
+    const groupedReturns = useMemo(() => {
+        const grouped = new Map<string, DispatchListRow[]>();
+        
+        returnItems.forEach(item => {
+            if (!grouped.has(item.dispatch_code)) {
+                grouped.set(item.dispatch_code, []);
+            }
+            grouped.get(item.dispatch_code)!.push(item);
+        });
+        
+        return Array.from(grouped.entries()).map(([dispatchCode, items]) => {
+            const firstItem = items[0];
+            return {
+                dispatch_code: dispatchCode,
+                date: firstItem.created_at,
+                schoolname: firstItem.schoolname,
+                center_name: firstItem.center_name,
+                truckNo: firstItem.truckNo,
+                class_range: firstItem.class_range,
+                items: items.map(item => ({
+                    item_name: item.item_name,
+                    unit: item.unit,
+                    qty_dispatch: item.qty_dispatch,
+                    dispatch_return: item.dispatch_return,
+                    new_qty_dispatch: item.new_qty_dispatch,
+                    totalqty: item.total_qty,
+                    bal_qty: item.bal_qty
+                }))
+            };
+        });
+    }, [returnItems]);
 
     return (
         <div className="">
@@ -1240,7 +1374,6 @@ const CellsReturn = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Qty Dispatch</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">New Qty Dispatch</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Return</th>
-
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Bal Qtsy</th>
                                 </tr>
                             </thead>
@@ -1248,7 +1381,6 @@ const CellsReturn = () => {
                                 {dispatchRows.map((row, index) => {
                                     const total = Number(row.totalQty);
                                     
-                                    // Get the actual database values from dispatchList
                                     const dispatchItem = dispatchList.find(d => 
                                         d.dispatch_code === selectedDispatchData?.dispatch_code && 
                                         d.item_name === row.grain
@@ -1257,17 +1389,14 @@ const CellsReturn = () => {
                                     const newQtyDispatchFromDB = dispatchItem ? Number(dispatchItem.new_qty_dispatch || 0) : 0;
                                     const qtyDispatchFromDB = dispatchItem ? Number(dispatchItem.qty_dispatch || 0) : 0;
                                     
-                                    // Get return value
                                     const returnValue = returnInputs[row.grain] !== undefined
                                         ? Number(returnInputs[row.grain])
                                         : 0;
 
-                                    // Get New Qty Dispatch value (initialized with qty_dispatch from DB)
                                     const newQtyDispatchValue = newQtyDispatchInputs[row.grain] !== undefined
                                         ? Number(newQtyDispatchInputs[row.grain])
                                         : qtyDispatchFromDB;
 
-                                    // Calculate balance: total - newQtyDispatchValue
                                     const bal = total - newQtyDispatchValue;
 
                                     return (
@@ -1313,7 +1442,6 @@ const CellsReturn = () => {
                                                         const capped = Math.min(Math.max(0, val), maxReturn);
                                                         setReturnInputs(prev => ({ ...prev, [row.grain]: capped }));
 
-                                                        // Update New Qty Dispatch: qty_dispatch - return
                                                         const newQtyDispatch = qtyDispatchFromDB - capped;
                                                         setNewQtyDispatchInputs(prev => ({ ...prev, [row.grain]: newQtyDispatch }));
                                                     }}
@@ -1337,6 +1465,7 @@ const CellsReturn = () => {
                     </div>
                 </div>
             ) : (
+                // Show returns table when not in input mode
                 <div className="bg-white rounded-2xl shadow-md border p-4">
                     <div className="mb-4">{toolbar}</div>
 
@@ -1346,22 +1475,67 @@ const CellsReturn = () => {
                         </div>
                     )}
 
-                    {!pavtiNoSearch && (
+                    {!pavtiNoSearch && returnItems.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
-                            Enter PAVTI NO to search and view dispatch details
+                            {selectedDate ? `No returns found for date: ${formatDateToDDMMYYYY(selectedDate)}` : 'Enter date filter or PAVTI NO to view dispatch details'}
+                        </div>
+                    )}
+
+                    {!pavtiNoSearch && returnItems.length > 0 && (
+                        <div className="overflow-x-auto">
+                            <h3 className="text-lg font-semibold mb-4">
+                                View Dispatch Returns 
+                                {selectedDate && ` (Filtered by Date: ${formatDateToDDMMYYYY(selectedDate)})`}
+                            </h3>
+                            <table className="min-w-full border border-gray-200 dark:border-gray-700">
+                                <thead className="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Sr No</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">PAVTI NO</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Date</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">School</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Center</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Truck</th>
+                                        <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Class</th>
+                                        <th colSpan={5} className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Item Details</th>
+                                    </tr>
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Item</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Qty Dispatch</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Return</th>
+                                        {/* <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">New Qty Dispatch</th> */}
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border">Bal Qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                                    {groupedReturns.map((group, groupIndex) => (
+                                        group.items.map((item, itemIndex) => (
+                                            <tr key={`${group.dispatch_code}-${itemIndex}`}>
+                                                {itemIndex === 0 && (
+                                                    <>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border text-center" style={{ verticalAlign: 'top' }}>{groupIndex + 1}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{group.dispatch_code}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{formatDateToDDMMYYYY(group.date)}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{group.schoolname}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{group.center_name}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{group.truckNo}</td>
+                                                        <td rowSpan={group.items.length} className="px-4 py-3 border" style={{ verticalAlign: 'top' }}>{group.class_range || '-'}</td>
+                                                    </>
+                                                )}
+                                                <td className="px-4 py-3 border">{item.item_name}</td>
+                                                <td className="px-4 py-3 border text-center">{item.totalqty}</td>
+                                                <td className="px-4 py-3 border text-center font-semibold text-red-600">{item.bal_qty}</td>
+                                                {/* <td className="px-4 py-3 border text-center">{item.new_qty_dispatch}</td> */}
+                                                <td className="px-4 py-3 border text-center">{item.new_qty_dispatch}</td>
+                                            </tr>
+                                        ))
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
             )}
-
-            {/* {lastDispatchData && (
-                <PrintModal
-                    isOpen={showPrintModal}
-                    onClose={() => { setShowPrintModal(false); setInitialPreviewType(undefined); }}
-                    dispatchData={lastDispatchData}
-                    initialType={initialPreviewType}
-                />
-            )} */}
         </div>
     );
 };

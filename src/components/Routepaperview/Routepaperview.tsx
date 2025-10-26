@@ -86,7 +86,7 @@ type DispatchListRow = {
     item_name: string;
     unit: string;
     total_qty: number;
-    qty_dispatch: number;
+    new_qty_dispatch: number;
     bal_qty: number;
     status: string;
     created_at: string;
@@ -370,18 +370,25 @@ const Routepaperview = () => {
                 routeNumbers.add(item.route_number);
             }
         });
-        // Sort in descending order with proper numeric comparison
+        
+        // Sort in descending order (5, 4, 3, 2, 1)
         return Array.from(routeNumbers).sort((a, b) => {
-            // Extract numeric part from route numbers for proper sorting
-            const getNumericPart = (str: string) => {
-                const match = str.match(/\d+/);
-                return match ? parseInt(match[0], 10) : 0;
-            };
+            // Convert to number if it's a numeric string, otherwise extract number from string
+            let numA = parseInt(a, 10);
+            let numB = parseInt(b, 10);
             
-            const numA = getNumericPart(a);
-            const numB = getNumericPart(b);
+            // If parseInt failed (NaN), try to extract numeric part
+            if (isNaN(numA)) {
+                const matchA = a.match(/\d+/);
+                numA = matchA ? parseInt(matchA[0], 10) : 0;
+            }
             
-            // Descending order (बड़े से छोटे क्रम में)
+            if (isNaN(numB)) {
+                const matchB = b.match(/\d+/);
+                numB = matchB ? parseInt(matchB[0], 10) : 0;
+            }
+            
+            // Descending order: b - a means higher numbers first
             return numB - numA;
         });
     };
@@ -410,7 +417,7 @@ const Routepaperview = () => {
         }
     
         // Aggregate items across all schools in the route
-        const allItems = routeData.map(r => ({ name: r.item_name, qty: r.qty_dispatch }));
+        const allItems = routeData.map(r => ({ name: r.item_name, qty: r.new_qty_dispatch }));
         const sums = sumGrainsForGroup(allItems);
     
         // Top meta from first row
@@ -693,13 +700,13 @@ const Routepaperview = () => {
                 // If item already exists, add to existing quantity
                 const existingItem = schoolData.items.get(itemKey);
                 if (existingItem) {
-                    existingItem.qty += Number(row.qty_dispatch) || 0;
+                    existingItem.qty += Number(row.new_qty_dispatch) || 0;
                 }
             } else {
                 // Add new item
                 schoolData.items.set(itemKey, {
                     name: row.item_name,
-                    qty: Number(row.qty_dispatch) || 0,
+                    qty: Number(row.new_qty_dispatch) || 0,
                     unit: row.unit
                 });
             }
@@ -714,11 +721,11 @@ const Routepaperview = () => {
             ...school,
             items: Array.from(school.items.values())
         })).sort((a, b) => {
-            // Sort by पावती क्रमांक (Receipt Number) in descending order
-            const aReceipts = Array.from(a.receipts || new Set<string>()).sort().reverse();
-            const bReceipts = Array.from(b.receipts || new Set<string>()).sort().reverse();
+            // Sort by पावती क्रमांक (Receipt Number) in ascending order
+            const aReceipts = Array.from(a.receipts || new Set<string>()).sort();
+            const bReceipts = Array.from(b.receipts || new Set<string>()).sort();
             
-            // Compare the first (highest) receipt number
+            // Compare the first (lowest) receipt number
             const aFirstReceipt = aReceipts[0] || '';
             const bFirstReceipt = bReceipts[0] || '';
             
@@ -732,7 +739,7 @@ const Routepaperview = () => {
             const aNum = getReceiptNumber(String(aFirstReceipt));
             const bNum = getReceiptNumber(String(bFirstReceipt));
 
-            return bNum - aNum; // Descending order (highest first)
+            return aNum - bNum; // Ascending order (lowest first)
         });
 
         // Calculate grand totals for all items
@@ -1032,7 +1039,7 @@ const Routepaperview = () => {
         ).size;
 
         // Calculate total weight for this route
-        const totalWeight = routeData.reduce((sum, item) => sum + (Number(item.qty_dispatch) || 0), 0);
+        const totalWeight = routeData.reduce((sum, item) => sum + (Number(item.new_qty_dispatch) || 0), 0);
 
         // Get all class ranges for this route
         const classRanges = [...new Set(routeData.map(item => item.class_range || '').filter(Boolean))];
@@ -1080,6 +1087,8 @@ const Routepaperview = () => {
                     >
                         <TrashBinIcon />
                     </button> */}
+
+                    
                 </div>
             )
         },

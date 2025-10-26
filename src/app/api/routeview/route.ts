@@ -54,7 +54,8 @@ export async function POST(req: Request) {
     await conn.beginTransaction();
 
     // Get the next route number for this batch
-    const [maxRows] = await conn.query<RowDataPacket[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
+    // const [maxRows] = await conn.query<RowDataPacket[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
+    const [maxRows] = await conn.query<RowDataPacket[]>('SELECT MAX(CAST(route_number AS UNSIGNED)) AS lastNum FROM route_paper');
     const routeNumber = ((maxRows && maxRows[0]?.lastNum) ? Number(maxRows[0].lastNum) : 0) + 1;
     
     const today = new Date();

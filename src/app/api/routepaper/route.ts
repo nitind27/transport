@@ -54,9 +54,10 @@ export async function POST(req: Request) {
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
-    type MaxRow = RowDataPacket & { lastNum: number | null };
-    const [rows] = await conn.query<MaxRow[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
-    const routeNumber = ((rows && rows[0]?.lastNum) ? Number(rows[0].lastNum) : 0) + 1;
+    // type MaxRow = RowDataPacket & { lastNum: number | null };
+    // const [rows] = await conn.query<MaxRow[]>('SELECT MAX(route_number) AS lastNum FROM route_paper');
+    const [maxRows] = await conn.query<RowDataPacket[]>('SELECT MAX(CAST(route_number AS UNSIGNED)) AS lastNum FROM route_paper');
+    const routeNumber = ((maxRows && maxRows[0]?.lastNum) ? Number(maxRows[0].lastNum) : 0) + 1;
     
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');

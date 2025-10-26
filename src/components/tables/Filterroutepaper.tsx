@@ -46,7 +46,8 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
   const toStringVal = (v: unknown) => String(v ?? "");
 
   // Group data if groupByKey is provided
-  const groupedData = useMemo((): GroupedData<T>[] => {
+   // Group data if groupByKey is provided
+   const groupedData = useMemo((): GroupedData<T>[] => {
     if (!groupByKey) return [];
 
     const grouped = data.reduce((acc, item) => {
@@ -58,11 +59,26 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
       return acc;
     }, {} as Record<string, T[]>);
 
-    return Object.entries(grouped).map(([groupKey, items]) => ({
+    const groupedArray = Object.entries(grouped).map(([groupKey, items]) => ({
       groupKey,
       items,
       count: items.length
     }));
+    
+    // Sort groups by groupKey in descending order (for route numbers: 5, 4, 3, 2, 1)
+    groupedArray.sort((a, b) => {
+      const numA = parseInt(a.groupKey, 10);
+      const numB = parseInt(b.groupKey, 10);
+      
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numB - numA; // Descending order - बड़े से छोटे
+      }
+      
+      // Fallback to string comparison if not numeric
+      return b.groupKey.localeCompare(a.groupKey);
+    });
+    
+    return groupedArray;
   }, [data, groupByKey]);
 
   // Apply search filter to grouped data
