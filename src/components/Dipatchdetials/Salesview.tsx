@@ -68,9 +68,15 @@ const Salesview = () => {
     const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
     const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
 
-    // Date range filter state
-    const [fromDate, setFromDate] = useState<string>('');
-    const [toDate, setToDate] = useState<string>('');
+    // Date range filter state - Initialize with current date
+    const [fromDate, setFromDate] = useState<string>(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    });
+    const [toDate, setToDate] = useState<string>(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    });
     
     const fromDatePickerRef = useRef<HTMLInputElement>(null);
     const toDatePickerRef = useRef<HTMLInputElement>(null);
@@ -82,7 +88,7 @@ const Salesview = () => {
         if (fromDatePickerRef.current && !flatpickrFromInstanceRef.current) {
             const flatPickr = flatpickr(fromDatePickerRef.current, {
                 dateFormat: "Y-m-d",
-                defaultDate: fromDate ? new Date(fromDate) : undefined,
+                defaultDate: fromDate,
                 onChange: function (selectedDates, dateStr) {
                     setFromDate(dateStr);
                 },
@@ -101,7 +107,7 @@ const Salesview = () => {
         if (toDatePickerRef.current && !flatpickrToInstanceRef.current) {
             const flatPickr = flatpickr(toDatePickerRef.current, {
                 dateFormat: "Y-m-d",
-                defaultDate: toDate ? new Date(toDate) : undefined,
+                defaultDate: toDate,
                 onChange: function (selectedDates, dateStr) {
                     setToDate(dateStr);
                 },
@@ -376,7 +382,7 @@ const Salesview = () => {
                                                 <td key={item} className="px-2 py-3 border text-center">
                                                     {itemData ? (
                                                         <span className={itemData.hasReturn ? "text-red-600 font-semibold" : "text-blue-600"}>
-                                                            {itemData.value}
+                                                            {Number(itemData.value).toFixed(3)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-400">-</span>
