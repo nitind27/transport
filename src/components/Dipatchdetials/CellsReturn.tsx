@@ -1526,7 +1526,7 @@ const CellsReturn = () => {
                                                 <td className="px-4 py-3 border text-center">{item.totalqty}</td>
                                                 <td className="px-4 py-3 border text-center font-semibold text-red-600">{item.bal_qty}</td>
                                                 {/* <td className="px-4 py-3 border text-center">{item.new_qty_dispatch}</td> */}
-                                                <td className="px-4 py-3 border text-center">{item.new_qty_dispatch}</td>
+                                                <td className="px-4 py-3 border text-center">{item.qty_dispatch }</td>
                                             </tr>
                                         ))
                                     ))}
