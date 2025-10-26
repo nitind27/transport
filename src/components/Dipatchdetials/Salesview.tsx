@@ -336,10 +336,7 @@ const Salesview = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <h3 className="text-lg font-semibold mb-4">
-                            View Sales Return
-                            {fromDate && toDate && ` (${formatDateToDDMMYYYY(fromDate)} to ${formatDateToDDMMYYYY(toDate)})`}
-                        </h3>
+                      
                         <table className="min-w-full border border-gray-200 dark:border-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-800">
                                 <tr>

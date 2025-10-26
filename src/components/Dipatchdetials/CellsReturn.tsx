@@ -1483,10 +1483,7 @@ const CellsReturn = () => {
 
                     {!pavtiNoSearch && returnItems.length > 0 && (
                         <div className="overflow-x-auto">
-                            <h3 className="text-lg font-semibold mb-4">
-                                View Dispatch Returns 
-                                {selectedDate && ` (Filtered by Date: ${formatDateToDDMMYYYY(selectedDate)})`}
-                            </h3>
+                           
                             <table className="min-w-full border border-gray-200 dark:border-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-800">
                                     <tr>
