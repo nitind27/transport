@@ -109,6 +109,16 @@ const supervisorNavItems: NavItem[] = [
     name: "Stock Inventory",
     path: "/stockinventory",
   },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Billing Register",
+    path: "/billingregister",
+  },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Sales Summary",
+    path: "/salessummary",
+  },
 ];
 
 // Staff (category_id = 4) - Dashboard, Dispatch Details, Route Paper, and Stock Inventory

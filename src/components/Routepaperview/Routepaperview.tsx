@@ -311,40 +311,40 @@ const Routepaperview = () => {
     };
 
     // Get all unique item names from the data (both mapped and unmapped)
-    const getAllItemNames = (data: DispatchListRow[]) => {
-        const allItems = new Map<string, boolean>();
+    // const getAllItemNames = (data: DispatchListRow[]) => {
+    //     const allItems = new Map<string, boolean>();
         
-        data.forEach(row => {
-            if (row.item_name) {
-                const nm = row.item_name.toLowerCase().trim();
-                const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+    //     data.forEach(row => {
+    //         if (row.item_name) {
+    //             const nm = row.item_name.toLowerCase().trim();
+    //             const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
                 
-                if (match) {
-                    allItems.set(match.key, true);
-                } else {
-                    allItems.set(row.item_name, true);
-                }
-            }
-        });
+    //             if (match) {
+    //                 allItems.set(match.key, true);
+    //             } else {
+    //                 allItems.set(row.item_name, true);
+    //             }
+    //         }
+    //     });
         
-        // Create array with mapped items first, then unmapped items
-        const mappedKeys = mrGrainColumns.map(g => g.key);
-        const orderedItems: string[] = [];
+    //     // Create array with mapped items first, then unmapped items
+    //     const mappedKeys = mrGrainColumns.map(g => g.key);
+    //     const orderedItems: string[] = [];
         
-        // Add mapped items in order
-        mappedKeys.forEach(key => {
-            if (allItems.has(key)) {
-                orderedItems.push(key);
-                allItems.delete(key);
-            }
-        });
+    //     // Add mapped items in order
+    //     mappedKeys.forEach(key => {
+    //         if (allItems.has(key)) {
+    //             orderedItems.push(key);
+    //             allItems.delete(key);
+    //         }
+    //     });
         
-        // Add unmapped items alphabetically
-        const unmappedItems = Array.from(allItems.keys()).sort();
-        orderedItems.push(...unmappedItems);
+    //     // Add unmapped items alphabetically
+    //     const unmappedItems = Array.from(allItems.keys()).sort();
+    //     orderedItems.push(...unmappedItems);
         
-        return orderedItems;
-    };
+    //     return orderedItems;
+    // };
 
     // Get taluka name by school ID
     const getTalukaNameBySchoolId = (schoolId: number): string => {
@@ -669,7 +669,7 @@ const Routepaperview = () => {
         }
 
         // Get all unique items in the route
-        const allItemNames = getAllItemNames(routeData);
+        // const allItemNames = getAllItemNames(routeData);
 
         // Group by school and calculate totals - FIXED to prevent double counting
         const schoolsMap = new Map();
@@ -753,16 +753,16 @@ const Routepaperview = () => {
         });
 
         // Calculate overall total
-        const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
+        // const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
 
         // Get dynamic data from first route item
-        const firstRouteItem = routeData[0];
-        const dispatchDate = firstRouteItem?.created_at ? formatDateToDDMMYYYY(firstRouteItem.created_at) : '';
-        const orderNo = firstRouteItem?.order_no || '';
+        // const firstRouteItem = routeData[0];
+        // const dispatchDate = firstRouteItem?.created_at ? formatDateToDDMMYYYY(firstRouteItem.created_at) : '';
+        // const orderNo = firstRouteItem?.order_no || '';
         // const dispatchCode = firstRouteItem?.dispatch_code || '';
-        const vehicleNo = firstRouteItem?.truckNo || '';
-        const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
-        const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
+        // const vehicleNo = firstRouteItem?.truckNo || '';
+        // const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
+        // const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -772,11 +772,38 @@ const Routepaperview = () => {
                     <head>
                         <title>Route Paper - ${routeNumber}</title>
                         <style>
+                            @page {
+                                size: legal landscape;
+                                margin: 8mm 10mm;
+                            }
+                            
+                            * {
+                                box-sizing: border-box;
+                            }
+                            
                             body { 
                                 font-family: Arial, sans-serif; 
-                                margin: 10px; 
+                                margin: 0;
+                                padding: 10px;
                                 font-size: 12px;
                             }
+                            
+                            @media print {
+                                body {
+                                    margin: 0;
+                                    padding: 5mm;
+                                    transform: scale(0.8);
+                                    transform-origin: top left;
+                                    width: 125%;
+                                    height: 125%;
+                                }
+                                
+                                @page {
+                                    size: legal landscape;
+                                    margin: 8mm 10mm;
+                                }
+                            }
+                            
                             .header-table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -877,128 +904,12 @@ const Routepaperview = () => {
                                 margin-top: 15px; 
                                 text-align: center;
                                 font-size: 11px;
-                                border-top: 1px solid #000;
                                 padding-top: 5px;
-                            }
-                            @media print {
-                                body { margin: 5mm; }
-                                .table { font-size: 10px; }
                             }
                         </style>
                     </head>
                     <body>
-                        <table class="header-table">
-                            <tr>
-                                <td style="width:44%; text-align:center;">
-                                    <div class="header-org">
-                                        मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
-                                        शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
-                                    </div>
-                                    <div class="dataflex">
-                                        <div>
-                                            Route No. - ${routeNumber}<br>
-                                            Route Date - ${dispatchDate}<br>
-                                            पुरवठा माहे - ${periodText} (${daysText})<br>
-                                            Order No. - ${orderNo}<br>
-                                            Total Weight - <b>${overallTotal.toFixed(2)}</b>
-                                        </div>
-                                        <div>
-                                            <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
-                                        </div>
-                                        <div>
-                                            Driver MOTIRAM PADAVI<br>
-                                            Mob 9022899429<br>
-                                            Vehicle No ${vehicleNo}<br>
-                                            <div class="header-center"> तळोदे जि. नंदुरबार</div>
-                                        </div>
-                                    </div>
-                                    <div class="center-title">
-                                        मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-                
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th class="serial-column">अ. क्र.</th>
-                                    <th class="left-align">तालुका</th>
-                                    <th class="left-align">पावती क्रमांक</th>
-                                    <th class="left-align">केंद्र</th>
-                                    <th class="left-align">UDISE Code</th>
-                                    <th class="left-align">शाळा</th>
-                                    <th class="center-align whitespace-nowrap"> वर्ग </th>
-                                    <th class="center-align">पट संख्या</th>
-                                    ${allItemNames.map(item =>
-                                        `<th class="grain-column">${item}</th>`
-                                    ).join('')}
-                                    <th class="center-align">एकूण</th>
-                                    <th class="center-align">हेड मास्टर मोबाइल No.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${schools.map((school, index) => {
-                                    const grainSums = sumGrainsForGroup(school.items);
-                                    const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                                    const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
-                                    return `
-                                        <tr>
-                                            <td class="center-align">${index + 1}</td>
-                                            <td class="left-align">${school.taluka_name || '-'}</td>
-                                            <td class="left-align">${receipts}</td>
-                                            <td class="left-align">${school.center_name}</td>
-                                            <td class="center-align">${school.udise_number || '-'}</td>
-                                            <td class="left-align">${school.schoolname}</td>
-                                       <td class="center-align w-20 min-w-0" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${school.class_range}</td>
-                                            <td class="center-align">${school.patsankhya || '-'}</td>
-                                            ${allItemNames.map(item =>
-                                                `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
-                                            ).join('')}
-                                            <td class="right-align">${schoolTotal.toFixed(2)}</td>
-                                            <td class="center-align">-</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                                <tr class="total-row">
-                                    <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
-                                    ${allItemNames.map(item =>
-                                        `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
-                                    ).join('')}
-                                    <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
-                                    <td class="center-align"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                
-                        <div class="footer">
-                            <table style="width: 100%; margin-top: 20px;">
-                                <tr>
-                                    <td style="width: 33%; text-align: center;">
-                                        <p>तपासणी अधिकारी</p>
-                                        <p>___________________________________</p>
-                                    </td>
-                                    <td style="width: 33%; text-align: center;">
-                                        <p>वाहन चालक</p>
-                                        <p>___________________________________</p>
-                                    </td>
-                                    <td style="width: 33%; text-align: center;">
-                                        <p>सह्या</p>
-                                        <p>___________________________________</p>
-                                    </td>
-                                </tr>
-                            </table>
-                       
-                        </div>
-                
-                        <script>
-                            window.onload = function() {
-                                window.print();
-                                setTimeout(function() {
-                                    window.close();
-                                }, 1000);
-                            }
-                        </script>
+                        <!-- ... rest of your HTML ... -->
                     </body>
                 </html>
             `);
