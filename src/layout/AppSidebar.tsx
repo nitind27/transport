@@ -143,6 +143,16 @@ const staffNavItems: NavItem[] = [
     name: "Stock Inventory",
     path: "/stockinventory",
   },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Billing Register",
+    path: "/billingregister",
+  },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Sales Summary",
+    path: "/salessummary",
+  },
 ];
 
 // Default fallback - Dashboard only
