@@ -1,212 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dynamic Coupon Generator - Height Reduced</title>
-<style>
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
-  body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background: #f7f7f7;
-  }
-  h1 {
-    color: #d6336c;
-    margin-bottom: 10px;
-  }
-  label {
-    font-weight: bold;
-    margin-right: 10px;
-  }
-  input[type="text"],
-  input[type="number"] {
-    padding: 6px;
-    font-size: 14px;
-    width: 250px;
-    margin-right: 10px;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-  }
-  input[readonly] {
-    background: #eee;
-  }
-  button {
-    padding: 8px 16px;
-    font-size: 14px;
-    margin-right: 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: none;
-    background-color: #d6336c;
-    color: white;
-  }
-  button:disabled {
-    background-color: #bbb;
-    cursor: default;
-  }
-  #formControls {
-    margin-bottom: 20px;
-  }
-  .container {
-    width: 210mm;
-    margin: auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10mm;
-    box-sizing: border-box;
-  }
-  .coupon {
-    width: calc((210mm - 30mm) / 4);
-    min-height: 20px; /* Reduced height */
-    background: white;
-    border: 2px dashed #333;
-    padding: 8px 10px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-  }
-  .coupon-title {
-    font-weight: bold;
-    font-size: 16px;
-    color: #d6336c;
-    margin: 0 0 4px 0;
-  }
-  .date {
-    font-size: 12px;
-    color: #333;
-    border-bottom: 1.5px solid #333;
-    padding-bottom: 4px;
-    margin-bottom: 8px;
-    width: fit-content;
-  }
-  .items {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-size: 13px;
-    color: #000;
-  }
-  .items div {
-    min-height: 14px;
-    border-bottom: 1px solid #ddd;
-    white-space: nowrap;
-  }
-  .receipt-number {
-    font-size: 13px;
-    margin-top: 8px;
-    text-align: right;
-    color: #000;
-  }
-  @media print {
-    body {
-      margin: 0;
-      background: none;
-    }
-    #formControls {
-      display: none;
-    }
-    .container {
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      gap: 5mm;
-      flex-wrap: wrap;
-      display: flex;
-    }
-    .coupon {
-      page-break-inside: avoid;
-      break-inside: avoid;
-      border: 1px dashed #000;
-      width: calc((100% - 30mm) / 4);
-      min-height: 20px;
-    }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Grid - Card Box Example</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+    </style>
 </head>
-<body>
+<body class="font-sans bg-gray-200 p-5">
+    <div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5">
+            <!-- Card 1 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 1</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    This is a simple card example using CSS Grid. Each card is a grid item.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-<h1>Coupon Generator</h1>
+            <!-- Card 2 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 2</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Grid automatically arranges cards in rows and columns. The layout is responsive.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-<div id="formControls">
-  <label for="titleInput">Title:</label>
-  <input type="text" id="titleInput" value="Puniya Bhumi Navtrati" />
-  
-  <label for="dateInput">Date:</label>
-  <input type="text" id="dateInput" readonly />
+            <!-- Card 3 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 3</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards have hover effects and box shadows for a modern look.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-  <label for="countInput">Number of Coupons:</label>
-  <input type="number" id="countInput" min="1" max="100" value="8" />
-  
-  <button id="generateBtn">Generate</button>
-  <button id="printBtn" disabled>Print</button>
-</div>
+            <!-- Card 4 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 4</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    The grid uses auto-fill to create responsive columns based on available space.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-<div class="container" id="couponContainer"></div>
+            <!-- Card 5 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 5</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    This card demonstrates how CSS Grid makes layout easy and flexible.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-<script>
-  const titleInput = document.getElementById('titleInput');
-  const dateInput = document.getElementById('dateInput');
-  const countInput = document.getElementById('countInput');
-  const generateBtn = document.getElementById('generateBtn');
-  const printBtn = document.getElementById('printBtn');
-  const couponContainer = document.getElementById('couponContainer');
+            <!-- Card 6 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 6</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    You can add more cards and they will automatically arrange in the grid.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-  function formatDate(date) {
-    const day = String(date.getDate()).padStart(2,'0');
-    const month = String(date.getMonth() + 1).padStart(2,'0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
+            <!-- Card 7 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 7</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    All styles are internal CSS, no external stylesheet needed.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
 
-  const today = new Date();
-  dateInput.value = formatDate(today);
-
-  function clearCoupons() {
-    couponContainer.innerHTML = '';
-    printBtn.disabled = true;
-  }
-
-  function generateCoupons() {
-    clearCoupons();
-
-    const title = titleInput.value.trim() || "Puniya Bhumi Navtrati";
-    const date = dateInput.value;
-    let count = parseInt(countInput.value, 10);
-    if (isNaN(count) || count < 1) count = 1;
-    if (count > 10000) count = 10000;
-
-    for(let i = 1; i <= count; i++) {
-      const coupon = document.createElement('div');
-      coupon.className = 'coupon';
-
-      let blankLinesHtml = '';
-      for(let j = 0; j < 6; j++) {
-        blankLinesHtml += '<div>&nbsp;</div>';
-      }
-
-      coupon.innerHTML = `
-        <div class="coupon-title">${title}</div>
-        <div class="date">${date}</div>
-        <div class="items">${blankLinesHtml}</div>
-        <div class="receipt-number">Receipt No: ${i.toString().padStart(4, '0')}</div>
-      `;
-
-      couponContainer.appendChild(coupon);
-    }
-
-    printBtn.disabled = false;
-  }
-
-  generateBtn.addEventListener('click', generateCoupons);
-  printBtn.addEventListener('click', () => window.print());
-
-  generateCoupons();
-</script>
-
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+            <!-- Card 8 -->
+            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
+                <div class="text-gray-600 leading-relaxed mb-4">
+                    Cards will automatically adjust when the window size changes.
+                </div>
+                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -434,7 +434,7 @@ const DispatchView = () => {
   // Existing dispatch list
   const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
   const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
-console.log(filteredDispatchList, "filteredDispatchList");
+  console.log(filteredDispatchList, "filteredDispatchList");
   // State to gate input mode and reset when filters change
   const [didSearch, setDidSearch] = useState(false);
 
@@ -500,46 +500,46 @@ console.log(filteredDispatchList, "filteredDispatchList");
   }, []);
 
   // Filter dispatch list based on date range
-// Filter dispatch list based on date range and sort by dispatch_code descending
-// Filter dispatch list based on date range
-useEffect(() => {
-  let filtered = [...dispatchList];
+  // Filter dispatch list based on date range and sort by dispatch_code descending
+  // Filter dispatch list based on date range
+  useEffect(() => {
+    let filtered = [...dispatchList];
 
-  // Filter by date range if dates are selected
-  if (fromDate && fromDate.trim() !== '') {
-    const fromDateObj = new Date(fromDate);
-    filtered = filtered.filter(item => {
-      const itemDate = new Date(item.created_at);
-      return itemDate >= fromDateObj;
+    // Filter by date range if dates are selected
+    if (fromDate && fromDate.trim() !== '') {
+      const fromDateObj = new Date(fromDate);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.created_at);
+        return itemDate >= fromDateObj;
+      });
+    }
+
+    if (toDate && toDate.trim() !== '') {
+      const toDateObj = new Date(toDate);
+      toDateObj.setHours(23, 59, 59, 999); // Include the entire day
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.created_at);
+        return itemDate <= toDateObj;
+      });
+    }
+
+    // Sort by dispatch_code in descending order
+    filtered = filtered.sort((a, b) => {
+      // Extract numeric part from dispatch_code for proper sorting
+      const getDispatchNumber = (code: string) => {
+        if (!code || typeof code !== 'string') return 0;
+        const match = code.match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      };
+
+      const aNum = getDispatchNumber(a.dispatch_code);
+      const bNum = getDispatchNumber(b.dispatch_code);
+
+      return bNum - aNum; // Descending order (highest first)
     });
-  }
 
-  if (toDate && toDate.trim() !== '') {
-    const toDateObj = new Date(toDate);
-    toDateObj.setHours(23, 59, 59, 999); // Include the entire day
-    filtered = filtered.filter(item => {
-      const itemDate = new Date(item.created_at);
-      return itemDate <= toDateObj;
-    });
-  }
-
-  // Sort by dispatch_code in descending order
-  filtered = filtered.sort((a, b) => {
-    // Extract numeric part from dispatch_code for proper sorting
-    const getDispatchNumber = (code: string) => {
-      if (!code || typeof code !== 'string') return 0;
-      const match = code.match(/(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    };
-
-    const aNum = getDispatchNumber(a.dispatch_code);
-    const bNum = getDispatchNumber(b.dispatch_code);
-    
-    return bNum - aNum; // Descending order (highest first)
-  });
-
-  setFilteredDispatchList(filtered);
-}, [dispatchList, fromDate, toDate]);
+    setFilteredDispatchList(filtered);
+  }, [dispatchList, fromDate, toDate]);
   // Fetchers
   const fetchCenters = async () => {
     try {
@@ -923,30 +923,30 @@ useEffect(() => {
   // Memoize grain quantities calculation to prevent performance issues
   const grainQuantitiesByDispatch = useMemo(() => {
     const quantitiesMap = new Map<string, Record<string, number>>();
-  
+
     // Get unique dispatch codes from filtered list
     const uniqueDispatchCodes = [...new Set(filteredDispatchList.map(item => item.dispatch_code))];
-  
+
     uniqueDispatchCodes.forEach(dispatchCode => {
       const grainQuantities = {
         'तांदुळ': 0, 'मुंगदाळ': 0, 'मसूरदाळ': 0, 'तूरदाळ': 0, 'हरभरा': 0, 'चवळी': 0,
         'मटकी': 0, 'मुग': 0, 'वाटाणा': 0, 'सोया वडी': 0, 'मसाला': 0, 'सोया तेल': 0,
         'हळद': 0, 'मीठ': 0, 'मोहरी': 0, 'चना': 0, 'जीरा': 0
       };
-  
+
       // Get all items for this dispatch code
       const dispatchItems = dispatchList.filter(d => d.dispatch_code === dispatchCode);
-  
+
       // Create a map to track unique items and prevent duplicates
       const uniqueItems = new Map<string, number>();
-      
+
       dispatchItems.forEach(item => {
         const itemName = (item.item_name || '').toLowerCase().trim();
         const quantity = Number(item.qty_dispatch || 0);
-        
+
         // Use item name as key to prevent duplicates
         const key = `${itemName}_${item.id}`;
-        
+
         if (uniqueItems.has(key)) {
           // If item already exists, add to existing quantity
           uniqueItems.set(key, uniqueItems.get(key)! + quantity);
@@ -954,11 +954,11 @@ useEffect(() => {
           uniqueItems.set(key, quantity);
         }
       });
-  
+
       // Now process the unique items instead of dispatchItems
       uniqueItems.forEach((quantity, key) => {
         const itemName = key.split('_')[0]; // Extract item name from key
-        
+
         // Map items to grain quantities
         if (itemName.includes('तांदुळ') || itemName.includes('rice') || itemName.includes('चावल')) {
           grainQuantities['तांदुळ'] += quantity;
@@ -998,12 +998,12 @@ useEffect(() => {
           grainQuantities['जीरा'] += quantity;
         }
       });
-  
+
       // Calculate total weight
       const totalWeight = Object.values(grainQuantities).reduce((sum, qty) => sum + qty, 0);
       quantitiesMap.set(dispatchCode, { ...grainQuantities, 'एकूण वजन': totalWeight });
     });
-  
+
     return quantitiesMap;
   }, [filteredDispatchList, dispatchList]);
 
@@ -1184,7 +1184,7 @@ useEffect(() => {
       margin-bottom: 4px;
     }
     .description-text {
-      margin: 12px 0;
+      margin: 1px 0;
       font-size: 12px;
       line-height: 1.4;
       text-align: justify;
@@ -1216,12 +1216,12 @@ useEffect(() => {
       width: 80px;
     }
     .footer {
-      margin-top: 25px;
+      margin-top: 15px;
     }
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 30px;
+      margin-top: 20px;
       font-size: 12px;
     }
     .signature-left {
@@ -1251,18 +1251,25 @@ useEffect(() => {
   </style>
 </head>
 <body>
- ${Array.from({ length: 4 }, (_, copyIndex) => `
+ ${Array.from({ length: 4 }, (_, copyIndex) => {
+   const copyTitles = [
+     'हेड मास्टर',
+     'बी.आर. सी ऑफीस (तालुका ऑफीस)',
+     'O.C',
+     'जिल्हा परिषद ऑफीस'
+   ];
+   return `
     <div class="copy-container">
       <div class="container">
         <div class="header">
           <div class="title">
-            <div class="center-item">Rice Pavti Receipt</div>
-            <div class="end-item">Copy ${copyIndex + 1}</div>
+            <div class="center-item">डिलीव्हरी चलन</div>
+            <div class="end-item">${copyTitles[copyIndex]}</div>
           </div>
 
           <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
           <div class="subtitle">ता. भोकरदन जि. जालना</div>
-          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+       
         </div>
 
         <div class="info-section">
@@ -1270,17 +1277,25 @@ useEffect(() => {
             <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
             <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
           </div>
+             <div class="title">
+            <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
+           
+          </div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
           </div>
         </div>
 
-        <div class="recipient-info">
-          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
-          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
-          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        
+      <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+        <div class="info-row">
+         
+          <div class="info-left">शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+            <div class="info-right">केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+         
         </div>
+       
 
         <div class="description-text">
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
@@ -1344,7 +1359,8 @@ useEffect(() => {
         </div>
       </div>
     </div>
-  `).join('')}
+  `;
+ })}
 </body>
 </html>
     `;
@@ -1486,20 +1502,20 @@ useEffect(() => {
       margin-bottom: 4px;
     }
     .description-text {
-      margin: 12px 0;
-      font-size: 12px;
-      line-height: 1.4;
+      margin: 1px 0;
+      font-size: 11px;
+      line-height: 1;
       text-align: justify;
     }
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin: 15px 0;
+      margin: 8px 0;
       font-size: 11px;
     }
     .table th, .table td {
       border: 1px solid #000;
-      padding: 6px;
+      padding: 0.5px;
       text-align: center;
       font-size: 11px;
     }
@@ -1518,12 +1534,12 @@ useEffect(() => {
       width: 80px;
     }
     .footer {
-      margin-top: 25px;
+      margin-top: 2px;
     }
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 30px;
+      margin-top: 15px;
       font-size: 12px;
     }
     .signature-left {
@@ -1553,18 +1569,25 @@ useEffect(() => {
   </style>
 </head>
 <body>
- ${Array.from({ length: 4 }, (_, copyIndex) => `
+ ${Array.from({ length: 4 }, (_, copyIndex) => {
+   const copyTitles = [
+     'हेड मास्टर',
+     'बी.आर. सी ऑफीस (तालुका ऑफीस)',
+     'O.C',
+     'जिल्हा परिषद ऑफीस'
+   ];
+   return `
     <div class="copy-container">
       <div class="container">
         <div class="header">
           <div class="title">
-            <div class="center-item">Kirana Receipt</div>
-            <div class="end-item">Copy ${copyIndex + 1}</div>
+            <div class="center-item">डिलीव्हरी चलन</div>
+            <div class="end-item">${copyTitles[copyIndex]}</div>
           </div>
 
           <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
           <div class="subtitle">ता. भोकरधन जि. जालना</div>
-          <div class="subtitle-small">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
+         
         </div>
 
         <div class="info-section">
@@ -1572,17 +1595,24 @@ useEffect(() => {
             <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
             <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
           </div>
+           <div class="title">
+            <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
+           
+          </div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
           </div>
         </div>
-
-        <div class="recipient-info">
-          <div>प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
-          <div>शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
-          <div>केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+        
+ <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+        <div class="info-row">
+         
+          <div class="info-left">शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+            <div class="info-right">केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+         
         </div>
+       
 
         <div class="description-text">
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
@@ -1598,7 +1628,7 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody>
-              ${kiranaItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+              ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
                 <tr>
                   <td>${index + 1}</td>
                   <td>${item.name}</td>
@@ -1608,7 +1638,7 @@ useEffect(() => {
             </tbody>
           </table>
 
-          ${kiranaItems.length > 10 ? `
+          ${kiranaItems.length > 8 ? `
           <table class="table" style="flex: 1;">
             <thead>
               <tr>
@@ -1618,9 +1648,9 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody>
-              ${kiranaItems.slice(10).map((item: DispatchItem, index: number) => `
+              ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
                 <tr>
-                  <td>${index + 11}</td>
+                  <td>${index + 9}</td>
                   <td>${item.name}</td>
                   <td>${item.qty}</td>
                 </tr>
@@ -1646,7 +1676,8 @@ useEffect(() => {
         </div>
       </div>
     </div>
-  `).join('')}
+  `;
+ })}
 </body>
 </html>
     `;

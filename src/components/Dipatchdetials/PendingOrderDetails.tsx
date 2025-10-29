@@ -1028,7 +1028,8 @@ const pendingOrdersData = useMemo(() => {
           <div className="text-sm">
             {numericValue > 0 ? numericValue.toFixed(2) : '0'}
           </div>
-          {remainingQty < originalQty && (
+          {/* Show (Remaining) only when remainingQty > 0 and data has been submitted */}
+          {remainingQty > 0 && remainingQty < originalQty && (
             <div className="text-xs text-orange-500">
               (Remaining)
             </div>

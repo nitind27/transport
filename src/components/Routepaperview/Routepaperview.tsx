@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
 import flatpickr from 'flatpickr';
@@ -8,6 +8,7 @@ import 'flatpickr/dist/flatpickr.css';
 // import { TrashBinIcon } from '@/icons';
 import { Filterroutepaper } from '../tables/Filterroutepaper';
 import { formatDate, formatDateToDDMMYYYY } from '@/lib/utils';
+import Loader from '@/common/Loader';
 
 // Add proper type declarations for flatpickr
 declare module 'flatpickr' {
@@ -88,6 +89,7 @@ type DispatchListRow = {
     total_qty: number;
     new_qty_dispatch: number;
     bal_qty: number;
+    qty_dispatch: number;
     status: string;
     created_at: string;
     order_no?: string;
@@ -106,14 +108,22 @@ type DispatchListRow = {
 };
 
 const Routepaperview = () => {
+    const [isLoading, setIsLoading] = useState(false);
 
-    const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const [fromDate, setFromDate] = useState<string>(() => {
         const today = new Date();
         return today.toISOString().split('T')[0];
     });
 
-    const datePickerRef = useRef<HTMLInputElement>(null);
-    const flatpickrInstanceRef = useRef<flatpickr.Instance | null>(null);
+    const [endDate, setEndDate] = useState<string>(() => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    });
+
+    const fromDatePickerRef = useRef<HTMLInputElement>(null);
+    const endDatePickerRef = useRef<HTMLInputElement>(null);
+    const flatpickrFromInstanceRef = useRef<flatpickr.Instance | null>(null);
+    const flatpickrEndInstanceRef = useRef<flatpickr.Instance | null>(null);
 
     // Masters
     const [talukaList, setTalukaList] = useState<TalukaRow[]>([]);
@@ -122,14 +132,14 @@ const Routepaperview = () => {
     const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
     const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
 
-    // Initialize Flatpickr for date picker
+    // Initialize Flatpickr for From Date picker
     useEffect(() => {
-        if (datePickerRef.current) {
-            const flatPickr = flatpickr(datePickerRef.current, {
+        if (fromDatePickerRef.current) {
+            const flatPickr = flatpickr(fromDatePickerRef.current, {
                 dateFormat: "Y-m-d",
-                defaultDate: selectedDate ? new Date(selectedDate) : undefined,
+                defaultDate: fromDate ? new Date(fromDate) : undefined,
                 onChange: function (selectedDates, dateStr) {
-                    setSelectedDate(dateStr);
+                    setFromDate(dateStr);
                 },
                 static: true,
                 monthSelectorType: "static",
@@ -141,29 +151,50 @@ const Routepaperview = () => {
                 }
             });
 
-            flatpickrInstanceRef.current = flatPickr;
+            flatpickrFromInstanceRef.current = flatPickr;
 
             return () => {
                 flatPickr.destroy();
-                flatpickrInstanceRef.current = null;
+                flatpickrFromInstanceRef.current = null;
             };
         }
     }, []);
 
-    // Filter dispatch list based on date
+    // Initialize Flatpickr for End Date picker
     useEffect(() => {
-        let filtered = [...dispatchList];
-
-        if (selectedDate && selectedDate.trim() !== '') {
-            const selectedDateObj = new Date(selectedDate);
-            filtered = filtered.filter(item => {
-                const itemDate = new Date(item.created_at);
-                return itemDate.toDateString() === selectedDateObj.toDateString();
+        if (endDatePickerRef.current) {
+            const flatPickr = flatpickr(endDatePickerRef.current, {
+                dateFormat: "Y-m-d",
+                defaultDate: endDate ? new Date(endDate) : undefined,
+                onChange: function (selectedDates, dateStr) {
+                    setEndDate(dateStr);
+                },
+                static: true,
+                monthSelectorType: "static",
+                enableTime: false,
+                allowInput: true,
+                clickOpens: true,
+                locale: {
+                    firstDayOfWeek: 1
+                }
             });
-        }
 
-        setFilteredDispatchList(filtered);
-    }, [dispatchList, selectedDate]);
+            flatpickrEndInstanceRef.current = flatPickr;
+
+            return () => {
+                flatPickr.destroy();
+                flatpickrEndInstanceRef.current = null;
+            };
+        }
+    }, []);
+
+    // If API handles filtering, you can just use dispatchList directly
+    // Or keep filteredDispatchList but remove date filtering since API does it
+    useEffect(() => {
+        // If you still want client-side filtering for other criteria, keep this
+        // but remove the date filtering part since API handles it
+        setFilteredDispatchList(dispatchList);
+    }, [dispatchList]);
 
     // Fetch data functions
     // const fetchCenters = async () => {
@@ -220,22 +251,58 @@ const Routepaperview = () => {
 //         toast.error('Failed to delete route');
 //     }
 // };
-    const fetchDispatchList = async () => {
+    const fetchDispatchList = useCallback(async () => {
         try {
-            const res = await fetch('/api/routeview');
-            if (res.ok) {
-                const data = await res.json();
-                const dataWithRoute = data.map((item: DispatchListRow) => ({
-                    ...item,
-                    route_number: item.route_number || item.dispatch_code,
-                    created_at: item.created_at || item.created_at || '',
-                }));
-                setDispatchList(dataWithRoute);
+            setIsLoading(true);
+            console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate);
+            
+            // Build query parameters with date filters
+            const params = new URLSearchParams();
+            if (fromDate && fromDate.trim() !== '') {
+                params.append('fromDate', fromDate.trim());
             }
+            if (endDate && endDate.trim() !== '') {
+                params.append('endDate', endDate.trim());
+            }
+            
+            const queryString = params.toString();
+            const url = queryString ? `/api/routeview/pagination?${queryString}` : '/api/routeview/pagination';
+            
+            console.log('Fetching from URL:', url);
+            const res = await fetch(url);
+            console.log('API Response status:', res.status, res.statusText);
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('API Error:', res.status, errorText);
+                toast.error(`Failed to load data: ${res.status} ${res.statusText}`);
+                setIsLoading(false);
+                return;
+            }
+            
+            const data = await res.json();
+            console.log('API Data received:', data.length, 'items');
+            if (data.length > 0) {
+                console.log('Sample item:', data[0]);
+                console.log('Sample created_at:', data[0]?.created_at);
+            }
+            
+            const dataWithRoute = data.map((item: DispatchListRow) => ({
+                ...item,
+                route_number: item.route_number || item.dispatch_code,
+                created_at: item.created_at || '',
+            }));
+            
+            console.log('Processed data with route:', dataWithRoute.length, 'items');
+            
+            setDispatchList(dataWithRoute);
         } catch (e) {
-            console.error(e);
+            console.error('Error fetching dispatch list:', e);
+            toast.error('Failed to load dispatch data. Please check console for details.');
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [fromDate, endDate]);
 
     const fetchSchoolDataMap = async () => {
         try {
@@ -260,12 +327,30 @@ const Routepaperview = () => {
         }
     };
 
+    // Initial data fetch on mount
     useEffect(() => {
         fetchTalukas();
         // fetchCenters();
-        fetchDispatchList();
         fetchSchoolDataMap();
     }, []);
+
+    // Fetch dispatch list when dates change (handles both initial load and filter changes)
+    useEffect(() => {
+        // Debounce to avoid rapid API calls when both dates change
+        const timeoutId = setTimeout(() => {
+            // Only fetch if at least one date is set
+            if (fromDate || endDate) {
+                console.log('Dates changed, fetching data...', { fromDate, endDate });
+                fetchDispatchList();
+            } else {
+                console.log('No dates set, clearing data');
+                setDispatchList([]);
+                setFilteredDispatchList([]);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [fromDate, endDate]); // Add fromDate and endDate as dependencies
 
     // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
     const mrGrainColumns = [
@@ -363,7 +448,7 @@ const Routepaperview = () => {
     };
 
     // Get unique route numbers from filtered data
-    const getUniqueRouteNumbers = () => {
+    const getUniqueRouteNumbers = useMemo(() => {
         const routeNumbers = new Set<string>();
         filteredDispatchList.forEach(item => {
             if (item.route_number) {
@@ -371,8 +456,7 @@ const Routepaperview = () => {
             }
         });
         
-        // Sort in descending order (5, 4, 3, 2, 1)
-        return Array.from(routeNumbers).sort((a, b) => {
+        const uniqueRoutes = Array.from(routeNumbers).sort((a, b) => {
             // Convert to number if it's a numeric string, otherwise extract number from string
             let numA = parseInt(a, 10);
             let numB = parseInt(b, 10);
@@ -391,7 +475,10 @@ const Routepaperview = () => {
             // Descending order: b - a means higher numbers first
             return numB - numA;
         });
-    };
+        
+        console.log('Unique route numbers found:', uniqueRoutes.length, uniqueRoutes);
+        return uniqueRoutes;
+    }, [filteredDispatchList]);
 
     // Get data for a specific route number
     const getDataByRouteNumber = (routeNumber: string) => {
@@ -463,7 +550,7 @@ const Routepaperview = () => {
             <style>
                 @page { 
                     size: A4 portrait; 
-                    margin: 10mm; 
+                    margin: 5mm; 
                 }
                 body { 
                     font-family: "Kruti Dev", "Mangal", Arial, sans-serif; 
@@ -475,7 +562,7 @@ const Routepaperview = () => {
                 .header { 
                     text-align: center; 
                     line-height: 1.3; 
-                    margin-bottom: 10px;
+                    margin-bottom: 1px;
                 }
                 .header p { 
                     margin: 2px 0; 
@@ -496,23 +583,28 @@ const Routepaperview = () => {
                     margin-bottom: 10px;
                 }
                 .meta td { 
-                    padding: 2px; 
+                    padding: 1px; 
                     vertical-align: top;
                 }
     
+                .tables-container {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 2px;
+                    margin-bottom: 10px;
+                }
                 .table-outer { 
                     border: 1.5px solid #000; 
-                    margin-top: 6px; 
-                    margin-bottom: 10px;
+                    flex: 1;
                 }
                 table.dc { 
                     border-collapse: collapse; 
                     width: 100%; 
-                    font-size: 12px; 
+                    font-size: 10px; 
                 }
                 table.dc th, table.dc td {
                     border: 1px solid #000;
-                    padding: 4px 6px;
+                    padding: 1px 2px;
                     text-align: center;
                 }
                 table.dc th { 
@@ -555,7 +647,7 @@ const Routepaperview = () => {
                 .signs {
                     display: flex;
                     justify-content: space-between;
-                    margin-top: 25px;
+                    margin-top: 1px;
                 }
                 .sign-box {
                     width: 45%;
@@ -563,7 +655,7 @@ const Routepaperview = () => {
                 }
                 .sign-line {
                     border-top: 1px solid #000;
-                    margin-top: 35px;
+                    margin-top: 5px;
                     font-size: 11px;
                     padding-top: 2px;
                 }
@@ -573,6 +665,9 @@ const Routepaperview = () => {
                     body { 
                         margin: 0; 
                         padding: 0;
+                    }
+                    .tables-container {
+                        gap: 8px;
                     }
                     .table-outer { 
                         border-width: 1.5px; 
@@ -618,25 +713,47 @@ const Routepaperview = () => {
                 </tr>
             </table>
     
-            <div class="table-outer">
-                <table class="dc">
-                    <thead>
-                        <tr>
-                            <th style="width: 10%;">अ. क्र.</th>
-                            <th style="text-align: left; width: 65%;">धान्यादी वस्तूचे नाव</th>
-                            <th style="width: 25%;">वजन (किलो)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows.map((r, i) => `
+            <div class="tables-container">
+                <div class="table-outer">
+                    <table class="dc">
+                        <thead>
                             <tr>
-                                <td>${i + 1}</td>
-                                <td style="text-align: left;">${r.name}</td>
-                                <td style="text-align: right;">${r.qty.toFixed(2)}</td>
+                                <th style="width: 10%;">अ. क्र.</th>
+                                <th style="text-align: left; width: 65%;">धान्यादी वस्तूचे नाव</th>
+                                <th style="width: 25%;">वजन (किलो)</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${rows.slice(0, 8).map((r, i) => `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td style="text-align: left;">${r.name}</td>
+                                    <td style="text-align: center;">${r.qty.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-outer">
+                    <table class="dc">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">अ. क्र.</th>
+                                <th style="text-align: left; width: 65%;">धान्यादी वस्तूचे नाव</th>
+                                <th style="width: 25%;">वजन (किलो)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.slice(8, 15).map((r, i) => `
+                                <tr>
+                                    <td>${8 + i + 1}</td>
+                                    <td style="text-align: left;">${r.name}</td>
+                                    <td style="text-align: center;">${r.qty.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>
     
             <div class="total-bar">
@@ -647,10 +764,10 @@ const Routepaperview = () => {
     
             <div class="signs">
                 <div class="sign-box">
-                    <div class="sign-line">माल ताब्यात घेणाऱ्याचे नाव सही</div>
+                    <div class="">माल ताब्यात घेणाऱ्याचे नाव सही</div>
                 </div>
                 <div class="sign-box">
-                    <div class="sign-line">माल ताब्यात देणाऱ्याचे नाव सही</div>
+                    <div class="">माल ताब्यात देणाऱ्याचे नाव सही</div>
                 </div>
             </div>
     
@@ -659,6 +776,42 @@ const Routepaperview = () => {
         </html>
         `);
     };
+
+    const getAllItemNames = (data: DispatchListRow[]) => {
+        const allItems = new Map<string, boolean>();
+        
+        data.forEach(row => {
+            if (row.item_name) {
+                const nm = row.item_name.toLowerCase().trim();
+                const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
+                
+                if (match) {
+                    allItems.set(match.key, true);
+                } else {
+                    allItems.set(row.item_name, true);
+                }
+            }
+        });
+        
+        // Create array with mapped items first, then unmapped items
+        const mappedKeys = mrGrainColumns.map(g => g.key);
+        const orderedItems: string[] = [];
+        
+        // Add mapped items in order
+        mappedKeys.forEach(key => {
+            if (allItems.has(key)) {
+                orderedItems.push(key);
+                allItems.delete(key);
+            }
+        });
+        
+        // Add unmapped items alphabetically
+        const unmappedItems = Array.from(allItems.keys()).sort();
+        orderedItems.push(...unmappedItems);
+        
+        return orderedItems;
+    };
+
 
     // Update the handlePrint function around line 644
     const handlePrint = (routeNumber: string) => {
@@ -669,7 +822,7 @@ const Routepaperview = () => {
         }
 
         // Get all unique items in the route
-        // const allItemNames = getAllItemNames(routeData);
+        const allItemNames = getAllItemNames(routeData);
 
         // Group by school and calculate totals - FIXED to prevent double counting
         const schoolsMap = new Map();
@@ -700,13 +853,13 @@ const Routepaperview = () => {
                 // If item already exists, add to existing quantity
                 const existingItem = schoolData.items.get(itemKey);
                 if (existingItem) {
-                    existingItem.qty += Number(row.new_qty_dispatch) || 0;
+                    existingItem.qty += Number(row.qty_dispatch) || 0;
                 }
             } else {
                 // Add new item
                 schoolData.items.set(itemKey, {
                     name: row.item_name,
-                    qty: Number(row.new_qty_dispatch) || 0,
+                    qty: Number(row.qty_dispatch) || 0,
                     unit: row.unit
                 });
             }
@@ -721,11 +874,11 @@ const Routepaperview = () => {
             ...school,
             items: Array.from(school.items.values())
         })).sort((a, b) => {
-            // Sort by पावती क्रमांक (Receipt Number) in ascending order
-            const aReceipts = Array.from(a.receipts || new Set<string>()).sort();
-            const bReceipts = Array.from(b.receipts || new Set<string>()).sort();
+            // Sort by पावती क्रमांक (Receipt Number) in descending order
+            const aReceipts = Array.from(a.receipts || new Set<string>()).sort().reverse();
+            const bReceipts = Array.from(b.receipts || new Set<string>()).sort().reverse();
             
-            // Compare the first (lowest) receipt number
+            // Compare the first (highest) receipt number
             const aFirstReceipt = aReceipts[0] || '';
             const bFirstReceipt = bReceipts[0] || '';
             
@@ -739,7 +892,7 @@ const Routepaperview = () => {
             const aNum = getReceiptNumber(String(aFirstReceipt));
             const bNum = getReceiptNumber(String(bFirstReceipt));
 
-            return aNum - bNum; // Ascending order (lowest first)
+            return bNum - aNum; // Descending order (highest first)
         });
 
         // Calculate grand totals for all items
@@ -753,16 +906,16 @@ const Routepaperview = () => {
         });
 
         // Calculate overall total
-        // const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
+        const overallTotal = Object.values(grandTotals).reduce((sum, qty) => sum + qty, 0);
 
         // Get dynamic data from first route item
-        // const firstRouteItem = routeData[0];
-        // const dispatchDate = firstRouteItem?.created_at ? formatDateToDDMMYYYY(firstRouteItem.created_at) : '';
-        // const orderNo = firstRouteItem?.order_no || '';
+        const firstRouteItem = routeData[0];
+        const dispatchDate = firstRouteItem?.created_at ? formatDateToDDMMYYYY(firstRouteItem.created_at) : '';
+        const orderNo = firstRouteItem?.order_no || '';
         // const dispatchCode = firstRouteItem?.dispatch_code || '';
-        // const vehicleNo = firstRouteItem?.truckNo || '';
-        // const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
-        // const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
+        const vehicleNo = firstRouteItem?.truckNo || '';
+        const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
+        const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -772,38 +925,11 @@ const Routepaperview = () => {
                     <head>
                         <title>Route Paper - ${routeNumber}</title>
                         <style>
-                            @page {
-                                size: legal landscape;
-                                margin: 8mm 10mm;
-                            }
-                            
-                            * {
-                                box-sizing: border-box;
-                            }
-                            
                             body { 
                                 font-family: Arial, sans-serif; 
-                                margin: 0;
-                                padding: 10px;
+                                margin: 10px; 
                                 font-size: 12px;
                             }
-                            
-                            @media print {
-                                body {
-                                    margin: 0;
-                                    padding: 5mm;
-                                    transform: scale(0.8);
-                                    transform-origin: top left;
-                                    width: 125%;
-                                    height: 125%;
-                                }
-                                
-                                @page {
-                                    size: legal landscape;
-                                    margin: 8mm 10mm;
-                                }
-                            }
-                            
                             .header-table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -886,7 +1012,7 @@ const Routepaperview = () => {
                                 font-weight: bold;
                             }
                             .grain-column {
-                                min-width: 60px;
+                                min-width: 25px;
                             }
                             .serial-column {
                                 min-width: 30px;
@@ -904,12 +1030,125 @@ const Routepaperview = () => {
                                 margin-top: 15px; 
                                 text-align: center;
                                 font-size: 11px;
-                                padding-top: 5px;
+                               
+                                padding-top: 1px;
+                            }
+                            @media print {
+                                body { margin: 5mm; }
+                                .table { font-size: 10px; }
                             }
                         </style>
                     </head>
                     <body>
-                        <!-- ... rest of your HTML ... -->
+                        <table class="header-table">
+                            <tr>
+                                <td style="width:44%; text-align:center;">
+                                    <div class="header-org">
+                                        मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
+                                        शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
+                                    </div>
+                                    <div class="dataflex">
+                                        <div>
+                                            Route No. - ${routeNumber}<br>
+                                            Route Date - ${dispatchDate}<br>
+                                            पुरवठा माहे - ${periodText} (${daysText})<br>
+                                            Order No. - ${orderNo}<br>
+                                            Total Weight - <b>${overallTotal.toFixed(2)}</b>
+                                        </div>
+                                        <div>
+                                            <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
+                                        </div>
+                                        <div>
+                                            Driver MOTIRAM PADAVI<br>
+                                            Mob 9022899429<br>
+                                            Vehicle No ${vehicleNo}<br>
+                                            <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                        </div>
+                                    </div>
+                                    <div class="center-title">
+                                        मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th class="serial-column">अ. क्र.</th>
+                                    <th class="left-align">तालुका</th>
+                                    <th class="left-align">पावती क्रमांक</th>
+                                    <th class="left-align">केंद्र</th>
+                                    <th class="left-align">UDISE Code</th>
+                                    <th class="left-align">शाळा</th>
+                                    <th class="center-align whitespace-nowrap"> वर्ग </th>
+                                    <th class="center-align">पट संख्या</th>
+                                    ${allItemNames.map(item =>
+                                        `<th class="grain-column">${item}</th>`
+                                    ).join('')}
+                                    <th class="center-align">एकूण</th>
+                                    <th class="center-align">हेड मास्टर मोबाइल No.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${schools.map((school, index) => {
+                                    const grainSums = sumGrainsForGroup(school.items);
+                                    const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+                                    const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+                                    return `
+                                        <tr>
+                                            <td class="center-align">${index + 1}</td>
+                                            <td class="left-align">${school.taluka_name || '-'}</td>
+                                            <td class="left-align">${receipts}</td>
+                                            <td class="left-align">${school.center_name}</td>
+                                            <td class="center-align">${school.udise_number || '-'}</td>
+                                            <td class="left-align">${school.schoolname}</td>
+                                       <td class="center-align w-20 min-w-0" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${school.class_range}</td>
+                                            <td class="center-align">${school.patsankhya || '-'}</td>
+                                            ${allItemNames.map(item =>
+                                                `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
+                                            ).join('')}
+                                            <td class="right-align">${schoolTotal.toFixed(2)}</td>
+                                            <td class="center-align">-</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                                <tr class="total-row">
+                                    <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
+                                    ${allItemNames.map(item =>
+                                        `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
+                                    ).join('')}
+                                    <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
+                                    <td class="center-align"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                
+                        <div class="footer">
+                            <table style="width: 100%; margin-top: 2px;">
+                                <tr>
+                                    <td style="width: 33%; text-align: center;">
+                                        <p>ड्रायव्हर सही</p>
+                                        
+                                    </td>
+                                   
+                                    <td style="width: 33%; text-align: center;">
+                                        <p>प्रतिनिधी मो.</p>
+                                       
+                                    </td>
+                                </tr>
+                            </table>
+                       
+                        </div>
+                
+                        <script>
+                            window.onload = function() {
+                                window.print();
+                                setTimeout(function() {
+                                    window.close();
+                                }, 1000);
+                            }
+                        </script>
                     </body>
                 </html>
             `);
@@ -919,56 +1158,65 @@ const Routepaperview = () => {
     // <p style="margin-top: 5px;">Route: ${routeNumber} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
 
     // Update the groupedByRoute creation logic (around line 950)
-    const groupedByRoute: RouteGroupRow[] = getUniqueRouteNumbers().map(routeNumber => {
-        const routeData = getDataByRouteNumber(routeNumber);
+    const groupedByRoute: RouteGroupRow[] = useMemo(() => {
+        console.log('Calculating groupedByRoute from', getUniqueRouteNumbers.length, 'routes');
         
-        if (routeData.length === 0) {
+        const grouped = getUniqueRouteNumbers.map(routeNumber => {
+            // Get data for this route from filteredDispatchList
+            const routeData = filteredDispatchList.filter(item => item.route_number === routeNumber);
+            
+            if (routeData.length === 0) {
+                console.warn('No data found for route:', routeNumber);
+                return {
+                    route_number: routeNumber,
+                    dispatch_code: '',
+                    order_no: '',
+                    taluka: '',
+                    center_name: '',
+                    truckNo: '',
+                    class_range: '',
+                    created_at: '',
+                    school_count: 0,
+                    total_items: 0,
+                    total_weight: 0
+                };
+            }
+
+            // Group by dispatch_code to get unique dispatch codes for this route
+            const uniqueDispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
+            
+            // Get first item for basic info
+            const firstItem = routeData[0];
+
+            // Count unique school + class_range combinations
+            const uniqueSchoolClassCombinations = new Set(
+                routeData.map(item => `${item.school_id}_${item.class_range || ''}`)
+            ).size;
+
+            // Calculate total weight for this route
+            const totalWeight = routeData.reduce((sum, item) => sum + (Number(item.new_qty_dispatch) || 0), 0);
+
+            // Get all class ranges for this route
+            const classRanges = [...new Set(routeData.map(item => item.class_range || '').filter(Boolean))];
+
             return {
                 route_number: routeNumber,
-                dispatch_code: '',
-                order_no: '',
-                taluka: '',
-                center_name: '',
-                truckNo: '',
-                class_range: '',
-                created_at: '',
-                school_count: 0,
-                total_items: 0,
-                total_weight: 0
+                dispatch_code: uniqueDispatchCodes.join(', '), // Show all dispatch codes
+                order_no: firstItem?.order_no || '',
+                taluka: firstItem?.taluka_name || '',
+                center_name: firstItem?.center_name || '',
+                truckNo: firstItem?.truckNo || '',
+                class_range: classRanges.join(', '), // Show all class ranges
+                created_at: firstItem?.created_at || '',
+                school_count: uniqueSchoolClassCombinations,
+                total_items: routeData.length,
+                total_weight: totalWeight
             };
-        }
-
-        // Group by dispatch_code to get unique dispatch codes for this route
-        const uniqueDispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
+        });
         
-        // Get first item for basic info
-        const firstItem = routeData[0];
-
-        // Count unique school + class_range combinations
-        const uniqueSchoolClassCombinations = new Set(
-            routeData.map(item => `${item.school_id}_${item.class_range || ''}`)
-        ).size;
-
-        // Calculate total weight for this route
-        const totalWeight = routeData.reduce((sum, item) => sum + (Number(item.new_qty_dispatch) || 0), 0);
-
-        // Get all class ranges for this route
-        const classRanges = [...new Set(routeData.map(item => item.class_range || '').filter(Boolean))];
-
-        return {
-            route_number: routeNumber,
-            dispatch_code: uniqueDispatchCodes.join(', '), // Show all dispatch codes
-            order_no: firstItem?.order_no || '',
-            taluka: firstItem?.taluka_name || '',
-            center_name: firstItem?.center_name || '',
-            truckNo: firstItem?.truckNo || '',
-            class_range: classRanges.join(', '), // Show all class ranges
-            created_at: firstItem?.created_at || '',
-            school_count: uniqueSchoolClassCombinations,
-            total_items: routeData.length,
-            total_weight: totalWeight
-        };
-    });
+        console.log('Grouped by route result:', grouped.length, 'groups', grouped);
+        return grouped;
+    }, [getUniqueRouteNumbers, filteredDispatchList]);
 
     // Update the table columns to show grouped data properly
     const listColumns: Column<RouteGroupRow>[] = [
@@ -1072,30 +1320,30 @@ const Routepaperview = () => {
         },
     ];
 
-    // Simplified toolbar with only date filter
+    // Simplified toolbar with From Date and End Date filters
     const toolbar = (
         <div className="space-y-4">
             <div className="flex items-center gap-4">
                 <div className="flex flex-col">
-                    {/* <span className="text-xs text-gray-600 mb-1 text-left">Date Filter</span> */}
+                    <span className="text-xs text-gray-600 mb-1 text-left">From Date</span>
                     <div className="relative">
                         <input
-                            ref={datePickerRef}
+                            ref={fromDatePickerRef}
                             type="text"
-                            placeholder="Select Date"
+                            placeholder="Select From Date"
                             className="h-10 rounded-md border px-3 pr-8 text-sm w-48"
                             readOnly
                         />
                         <button
                             type="button"
                             onClick={() => {
-                                setSelectedDate('');
-                                if (flatpickrInstanceRef.current) {
-                                    flatpickrInstanceRef.current.clear();
+                                setFromDate('');
+                                if (flatpickrFromInstanceRef.current) {
+                                    flatpickrFromInstanceRef.current.clear();
                                 }
                             }}
                             className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
-                            title="Clear Date Filter"
+                            title="Clear From Date"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1104,13 +1352,52 @@ const Routepaperview = () => {
                     </div>
                 </div>
 
-               
+                <div className="flex flex-col">
+                    <span className="text-xs text-gray-600 mb-1 text-left">End Date</span>
+                    <div className="relative">
+                        <input
+                            ref={endDatePickerRef}
+                            type="text"
+                            placeholder="Select End Date"
+                            className="h-10 rounded-md border px-3 pr-8 text-sm w-48"
+                            readOnly
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEndDate('');
+                                if (flatpickrEndInstanceRef.current) {
+                                    flatpickrEndInstanceRef.current.clear();
+                                }
+                            }}
+                            className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+                            title="Clear End Date"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 
+    // Debug logging before render
+    useEffect(() => {
+        console.log('=== Routepaperview Render Debug ===');
+        console.log('dispatchList count:', dispatchList.length);
+        console.log('filteredDispatchList count:', filteredDispatchList.length);
+        console.log('fromDate:', fromDate);
+        console.log('endDate:', endDate);
+        console.log('groupedByRoute count:', groupedByRoute.length);
+        console.log('groupedByRoute data:', groupedByRoute);
+        console.log('===================================');
+    }, [dispatchList.length, filteredDispatchList.length, fromDate, endDate, groupedByRoute.length]);
+
     return (
         <div className="">
+            {isLoading && <Loader />}
             <Filterroutepaper
                 data={groupedByRoute}
                 columns={listColumns}
