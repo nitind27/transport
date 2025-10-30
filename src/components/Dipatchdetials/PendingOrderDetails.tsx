@@ -739,6 +739,11 @@ const pendingOrdersData = useMemo(() => {
       console.log('Data received:', data.length, 'records');
       console.log('Sample data:', data[0]);
       
+      // Reset cached quantity maps so UI reflects latest server values immediately
+      setOriginalQuantities(new Map());
+      setRemainingQuantities(new Map());
+      setEditableQuantities(new Map());
+      setEditingRow(null);
       setSchoolWiseOrders(data);
     } catch (error) {
       console.error('Error fetching school-wise orders with remaining quantities:', error);

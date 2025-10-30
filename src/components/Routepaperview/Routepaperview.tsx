@@ -131,6 +131,9 @@ const Routepaperview = () => {
     const [schoolDataById, setSchoolDataById] = useState<Map<number, SchoolDataRow>>(new Map());
     const [dispatchList, setDispatchList] = useState<DispatchListRow[]>([]);
     const [filteredDispatchList, setFilteredDispatchList] = useState<DispatchListRow[]>([]);
+    const [totalCount, setTotalCount] = useState<number>(0);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [perPage, setPerPage] = useState<number>(50);
 
     // Initialize Flatpickr for From Date picker
     useEffect(() => {
@@ -251,10 +254,12 @@ const Routepaperview = () => {
 //         toast.error('Failed to delete route');
 //     }
 // };
-    const fetchDispatchList = useCallback(async () => {
+    const fetchDispatchList = useCallback(async (opts?: { page?: number; limit?: number }) => {
         try {
             setIsLoading(true);
-            console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate);
+            const effectivePage = opts?.page ?? currentPage;
+            const effectiveLimit = opts?.limit ?? perPage;
+            console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate, 'page:', effectivePage, 'limit:', effectiveLimit);
             
             // Build query parameters with date filters
             const params = new URLSearchParams();
@@ -264,6 +269,8 @@ const Routepaperview = () => {
             if (endDate && endDate.trim() !== '') {
                 params.append('endDate', endDate.trim());
             }
+            params.append('page', String(effectivePage));
+            params.append('limit', String(effectiveLimit));
             
             const queryString = params.toString();
             const url = queryString ? `/api/routeview/pagination?${queryString}` : '/api/routeview/pagination';
@@ -280,8 +287,12 @@ const Routepaperview = () => {
                 return;
             }
             
-            const data = await res.json();
-            console.log('API Data received:', data.length, 'items');
+            const payload = await res.json();
+            const data = Array.isArray(payload) ? payload : payload.rows;
+            const total = Array.isArray(payload) ? data.length : Number(payload.total || 0);
+            const page = Array.isArray(payload) ? effectivePage : Number(payload.page || effectivePage);
+            const limit = Array.isArray(payload) ? effectiveLimit : Number(payload.limit || effectiveLimit);
+            console.log('API Data received:', data.length, 'items', 'total:', total, 'page:', page, 'limit:', limit);
             if (data.length > 0) {
                 console.log('Sample item:', data[0]);
                 console.log('Sample created_at:', data[0]?.created_at);
@@ -296,13 +307,16 @@ const Routepaperview = () => {
             console.log('Processed data with route:', dataWithRoute.length, 'items');
             
             setDispatchList(dataWithRoute);
+            setTotalCount(total);
+            setCurrentPage(page);
+            setPerPage(limit);
         } catch (e) {
             console.error('Error fetching dispatch list:', e);
             toast.error('Failed to load dispatch data. Please check console for details.');
         } finally {
             setIsLoading(false);
         }
-    }, [fromDate, endDate]);
+    }, [fromDate, endDate, currentPage, perPage]);
 
     const fetchSchoolDataMap = async () => {
         try {
@@ -334,23 +348,43 @@ const Routepaperview = () => {
         fetchSchoolDataMap();
     }, []);
 
-    // Fetch dispatch list when dates change (handles both initial load and filter changes)
-    useEffect(() => {
-        // Debounce to avoid rapid API calls when both dates change
-        const timeoutId = setTimeout(() => {
-            // Only fetch if at least one date is set
-            if (fromDate || endDate) {
-                console.log('Dates changed, fetching data...', { fromDate, endDate });
-                fetchDispatchList();
-            } else {
-                console.log('No dates set, clearing data');
-                setDispatchList([]);
-                setFilteredDispatchList([]);
-            }
-        }, 300); // 300ms debounce
+    // Remove auto-fetch on date change; fetch will be triggered explicitly on Search click
 
-        return () => clearTimeout(timeoutId);
-    }, [fromDate, endDate]); // Add fromDate and endDate as dependencies
+    const onSearchClick = useCallback(() => {
+        if (!fromDate || !endDate) {
+            toast.error('Please select both From Date and End Date');
+            return;
+        }
+        if (fromDate > endDate) {
+            toast.error('From Date cannot be after End Date');
+            return;
+        }
+        // reset to first page on new search
+        setCurrentPage(1);
+        fetchDispatchList({ page: 1, limit: perPage });
+    }, [fromDate, endDate, fetchDispatchList, perPage]);
+
+    // Initial fetch for today's date range so default data shows
+    useEffect(() => {
+        fetchDispatchList({ page: 1, limit: perPage });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Refresh when a dispatch is submitted elsewhere in the app
+    useEffect(() => {
+        const onSubmitted = () => {
+            setCurrentPage(1);
+            fetchDispatchList({ page: 1, limit: perPage });
+        };
+        if (typeof window !== 'undefined') {
+            window.addEventListener('dispatch:submitted', onSubmitted as EventListener);
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('dispatch:submitted', onSubmitted as EventListener);
+            }
+        };
+    }, [fetchDispatchList, perPage]);
 
     // Enhanced grain mapping for Marathi names - Added more comprehensive aliases
     const mrGrainColumns = [
@@ -1379,6 +1413,18 @@ const Routepaperview = () => {
                         </button>
                     </div>
                 </div>
+
+                <div className="flex items-end h-10">
+                    <button
+                        type="button"
+                        onClick={onSearchClick}
+                        disabled={isLoading}
+                        className={`h-10 px-4 rounded-md text-sm font-medium text-white ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                        title="Search"
+                    >
+                        {isLoading ? 'Searching...' : 'Search'}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -1405,6 +1451,15 @@ const Routepaperview = () => {
                 filterKey={undefined}
                 toolbar={toolbar}
                 groupByKey="route_number"
+                serverMode={true}
+                totalItems={totalCount}
+                initialPerPage={perPage}
+                initialPage={currentPage}
+                onPageChange={(page, limit) => {
+                    setPerPage(limit);
+                    setCurrentPage(page);
+                    fetchDispatchList({ page, limit });
+                }}
                 colspanKeys={[
                     "route_number",
                     "dispatch_code",

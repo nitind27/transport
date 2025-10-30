@@ -15,6 +15,11 @@ type Props<T> = {
   groupByKey?: keyof T; // New prop for grouping
   colspanKeys?: (keyof T)[]; // Keys that should use colspan
   highlightGroups?: string[];
+  serverMode?: boolean;
+  totalItems?: number;
+  onPageChange?: (page: number, perPage: number) => void;
+  initialPerPage?: number;
+  initialPage?: number;
 };
 
 type GroupedData<T> = {
@@ -37,11 +42,16 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
   groupByKey,
   colspanKeys = [],
   // highlightGroups = [], // NEW
+  serverMode = false,
+  totalItems,
+  onPageChange,
+  initialPerPage,
+  initialPage,
 }: Props<T>) {
   const [filter] = useState("");
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(initialPage || 1);
+  const [perPage, setPerPage] = useState(initialPerPage || 10);
 
   const toStringVal = (v: unknown) => String(v ?? "");
 
@@ -189,6 +199,25 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
 
   // Pagination logic
   const paginatedData = useMemo(() => {
+    if (serverMode) {
+      // Data is already server-paginated
+      if (!groupByKey) return data as ExtendedData<T>[];
+      // when grouped, ensure first/row span flags are set per group for provided page data
+      const grouped = data.reduce((acc, item) => {
+        const key = String(item[groupByKey]);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {} as Record<string, T[]>);
+      return Object.entries(grouped).flatMap(([groupKey, items]) =>
+        items.map((it, idx) => ({
+          ...(it),
+          _isFirstInGroup: idx === 0,
+          _groupCount: items.length,
+          _groupKey: groupKey,
+        }))
+      ) as ExtendedData<T>[];
+    }
     if (!groupByKey) {
       const startIndex = (currentPage - 1) * perPage;
       const endIndex = startIndex + perPage;
@@ -214,6 +243,9 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
   }, [filteredData, currentPage, perPage, groupByKey, filteredGroupedData]);
 
   const totalPages = useMemo(() => {
+    if (serverMode && totalItems != null) {
+      return Math.max(1, Math.ceil(totalItems / perPage));
+    }
     if (!groupByKey) {
       return Math.ceil(filteredData.length / perPage);
     }
@@ -240,14 +272,22 @@ export function Filterroutepaper<T extends Record<string, unknown>>({
   const CustomPagination = () => {
     const handlePageChange = (page: number) => {
       setCurrentPage(page);
+      if (serverMode && onPageChange) {
+        onPageChange(page, perPage);
+      }
     };
 
     const handlePerPageChange = (newPerPage: number) => {
       setPerPage(newPerPage);
       setCurrentPage(1);
+      if (serverMode && onPageChange) {
+        onPageChange(1, newPerPage);
+      }
     };
 
-    const totalRecords = groupByKey ? filteredGroupedData.length : filteredData.length;
+    const totalRecords = serverMode && totalItems != null
+      ? totalItems
+      : (groupByKey ? filteredGroupedData.length : filteredData.length);
     const startRecord = (currentPage - 1) * perPage + 1;
     const endRecord = Math.min(currentPage * perPage, totalRecords);
 

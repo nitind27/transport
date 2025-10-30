@@ -9,24 +9,80 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const fromDate = url.searchParams.get('fromDate');
     const endDate = url.searchParams.get('endDate');
-    
-    // Default to current date if no dates provided
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    const startDate = fromDate || todayStr;
-    const endDateFilter = endDate || todayStr;
-    
-    // Build the WHERE clause with date filtering
+    const pageParam = url.searchParams.get('page');
+    const limitParam = url.searchParams.get('limit');
+
+    // Build the WHERE clause and params dynamically
     let whereClause = `WHERE d.status = 'Active'`;
-    
-    // Add date filter to WHERE clause
-    // Format dates for MySQL: YYYY-MM-DD and include time for endDate to cover entire day
-    // const startDateTime = `${startDate} 00:00:00`;
-    // const endDateTime = `${endDateFilter} 23:59:59`;
-    
-    whereClause += ` AND DATE(d.created_at) >= DATE(?) AND DATE(d.created_at) <= DATE(?)`;
-    
+    const params: Array<string> = [];
+
+    // Validate YYYY-MM-DD format
+    const isValidDate = (d?: string | null) => !!(d && /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+    let startDate = isValidDate(fromDate) ? fromDate! : undefined;
+    let endDateFilter = isValidDate(endDate) ? endDate! : undefined;
+
+    // If both present but reversed, swap
+    if (startDate && endDateFilter && startDate > endDateFilter) {
+      const tmp = startDate;
+      startDate = endDateFilter;
+      endDateFilter = tmp;
+    }
+
+    // If only one bound is provided, treat it as a single-day filter
+    if (startDate && !endDateFilter) endDateFilter = startDate;
+    if (!startDate && endDateFilter) startDate = endDateFilter;
+
+    // Use index-friendly range filter (no function on column)
+    if (startDate && endDateFilter) {
+      whereClause += ` AND d.created_at >= ? AND d.created_at < DATE_ADD(?, INTERVAL 1 DAY)`;
+      params.push(`${startDate} 00:00:00`, `${endDateFilter} 00:00:00`);
+    }
+
+    // Pagination: default 50 per page
+    const page = Math.max(1, Number(pageParam) || 1);
+    const limit = Math.max(1, Math.min(200, Number(limitParam) || 50));
+    const offset = (page - 1) * limit;
+
+    // Build a route key (group key) used in UI: prefer route_number else dispatch_code
+    const routeKeyExpr = `COALESCE(rp.route_number, d.dispatch_code)`;
+
+    // Total distinct route groups in date filter
+    const [totalRows] = await pool.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM (
+        SELECT ${routeKeyExpr} AS route_key
+        FROM dispatch_details d
+        LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
+        ${whereClause}
+        GROUP BY route_key
+      ) AS sub_total`,
+      params
+    );
+
+    const total = Number((totalRows)[0]?.total || 0);
+
+    // Get page route keys ordered by latest created_at
+    const [keyRows] = await pool.query<RowDataPacket[]>(
+      `SELECT route_key FROM (
+        SELECT ${routeKeyExpr} AS route_key, MAX(d.created_at) as last_created
+        FROM dispatch_details d
+        LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
+        ${whereClause}
+        GROUP BY route_key
+        ORDER BY last_created DESC
+        LIMIT ? OFFSET ?
+      ) AS sub_keys`,
+      [...params, limit, offset]
+    );
+
+    const keys = (keyRows as { route_key: string }[]).map((k: { route_key: string }) => k.route_key).filter(Boolean);
+
+    if (keys.length === 0) {
+      return NextResponse.json({ rows: [], total, page, limit });
+    }
+
+    // Fetch rows for selected route keys
+    const placeholders = keys.map(() => '?').join(',');
     const [rows] = await pool.query<RowDataPacket[]>(`
 SELECT d.*,
        z.order_no,
@@ -51,11 +107,12 @@ LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
 ${whereClause}
+AND ${routeKeyExpr} IN (${placeholders})
 GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
-    `, [startDate, endDateFilter]);
-    
-    return NextResponse.json(rows);
+    `, [...params, ...keys]);
+
+    return NextResponse.json({ rows, total, page, limit });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ message: 'Failed to fetch dispatch' }, { status: 500 });
