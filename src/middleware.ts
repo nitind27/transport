@@ -10,6 +10,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Note: sessionStorage check is done client-side in CategoryIdGuard component
+  // Middleware only checks for auth_token cookie
   if (!authToken && !isLoginPage) {
     return NextResponse.redirect(new URL('/signin', req.url));
   }

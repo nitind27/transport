@@ -24,7 +24,7 @@ export async function POST() {
       }
     }
 
-    // Create expired cookie
+    // Create expired cookie (category_id is in sessionStorage, cleared client-side)
     const cookie = serialize('auth_token', '', {
       httpOnly: true,
       path: '/',
@@ -45,7 +45,7 @@ export async function POST() {
     if (connection) connection.release();
     console.error('Logout error:', error);
     
-    // Even if database update fails, clear the cookie
+    // Even if database update fails, clear the cookie (category_id is in sessionStorage)
     const cookie = serialize('auth_token', '', {
       httpOnly: true,
       path: '/',

@@ -9,6 +9,7 @@ import { ToggleProvider } from '@/context/ToggleContext';
 import GlobleLoader from '@/components/common/GlobleLoader';
 import { Metadata } from 'next';
 import GoogleMapProvider from '@/components/farmersdata/GoogleMapProvider';
+import CategoryIdGuard from '@/components/common/CategoryIdGuard';
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -34,7 +35,11 @@ export default function RootLayout({
 
           <ToggleProvider>
             <GoogleMapProvider>
-              <SidebarProvider><GlobleLoader />{children}<ToastContainer
+              <SidebarProvider>
+                <CategoryIdGuard />
+                <GlobleLoader />
+                {children}
+                <ToastContainer
                 position="top-right"
 
                 autoClose={3000}
