@@ -655,7 +655,7 @@ const Dashboardtaluka = () => {
                 {/* Percentage Row */}
                 <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
                   <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
-                    <span className="font-bold">Percentage of Schools Distributed</span>
+                    <span className="font-bold">एकूण वाटप(%)</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{talukaDistributionPercentage}%</td>
                 </tr>
@@ -668,7 +668,7 @@ const Dashboardtaluka = () => {
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण केंद्र</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">पूर्ण झालेले केंद्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण केंद्र वाटप</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">बाकी केंद्र</th>
                 </tr>
               </thead>
@@ -696,7 +696,7 @@ const Dashboardtaluka = () => {
                 {/* Percentage Row */}
                 <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
                   <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
-                    <span className="font-bold">Percentage of Centers Completed</span>
+                    <span className="font-bold">एकूण वाटप(%)</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{centerCompletionPercentage}%</td>
                 </tr>
