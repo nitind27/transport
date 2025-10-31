@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import ApexCharts to avoid SSR issues
@@ -41,20 +41,52 @@ interface OrderCount {
   remaining_schools: number;
 }
 
+// Interface matching the expected API response structure for centers (raw data types)
+interface CenterApiResponse {
+  center_id: number;
+  name: string;
+  marathi_name: string;
+  taluka_id: number;
+  taluka_name: string;
+  total_schools: string | number;
+  schools_with_orders: string | number;
+  distributed_schools: string | number;
+  remaining_schools: string | number;
+}
+
+// Interface for transformed center dashboard data
+interface CenterData {
+  center_id: number;
+  name: string;
+  marathi_name: string;
+  taluka_id: number;
+  taluka_name: string;
+  total_schools: number;
+  schools_with_orders: number;
+  distributed_schools: number;
+  remaining_schools: number;
+  date: string;
+}
+
 const Dashboardtaluka = () => {
   const [talukaData, setTalukaData] = useState<TalukaData[]>([]);
+  const [centerData, setCenterData] = useState<CenterData[]>([]);
   const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
   const [selectedOrderNo] = useState('20');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch both taluka data and order counts
-      const [talukaResponse, orderCountsResponse] = await Promise.all([
+      // Fetch taluka data, center data, and order counts
+      const [talukaResponse, centerResponse, orderCountsResponse] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard?order_no=${selectedOrderNo}`, {
+          cache: 'no-store'
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centerdashboard?order_no=${selectedOrderNo}`, {
           cache: 'no-store'
         }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schoolwiseorders/count`, {
@@ -62,11 +94,12 @@ const Dashboardtaluka = () => {
         })
       ]);
 
-      if (!talukaResponse.ok || !orderCountsResponse.ok) {
+      if (!talukaResponse.ok || !centerResponse.ok || !orderCountsResponse.ok) {
         throw new Error('Failed to fetch data');
       }
 
       const talukaData: TalukaApiResponse[] = await talukaResponse.json();
+      const centerDataRaw: CenterApiResponse[] = await centerResponse.json();
       const orderCountsData: OrderCount[] = await orderCountsResponse.json();
 
       // Transform taluka data
@@ -89,7 +122,30 @@ const Dashboardtaluka = () => {
         date: currentDate
       }));
 
+      // Transform center data
+      const processedCenterData: CenterData[] = centerDataRaw.map((center) => ({
+        center_id: center.center_id,
+        name: center.name,
+        marathi_name: center.marathi_name || center.name,
+        taluka_id: center.taluka_id,
+        taluka_name: center.taluka_name || '',
+        total_schools: typeof center.total_schools === 'string'
+          ? parseInt(center.total_schools) || 0
+          : center.total_schools,
+        schools_with_orders: typeof center.schools_with_orders === 'string'
+          ? parseInt(center.schools_with_orders) || 0
+          : center.schools_with_orders || 0,
+        distributed_schools: typeof center.distributed_schools === 'string'
+          ? parseInt(center.distributed_schools) || 0
+          : center.distributed_schools,
+        remaining_schools: Math.max(0, typeof center.remaining_schools === 'string'
+          ? parseInt(center.remaining_schools) || 0
+          : center.remaining_schools),
+        date: currentDate
+      }));
+
       setTalukaData(processedTalukaData);
+      setCenterData(processedCenterData);
       setOrderCounts(orderCountsData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -102,20 +158,60 @@ const Dashboardtaluka = () => {
     fetchData();
   }, [fetchData]);
 
-  // Calculate totals
-  const totalSchoolsWithOrders = talukaData.reduce((sum, taluka) => sum + taluka.schools_with_orders, 0);
-  const totalDistributed = talukaData.reduce((sum, taluka) => sum + taluka.distributed_schools, 0);
-  const totalRemaining = talukaData.reduce((sum, taluka) => sum + taluka.remaining_schools, 0);
-  const distributionPercentage = totalSchoolsWithOrders > 0
-    ? ((totalDistributed / totalSchoolsWithOrders) * 100).toFixed(1)
+  // Calculate totals for taluka
+  const totalTalukaSchoolsWithOrders = talukaData.reduce((sum, taluka) => sum + taluka.schools_with_orders, 0);
+  const totalTalukaDistributed = talukaData.reduce((sum, taluka) => sum + taluka.distributed_schools, 0);
+  const totalTalukaRemaining = talukaData.reduce((sum, taluka) => sum + taluka.remaining_schools, 0);
+  const talukaDistributionPercentage = totalTalukaSchoolsWithOrders > 0
+    ? ((totalTalukaDistributed / totalTalukaSchoolsWithOrders) * 100).toFixed(1)
+    : '0.0';
+
+  // Group center data by taluka and calculate center counts
+  const centerDataByTaluka = useMemo(() => {
+    const grouped: Record<number, {
+      taluka_id: number;
+      taluka_name: string;
+      total_centers: number;
+      completed_centers: number; // Centers with all schools distributed (remaining = 0)
+      pending_centers: number; // Centers with pending schools (remaining > 0)
+    }> = {};
+
+    centerData.forEach(center => {
+      if (!grouped[center.taluka_id]) {
+        grouped[center.taluka_id] = {
+          taluka_id: center.taluka_id,
+          taluka_name: center.taluka_name || '',
+          total_centers: 0,
+          completed_centers: 0,
+          pending_centers: 0
+        };
+      }
+
+      grouped[center.taluka_id].total_centers += 1;
+      if (center.remaining_schools === 0 && center.schools_with_orders > 0) {
+        grouped[center.taluka_id].completed_centers += 1;
+      } else if (center.remaining_schools > 0) {
+        grouped[center.taluka_id].pending_centers += 1;
+      }
+    });
+
+    return Object.values(grouped).sort((a, b) => a.taluka_name.localeCompare(b.taluka_name));
+  }, [centerData]);
+
+  // Calculate totals for center counts
+  const totalCentersAllTalukas = centerDataByTaluka.reduce((sum, item) => sum + item.total_centers, 0);
+  const totalCompletedCenters = centerDataByTaluka.reduce((sum, item) => sum + item.completed_centers, 0);
+  const totalPendingCenters = centerDataByTaluka.reduce((sum, item) => sum + item.pending_centers, 0);
+  const centerCompletionPercentage = totalCentersAllTalukas > 0
+    ? ((totalCompletedCenters / totalCentersAllTalukas) * 100).toFixed(1)
     : '0.0';
 
   // Get current order details
   const currentOrder = orderCounts.find(order => order.order_no === selectedOrderNo);
 
-  // Function to create single comprehensive chart data for all talukas
+  // Function to create single comprehensive chart data - always shows taluka data
   const createComprehensiveChartData = () => {
-    // Check if we have data
+    // Check if we have taluka data
     if (!talukaData || talukaData.length === 0) {
       return {
         series: [],
@@ -282,7 +378,7 @@ const Dashboardtaluka = () => {
             };
           }) {
             const categories = ['एकूण शाळा', 'एकूण शाळा वाटप', 'बाकी शाळा'];
-            const talukaName = w.config.xaxis.categories[dataPointIndex];
+            const itemName = w.config.xaxis.categories[dataPointIndex];
             const category = categories[seriesIndex];
             const value = series[seriesIndex][dataPointIndex];
       
@@ -297,7 +393,7 @@ const Dashboardtaluka = () => {
                 box-shadow: 0 4px 12px rgba(0,0,0,0.25);
                 min-width: 200px;
                 ">
-                <div style="color: #fff; margin-bottom: 4px;"><strong>${talukaName}</strong></div>
+                <div style="color: #fff; margin-bottom: 4px;"><strong>${itemName}</strong></div>
                 <div style="color: #fff;">${category}: <span style="color: #fff;">${value} शाळा</span></div>
               </div>
             `
@@ -332,8 +428,8 @@ const Dashboardtaluka = () => {
     };
   };
 
-  // Get chart data once to avoid multiple calls
-  const chartData = createComprehensiveChartData();
+  // Get chart data - always shows taluka data, recalculates when talukaData changes
+  const chartData = useMemo(() => createComprehensiveChartData(), [talukaData]);
 
   if (loading) {
     return (
@@ -475,7 +571,7 @@ const Dashboardtaluka = () => {
           </div>
         </div>
 
-        {/* Single Comprehensive Bar Chart Section */}
+        {/* Single Comprehensive Bar Chart Section - Always shows Taluka data */}
         <div className="mb-8">
           <div className="bg-transparent">
             {talukaData.length > 0 ? (
@@ -496,52 +592,120 @@ const Dashboardtaluka = () => {
           </div>
         </div>
 
+        {/* Tabs - Only affects table, not chart - Button style */}
+        <div className="mb-6">
+          <div className="grid grid-cols-12 gap-3">
+            <button
+              onClick={() => setActiveTab('taluka')}
+              className={`col-span-6 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                activeTab === 'taluka'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              तालुका निहाय
+            </button>
+            <button
+              onClick={() => setActiveTab('center')}
+              className={`col-span-6 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                activeTab === 'center'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              केंद्र निहाय
+            </button>
+          </div>
+        </div>
+
         {/* Table with reduced padding */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-300 rounded-lg overflow-hidden">
-            <thead>
-              <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा वाटप</th>
-                <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">बाकी शाळा</th>
-              </tr>
-            </thead>
-            <tbody>
-              {talukaData.map((taluka, index) => (
-                <tr key={taluka.taluka_id} className="hover:bg-gray-50 transition-colors duration-200">
-                  <td className="border border-gray-300 px-3 py-2 text-sm">{index + 1}</td>
-                  <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.name}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.schools_with_orders}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.distributed_schools}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.remaining_schools}</td>
+          {activeTab === 'taluka' ? (
+            <table className="w-full border-collapse border border-gray-300 rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा वाटप</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">बाकी शाळा</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
+                {talukaData.map((taluka, index) => (
+                  <tr key={taluka.taluka_id} className="hover:bg-gray-50 transition-colors duration-200">
+                    <td className="border border-gray-300 px-3 py-2 text-sm">{index + 1}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.name}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.schools_with_orders}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.distributed_schools}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.remaining_schools}</td>
+                  </tr>
+                ))}
 
-              {/* Total Row */}
-              <tr className="bg-gradient-to-r from-gray-200 to-gray-300 font-bold">
-                <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}>
-                  <span className="font-bold">एकूण</span>
-                </td>
-                <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalSchoolsWithOrders}</td>
-                <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalDistributed}</td>
-                <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalRemaining}</td>
-              </tr>
+                {/* Total Row */}
+                <tr className="bg-gradient-to-r from-gray-200 to-gray-300 font-bold">
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}>
+                    <span className="font-bold">एकूण</span>
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalTalukaSchoolsWithOrders}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalTalukaDistributed}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalTalukaRemaining}</td>
+                </tr>
 
-              {/* Percentage Row */}
-              <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
-                <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
-                  <span className="font-bold">Percentage of Schools Distributed</span>
-                </td>
-                <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{distributionPercentage}%</td>
-              </tr>
-            </tbody>
-          </table>
+                {/* Percentage Row */}
+                <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
+                    <span className="font-bold">Percentage of Schools Distributed</span>
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{talukaDistributionPercentage}%</td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full border-collapse border border-gray-300 rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण केंद्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">पूर्ण झालेले केंद्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">बाकी केंद्र</th>
+                </tr>
+              </thead>
+              <tbody>
+                {centerDataByTaluka.map((item, index) => (
+                  <tr key={item.taluka_id} className="hover:bg-gray-50 transition-colors duration-200">
+                    <td className="border border-gray-300 px-3 py-2 text-sm">{index + 1}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{item.taluka_name || 'N/A'}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{item.total_centers}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{item.completed_centers}</td>
+                    <td className="border border-gray-300 px-3 py-2 text-center text-sm">{item.pending_centers}</td>
+                  </tr>
+                ))}
+
+                {/* Total Row */}
+                <tr className="bg-gradient-to-r from-gray-200 to-gray-300 font-bold">
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}>
+                    <span className="font-bold">एकूण</span>
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalCentersAllTalukas}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalCompletedCenters}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalPendingCenters}</td>
+                </tr>
+
+                {/* Percentage Row */}
+                <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
+                    <span className="font-bold">Percentage of Centers Completed</span>
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{centerCompletionPercentage}%</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </>
   );
 };
-
 export default Dashboardtaluka;

@@ -656,6 +656,7 @@ const Routepaperview = () => {
                     text-align: right;
                     font-weight: bold;
                     font-size: 13px;
+                    margin-right: 20px;
                     margin-top: 10px;
                     margin-bottom: 15px;
                 }
@@ -1096,7 +1097,7 @@ const Routepaperview = () => {
                                             Driver MOTIRAM PADAVI<br>
                                             Mob 9022899429<br>
                                             Vehicle No ${vehicleNo}<br>
-                                            <div class="header-center"> तळोदे जि. नंदुरबार</div>
+                                            <div class="header-center"> तळोदे जि. ${firstRouteItem?.taluka_name || ''}</div>
                                         </div>
                                     </div>
                                     <div class="center-title">
@@ -1110,7 +1111,7 @@ const Routepaperview = () => {
                             <thead>
                                 <tr>
                                     <th class="serial-column">अ. क्र.</th>
-                                    <th class="left-align">तालुका</th>
+                                   
                                     <th class="left-align">पावती क्रमांक</th>
                                     <th class="left-align">केंद्र</th>
                                     <th class="left-align">UDISE Code</th>
@@ -1132,7 +1133,7 @@ const Routepaperview = () => {
                                     return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
-                                            <td class="left-align">${school.taluka_name || '-'}</td>
+                                   
                                             <td class="left-align">${receipts}</td>
                                             <td class="left-align">${school.center_name}</td>
                                             <td class="center-align">${school.udise_number || '-'}</td>
@@ -1143,17 +1144,17 @@ const Routepaperview = () => {
                                                 `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
                                             ).join('')}
                                             <td class="right-align">${schoolTotal.toFixed(2)}</td>
-                                            <td class="center-align">-</td>
+                                            <td class="center-align"></td>
                                         </tr>
                                     `;
                                 }).join('')}
                                 <tr class="total-row">
-                                    <td colspan="8" class="right-align"><strong>एकूण:</strong></td>
+                                    <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
                                     ${allItemNames.map(item =>
                                         `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
                                     ).join('')}
                                     <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
-                                    <td class="center-align"></td>
+                                   
                                 </tr>
                             </tbody>
                         </table>

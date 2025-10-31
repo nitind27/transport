@@ -18,6 +18,7 @@ import { Taluka } from '../Taluka/Taluka';
 import { Village } from '../Village/village';
 import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
+import { FaPowerOff } from 'react-icons/fa'; // Add this import for flush icon
 // import { Grampanchayattype } from '../grampanchayat/gptype';
 
 type Props = {
@@ -196,6 +197,33 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     setgp(Number(item.gp_id))
   };
 
+  const handleFlush = async (userId: number) => {
+    if (!confirm('Are you sure you want to flush login status for this user?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/users/flush-login', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      toast.success('Login status flushed successfully!');
+      fetchData(); // Refresh the data
+    } catch (error) {
+      console.error('Error flushing login status:', error);
+      toast.error('Failed to flush login status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // const handleDownloadExcel = () => {
   //   // Prepare data for Excel (remove unwanted fields if needed)
   //   const exportData = data.map(({ ...rest }) => rest); // Example: exclude password
@@ -273,9 +301,17 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
 
+        
 
           <span>
             <DefaultModal id={data.user_id} fetchData={fetchData} endpoint={"users/insert"} bodyname='user_id' newstatus={data.status} />
+          </span>
+          <span
+            onClick={() => handleFlush(data.user_id)}
+            className="cursor-pointer text-orange-600 hover:text-orange-800 transition-colors duration-200"
+            title="Flush Login Status"
+          >
+            <FaPowerOff className="inline-block align-middle text-lg" />
           </span>
         </div>
       )

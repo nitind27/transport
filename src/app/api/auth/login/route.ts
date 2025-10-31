@@ -15,11 +15,13 @@ interface User {
   taluka_id: number;
   village_id: number;
   status: string;
+  loginstatus?: number; // Add loginstatus field
   created_at: Date;
   updated_at: Date;
 }
 
 export async function POST(req: Request) {
+  let connection;
   try {
     const { username, password } = await req.json();
 
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
     const [users] = await connection.query(
       `SELECT users.*, user_category.category_name 
        FROM users 
@@ -38,9 +40,9 @@ export async function POST(req: Request) {
        WHERE users.username = ?`,
       [username]
     );
-    connection.release();
 
     if (!Array.isArray(users) || users.length === 0) {
+      connection.release();
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
@@ -50,11 +52,29 @@ export async function POST(req: Request) {
     const user = users[0] as User;
    
     if (password !== user.password) {
+      connection.release();
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
       );
     }
+
+    // Check if user is already logged in (loginstatus = 1)
+    if (user.loginstatus === 1) {
+      connection.release();
+      return NextResponse.json(
+        { message: 'User is already logged in. Please logout from other device/session first.' },
+        { status: 403 }
+      );
+    }
+
+    // Update loginstatus to 1 (logged in)
+    await connection.query(
+      `UPDATE users SET loginstatus = 1 WHERE user_id = ?`,
+      [user.user_id]
+    );
+
+    connection.release();
 
     // Set a cookie with user info (e.g., user id)
     const cookie = serialize('auth_token', String(user.user_id), {
@@ -67,13 +87,14 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({
       message: 'Login successful',
-      user: { name: user.name, user_id: user.user_id, category_name: user.category_name, taluka_id: user.taluka_id, village_id: user.village_id,category_id:user.user_category_id }
+      user: { name: user.name, user_id: user.user_id, category_name: user.category_name, taluka_id: user.taluka_id, village_id: user.village_id, category_id: user.user_category_id }
     });
     response.headers.set('Set-Cookie', cookie);
 
     return response;
 
   } catch (error) {
+    if (connection) connection.release();
     console.error('Login error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },

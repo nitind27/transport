@@ -3,146 +3,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSS Grid - Card Box Example</title>
+    <title>MDM - Mid Day Meal</title>
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts - Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <style>
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        /* Custom scrollbar for sidebar */
+        .sidebar-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: #d0d5dd;
+            border-radius: 3px;
+        }
+        
+        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #98a2b3;
+        }
+        
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Menu item hover effect */
+        .menu-item:hover {
+            background-color: #f2f4f7;
+        }
+        
+        .menu-item-active {
+            background-color: #ecf3ff;
+            color: #465fff;
+        }
+        
+        /* Sidebar toggle animation */
+        .sidebar-collapsed {
+            width: 90px;
+        }
+        
+        .sidebar-expanded {
+            width: 290px;
+        }
+        
+        /* Main content adjustment */
+        .main-content-collapsed {
+            margin-left: 90px;
+        }
+        
+        .main-content-expanded {
+            margin-left: 290px;
+        }
+        
+        @media (max-width: 1023px) {
+            .sidebar-mobile {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar-mobile.open {
+                transform: translateX(0);
+            }
+            
+            .main-content-mobile {
+                margin-left: 0;
+            }
         }
     </style>
 </head>
-<body class="font-sans bg-gray-200 p-5">
-    <div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-5">
-            <!-- Card 1 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 1</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    This is a simple card example using CSS Grid. Each card is a grid item.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <header class="sticky top-0 w-full bg-[#007AFF] border-b border-gray-200 dark:border-gray-800 z-50">
+        <div class="flex items-center justify-between px-6 py-4">
+            <!-- Left Section -->
+            <div class="flex items-center gap-4">
+                <!-- Sidebar Toggle Button -->
+                <button id="sidebarToggle" class="flex items-center justify-center w-10 h-10 text-white border border-white/20 rounded-lg hover:bg-white/10 transition-colors">
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="none" xmlns="http://www.w3.org/2000/svg" id="menuIcon">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z" fill="currentColor"/>
+                    </svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="closeIcon" class="hidden">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                
+                <!-- Logo/Brand Name -->
+                <h1 class="text-2xl font-semibold text-white hidden lg:block">Mid Day Meal</h1>
             </div>
-
-            <!-- Card 2 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 2</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Grid automatically arranges cards in rows and columns. The layout is responsive.
+            
+            <!-- Right Section -->
+            <div class="flex items-center gap-4">
+                <!-- User Dropdown Placeholder -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-medium">
+                        U
+                    </div>
+                    <div class="hidden md:block text-white">
+                        <p class="text-sm font-medium">User Name</p>
+                        <p class="text-xs text-white/80">Admin</p>
+                    </div>
                 </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 3 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 3</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards have hover effects and box shadows for a modern look.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 4 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 4</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    The grid uses auto-fill to create responsive columns based on available space.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 5 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 5</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    This card demonstrates how CSS Grid makes layout easy and flexible.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 6 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 6</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    You can add more cards and they will automatically arrange in the grid.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 7 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 7</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    All styles are internal CSS, no external stylesheet needed.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
-            </div>
-            <!-- Card 8 -->
-            <div class="bg-white rounded-lg p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-                <div class="text-xl font-bold text-gray-800 mb-2.5">Card Title 8</div>
-                <div class="text-gray-600 leading-relaxed mb-4">
-                    Cards will automatically adjust when the window size changes.
-                </div>
-                <div class="pt-4 border-t border-gray-200 text-gray-500 text-sm">Footer text</div>
             </div>
         </div>
-    </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-40 sidebar-expanded transition-all">
+        <div class="h-full flex flex-col">
+            <!-- User Greeting -->
+            <div class="px-5 py-8 border-b border-gray-200 dark:border-gray-800">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white" id="sidebarGreeting">Hello, User Name</h2>
+            </div>
+            
+            <!-- Navigation Menu -->
+            <nav class="flex-1 overflow-y-auto sidebar-scrollbar px-5 py-6">
+                <div class="mb-6">
+                    <h3 class="text-xs uppercase text-gray-400 mb-4">Menu</h3>
+                    <ul class="space-y-2">
+                        <!-- Dashboard -->
+                        <li>
+                            <a href="#" class="menu-item flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 menu-item-active">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.5 10L9.16667 3.33333L15.8333 3.33333L17.5 5V10L10.8333 16.6667L2.5 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="sidebar-text">Dashboard</span>
+                            </a>
+                        </li>
+                        
+                        <!-- Masters -->
+                        <li>
+                            <button class="menu-item flex items-center justify-between w-full gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300" onclick="toggleSubmenu('masters')">
+                                <div class="flex items-center gap-3">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M10 2.5L12.5 7.5L18.3333 8.33333L14.1667 12.0833L15 17.9167L10 15.4167L5 17.9167L5.83333 12.0833L1.66667 8.33333L7.5 7.5L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="sidebar-text">Masters</span>
+                                </div>
+                                <svg id="masters-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="sidebar-text transition-transform">
+                                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <ul id="masters-submenu" class="hidden mt-2 space-y-1 pl-10">
+                                <li><a href="#" class="menu-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">Users</a></li>
+                                <li><a href="#" class="menu-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">District</a></li>
+                                <li><a href="#" class="menu-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">Taluka</a></li>
+                                <li><a href="#" class="menu-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">Center's</a></li>
+                                <li><a href="#" class="menu-item flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400">Schools</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="main-content-expanded min-h-[calc(100vh-4rem)] pt-6 px-6 pb-20 transition-all">
+        <div class="max-w-7xl mx-auto">
+            <!-- Page Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">Dashboard</h1>
+                <p class="text-gray-600 dark:text-gray-400">Welcome to Mid Day Meal Management System</p>
+            </div>
+            
+            <!-- Content Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</h3>
+                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600 dark:text-blue-400">
+                                <path d="M10 2.5V10M10 10L13.75 6.25M10 10L6.25 6.25M17.5 10C17.5 14.1421 14.1421 17.5 10 17.5C5.85786 17.5 2.5 14.1421 2.5 10C2.5 5.85786 5.85786 2.5 10 2.5C14.1421 2.5 17.5 5.85786 17.5 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">1,234</p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-2">+12% from last month</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Schools</h3>
+                        <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-green-600 dark:text-green-400">
+                                <path d="M10 2.5L3.75 7.5V16.25C3.75 16.6642 4.08579 17 4.5 17H7.5V12.5H12.5V17H15.5C15.9142 17 16.25 16.6642 16.25 16.25V7.5L10 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">856</p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-2">+8% from last month</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Students</h3>
+                        <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-purple-600 dark:text-purple-400">
+                                <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17.5 20C17.5 16.134 14.0826 13 10 13C5.91746 13 2.5 16.134 2.5 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">45,678</p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-2">+15% from last month</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Dispatch</h3>
+                        <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-orange-600 dark:text-orange-400">
+                                <path d="M2.5 5.83333L10 10.8333L17.5 5.83333M2.5 14.1667L10 19.1667L17.5 14.1667M2.5 10L10 15L17.5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">23</p>
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-2">-5% from last month</p>
+                </div>
+            </div>
+            
+            <!-- Additional Content Area -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
+                <p class="text-gray-600 dark:text-gray-400">Your content goes here...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-sm text-gray-600 dark:text-gray-400 mb-4 md:mb-0">
+                    <p>&copy; 2024 Mid Day Meal Management System. All rights reserved.</p>
+                </div>
+                <div class="flex gap-6 text-sm text-gray-600 dark:text-gray-400">
+                    <a href="#" class="hover:text-gray-900 dark:hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-gray-900 dark:hover:text-white transition-colors">Terms of Service</a>
+                    <a href="#" class="hover:text-gray-900 dark:hover:text-white transition-colors">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Sidebar Toggle Functionality
+        let sidebarExpanded = true;
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const menuIcon = document.getElementById('menuIcon');
+        const closeIcon = document.getElementById('closeIcon');
+        const sidebarTexts = document.querySelectorAll('.sidebar-text');
+
+        function toggleSidebar() {
+            sidebarExpanded = !sidebarExpanded;
+            
+            if (window.innerWidth >= 1024) {
+                // Desktop behavior
+                if (sidebarExpanded) {
+                    sidebar.classList.remove('sidebar-collapsed');
+                    sidebar.classList.add('sidebar-expanded');
+                    mainContent.classList.remove('main-content-collapsed');
+                    mainContent.classList.add('main-content-expanded');
+                    sidebarTexts.forEach(text => text.style.display = 'block');
+                } else {
+                    sidebar.classList.remove('sidebar-expanded');
+                    sidebar.classList.add('sidebar-collapsed');
+                    mainContent.classList.remove('main-content-expanded');
+                    mainContent.classList.add('main-content-collapsed');
+                    sidebarTexts.forEach(text => text.style.display = 'none');
+                }
+            } else {
+                // Mobile behavior
+                sidebar.classList.toggle('open');
+                if (sidebar.classList.contains('open')) {
+                    menuIcon.style.display = 'none';
+                    closeIcon.style.display = 'block';
+                } else {
+                    menuIcon.style.display = 'block';
+                    closeIcon.style.display = 'none';
+                }
+            }
+        }
+
+        sidebarToggle.addEventListener('click', toggleSidebar);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024) {
+                sidebar.classList.remove('open');
+                menuIcon.style.display = 'block';
+                closeIcon.style.display = 'none';
+                
+                if (sidebarExpanded) {
+                    sidebar.classList.add('sidebar-expanded');
+                    sidebar.classList.remove('sidebar-collapsed');
+                    mainContent.classList.add('main-content-expanded');
+                    mainContent.classList.remove('main-content-collapsed');
+                    sidebarTexts.forEach(text => text.style.display = 'block');
+                } else {
+                    sidebar.classList.add('sidebar-collapsed');
+                    sidebar.classList.remove('sidebar-expanded');
+                    mainContent.classList.add('main-content-collapsed');
+                    mainContent.classList.remove('main-content-expanded');
+                    sidebarTexts.forEach(text => text.style.display = 'none');
+                }
+            } else {
+                sidebar.classList.add('sidebar-mobile');
+                sidebar.classList.remove('sidebar-expanded', 'sidebar-collapsed');
+                mainContent.classList.add('main-content-mobile');
+                mainContent.classList.remove('main-content-expanded', 'main-content-collapsed');
+            }
+        });
+
+        // Submenu Toggle Function
+        function toggleSubmenu(id) {
+            const submenu = document.getElementById(id + '-submenu');
+            const arrow = document.getElementById(id + '-arrow');
+            
+            submenu.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        // Initialize mobile behavior
+        if (window.innerWidth < 1024) {
+            sidebar.classList.add('sidebar-mobile');
+            sidebar.classList.remove('sidebar-expanded');
+            mainContent.classList.add('main-content-mobile');
+            mainContent.classList.remove('main-content-expanded');
+        }
+    </script>
 </body>
 </html>

@@ -28,9 +28,9 @@ export default function SignInForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // setIsSubmitting(true);
 
     try {
+      setIsLoading(true);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -62,16 +62,14 @@ export default function SignInForm() {
         localStorage.removeItem('rememberedpassword');
       }
 
-
-      setIsLoading(true); // Set loading to true before redirect
-    
-        router.push('/');
+      toast.success('Login successful!');
+      router.push('/');
        
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Invalid credentials');
-    } finally {
-      // setIsSubmitting(false);
+      const errorMessage = error instanceof Error ? error.message : 'Invalid credentials';
+      toast.error(errorMessage);
+      setIsLoading(false);
     }
   };
 

@@ -1042,6 +1042,20 @@ const DispatchView = () => {
 
 
 
+  // Helper function to check if a date is today
+  const isToday = (dateString: string): boolean => {
+    if (!dateString) return false;
+    const dispatchDate = new Date(dateString);
+    const today = new Date();
+    
+    // Compare year, month, and day only (ignore time)
+    return (
+      dispatchDate.getFullYear() === today.getFullYear() &&
+      dispatchDate.getMonth() === today.getMonth() &&
+      dispatchDate.getDate() === today.getDate()
+    );
+  };
+
   // Add delete functionality
   const handleDeleteDispatch = async (dispatchCode: string) => {
     if (!confirm('Are you sure you want to delete this dispatch? This action cannot be undone.')) {
@@ -1071,6 +1085,15 @@ const DispatchView = () => {
       toast.error('Failed to delete dispatch');
     } finally {
       setLoading(false); // Stop loading after delete operation
+    }
+  };
+
+  // Handler to check date before deletion
+  const handleDeleteClick = (dispatchCode: string, createdDate: string) => {
+    if (isToday(createdDate)) {
+      handleDeleteDispatch(dispatchCode);
+    } else {
+      toast.warning('Please contact administrative');
     }
   };
 
@@ -2311,22 +2334,7 @@ const DispatchView = () => {
   // Updated table columns with proper delete button
   const listColumns: Column<DispatchListRow>[] = [
     // Delete button column (Bin) - Fixed implementation
-    {
-      key: 'delete',
-      label: 'Bin',
-      render: (r) => (
-        <button
-          onClick={() => handleDeleteDispatch(r.dispatch_code)}
-          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-          title="Delete Dispatch"
-          disabled={loading} // Disable during loading
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      )
-    },
+   
 
     // Action column with 4 print buttons
     {
@@ -2596,6 +2604,26 @@ const DispatchView = () => {
       render: (r) => {
         const quantities = grainQuantitiesByDispatch.get(r.dispatch_code) || { 'एकूण वजन': 0 };
         return <span className="font-semibold text-green-600">{quantities['एकूण वजन'].toFixed(2)}</span>;
+      }
+    },
+    {
+      key: 'delete',
+      label: 'Bin',
+      render: (r) => {
+        const isCurrentDate = isToday(r.created_at);
+        
+        return (
+          <button
+            onClick={() => handleDeleteClick(r.dispatch_code, r.created_at)}
+            className={`p-1 rounded-md transition-colors text-red-600 hover:text-red-800 hover:bg-red-50`}
+            title={isCurrentDate ? 'Delete Dispatch' : 'Only current date dispatches can be deleted. Please contact administrative.'}
+            disabled={loading}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        );
       }
     },
 

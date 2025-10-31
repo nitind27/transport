@@ -7,12 +7,12 @@ import Routepaperview from "@/components/Routepaperview/Routepaperview";
 type TabKey = "prepare" | "view";
 
 const RoutepaperTabs = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>("prepare");
+  const [activeTab, setActiveTab] = useState<TabKey>("view");
 
   return (
     <div className="">
       <div className="flex border-b border-gray-200 mb-6">
-        <button
+        {/* <button
           onClick={() => setActiveTab("prepare")}
           className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${
             activeTab === "prepare"
@@ -21,7 +21,7 @@ const RoutepaperTabs = () => {
           }`}
         >
           Prepare Routepaper
-        </button>
+        </button> */}
         <button
           onClick={() => setActiveTab("view")}
           className={`px-6 py-3 text-sm font-medium transition-colors duration-200 ${

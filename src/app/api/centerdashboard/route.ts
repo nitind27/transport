@@ -6,38 +6,31 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const orderNo = searchParams.get('order_no') || '20';
-    const centerId = searchParams.get('center_id');
     const talukaId = searchParams.get('taluka_id');
-    
-    // Build WHERE clause for center filtering
-    let centerFilter = '';
-    const centerParams: string[] = centerId ? [centerId] : [];
-    if (centerId) {
-      centerFilter = 'AND sd.center = ?';
-    }
     
     // Build WHERE clause for taluka filtering
     let talukaFilter = '';
-    const talukaParams: string[] = talukaId ? [talukaId] : [];
     if (talukaId) {
-      talukaFilter = 'AND t.taluka_id = ?';
+      talukaFilter = 'AND sd.taluka_id = ?';
     }
     
     const [rows] = await pool.query<RowDataPacket[]>(`
       SELECT 
-        t.taluka_id,
-        t.name,
-        t.name_en,
-        -- Total schools in taluka (filtered by center if provided)
-        COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} THEN s.schoolid END) AS total_schools,
+        c.center_id,
+        c.name,
+        c.marathi_name,
+        c.taluka_id,
+        t.name AS taluka_name,
+        -- Total schools in center
+        COUNT(DISTINCT CASE WHEN s.status = 'Active' THEN s.schoolid END) AS total_schools,
         -- Schools with orders - count distinct schools (not class_range rows)
         (SELECT COUNT(DISTINCT so.school_id) 
          FROM school_wise_order_details so
          JOIN schooldata sd ON so.school_id = sd.schoolid
          JOIN zp_order_details od ON so.order_id = od.id
-         WHERE sd.taluka_id = t.taluka_id
+         WHERE sd.center = c.center_id
          AND od.order_no = ?
-         ${centerFilter}
+         ${talukaFilter}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active') AS schools_with_orders,
@@ -48,9 +41,9 @@ export async function GET(request: Request) {
          JOIN zp_order_details od ON so.order_id = od.id
          JOIN dispatch_details dd ON so.school_id = dd.school_id 
            AND so.order_id = dd.order_id
-         WHERE sd.taluka_id = t.taluka_id
+         WHERE sd.center = c.center_id
          AND od.order_no = ?
-         ${centerFilter}
+         ${talukaFilter}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active'
@@ -60,9 +53,9 @@ export async function GET(request: Request) {
           FROM school_wise_order_details so
           JOIN schooldata sd ON so.school_id = sd.schoolid
           JOIN zp_order_details od ON so.order_id = od.id
-          WHERE sd.taluka_id = t.taluka_id
+          WHERE sd.center = c.center_id
           AND od.order_no = ?
-          ${centerFilter}
+          ${talukaFilter}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active') - 
@@ -72,36 +65,29 @@ export async function GET(request: Request) {
           JOIN zp_order_details od ON so.order_id = od.id
           JOIN dispatch_details dd ON so.school_id = dd.school_id 
             AND so.order_id = dd.order_id
-          WHERE sd.taluka_id = t.taluka_id
+          WHERE sd.center = c.center_id
           AND od.order_no = ?
-          ${centerFilter}
+          ${talukaFilter}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active'
           AND dd.status = 'Active')) AS remaining_schools
-      FROM taluka t
-      LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''}
-      WHERE t.status = 'Active'
-      ${talukaFilter}
-      GROUP BY t.taluka_id, t.name, t.name_en
-      ORDER BY t.name
-    `, [
-      ...centerParams, // for COUNT in main query
-      orderNo,
-      ...centerParams, // for schools_with_orders subquery
-      orderNo,
-      ...centerParams, // for distributed_schools subquery
-      orderNo,
-      ...centerParams, // for remaining_schools first subquery
-      orderNo,
-      ...centerParams, // for remaining_schools second subquery
-      ...centerParams, // for LEFT JOIN
-      ...talukaParams // for WHERE taluka filter
-    ]);
+      FROM centerdata c
+      LEFT JOIN schooldata s ON c.center_id = s.center AND s.status = 'Active'
+      LEFT JOIN taluka t ON c.taluka_id = t.taluka_id
+      WHERE c.status = 'Active'
+      GROUP BY c.center_id, c.name, c.marathi_name, c.taluka_id, t.name
+      HAVING schools_with_orders > 0 OR total_schools > 0
+      ORDER BY c.name
+    `, talukaId 
+      ? [orderNo, talukaId, orderNo, talukaId, orderNo, talukaId, orderNo, talukaId]
+      : [orderNo, orderNo, orderNo, orderNo]
+    );
     
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Database query failed:', error);
-    return NextResponse.json({ error: 'Failed to fetch taluka dashboard data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch center dashboard data' }, { status: 500 });
   }
 }
+
