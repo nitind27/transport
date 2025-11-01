@@ -153,6 +153,11 @@ const staffNavItems: NavItem[] = [
     name: "Sales Summary",
     path: "/salessummary",
   },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Transportation Detials",
+    path: "/transportationdetials",
+  },
 ];
 
 // Default fallback - Dashboard only

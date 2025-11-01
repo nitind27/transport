@@ -209,8 +209,8 @@ const Dashboardtaluka = () => {
   // Get current order details
   const currentOrder = orderCounts.find(order => order.order_no === selectedOrderNo);
 
-  // Function to create single comprehensive chart data - always shows taluka data
-  const createComprehensiveChartData = () => {
+  // Function to create chart data for taluka view
+  const createTalukaChartData = () => {
     // Check if we have taluka data
     if (!talukaData || talukaData.length === 0) {
       return {
@@ -428,8 +428,233 @@ const Dashboardtaluka = () => {
     };
   };
 
-  // Get chart data - always shows taluka data, recalculates when talukaData changes
-  const chartData = useMemo(() => createComprehensiveChartData(), [talukaData]);
+  // Function to create chart data for center view
+  const createCenterChartData = () => {
+    // Check if we have center data grouped by taluka
+    if (!centerDataByTaluka || centerDataByTaluka.length === 0) {
+      return {
+        series: [],
+        options: {
+          chart: {
+            type: 'bar' as const,
+            height: 500,
+          },
+          xaxis: {
+            categories: []
+          }
+        }
+      };
+    }
+
+    const talukaNames = centerDataByTaluka.map(item => item.taluka_name);
+    const totalCentersData = centerDataByTaluka.map(item => item.total_centers);
+    const completedCentersData = centerDataByTaluka.map(item => item.completed_centers);
+    const pendingCentersData = centerDataByTaluka.map(item => item.pending_centers);
+
+    return {
+      series: [
+        {
+          name: 'एकूण केंद्र',
+          data: totalCentersData,
+        },
+        {
+          name: 'एकूण केंद्र वाटप',
+          data: completedCentersData,
+        },
+        {
+          name: 'बाकी केंद्र',
+          data: pendingCentersData,
+        }
+      ],
+      options: {
+        chart: {
+          type: 'bar' as const,
+          height: 500,
+          animations: {
+            enabled: true,
+            easing: 'easeinout' as const,
+            speed: 2000,
+            animateGradually: {
+              enabled: true,
+              delay: 200
+            },
+            dynamicAnimation: {
+              enabled: true,
+              speed: 500
+            }
+          },
+          sparkline: {
+            enabled: false
+          },
+          toolbar: {
+            show: true,
+            tools: {
+              download: true,
+              selection: true,
+              zoom: true,
+              zoomin: true,
+              zoomout: true,
+              pan: true,
+              reset: true
+            }
+          }
+        },
+        plotOptions: {
+          bar: {
+            columnWidth: '60%',
+            borderRadius: 4,
+            dataLabels: {
+              position: 'top'
+            }
+          }
+        },
+        dataLabels: {
+          enabled: true,
+          offsetY: -20,
+          style: {
+            fontSize: '12px',
+            fontWeight: 'bold',
+            colors: ['#1F2937']
+          },
+          formatter: function (val: number) {
+            return val;
+          }
+        },
+        xaxis: {
+          categories: talukaNames,
+          labels: {
+            style: {
+              fontSize: '12px',
+              fontWeight: 'bold',
+              colors: '#1F2937'
+            },
+            rotate: -45,
+            rotateAlways: false
+          },
+          title: {
+            text: 'तालुका',
+            style: {
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#1F2937'
+            }
+          }
+        },
+        yaxis: {
+          title: {
+            text: 'केंद्र संख्या',
+            style: {
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#1F2937'
+            }
+          },
+          labels: {
+            style: {
+              fontSize: '12px',
+              colors: '#1F2937'
+            }
+          }
+        },
+        colors: ['#3B82F6', '#10B981', '#EF4444'],
+        title: {
+          text: 'केंद्र-निहाय वाटप विवरण',
+          align: 'center' as const,
+          style: {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#1F2937'
+          }
+        },
+        legend: {
+          show: true,
+          position: 'top' as const,
+          horizontalAlign: 'center' as const,
+          fontSize: '14px',
+          fontWeight: 'bold',
+          labels: {
+            colors: '#1F2937'
+          }
+        },
+        grid: {
+          show: true,
+          borderColor: '#E5E7EB',
+          strokeDashArray: 2
+        },
+        tooltip: {
+          enabled: true,
+          fillSeriesColor: false,
+          custom: function({series, seriesIndex, dataPointIndex, w}: {
+            series: number[][];
+            seriesIndex: number;
+            dataPointIndex: number;
+            w: {
+              config: {
+                xaxis: {
+                  categories: string[];
+                };
+              };
+            };
+          }) {
+            const categories = ['एकूण केंद्र', 'एकूण केंद्र वाटप', 'बाकी केंद्र'];
+            const itemName = w.config.xaxis.categories[dataPointIndex];
+            const category = categories[seriesIndex];
+            const value = series[seriesIndex][dataPointIndex];
+      
+            return `
+              <div style="
+                background: #111827;
+                color: #fff;
+                border-radius: 8px;
+                padding: 12px 16px;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                min-width: 200px;
+                ">
+                <div style="color: #fff; margin-bottom: 4px;"><strong>${itemName}</strong></div>
+                <div style="color: #fff;">${category}: <span style="color: #fff;">${value} केंद्र</span></div>
+              </div>
+            `
+          },
+          style: {
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#fff'
+          },
+          y: {
+            formatter: function(val: number) {
+              return val + ' केंद्र';
+            }
+          }
+        },
+        responsive: [
+          {
+            breakpoint: 768,
+            options: {
+              chart: {
+                height: 400
+              },
+              xaxis: {
+                labels: {
+                  rotate: -45
+                }
+              }
+            }
+          }
+        ]
+      }
+    };
+  };
+
+  // Get chart data based on active tab
+  const chartData = useMemo(() => {
+    if (activeTab === 'taluka') {
+      return createTalukaChartData();
+    } else {
+      return createCenterChartData();
+    }
+  }, [talukaData, centerDataByTaluka, activeTab]);
 
   if (loading) {
     return (
@@ -571,28 +796,7 @@ const Dashboardtaluka = () => {
           </div>
         </div>
 
-        {/* Single Comprehensive Bar Chart Section - Always shows Taluka data */}
-        <div className="mb-8">
-          <div className="bg-transparent">
-            {talukaData.length > 0 ? (
-              <Chart
-                options={chartData.options}
-                series={chartData.series}
-                type="bar"
-                height={400}
-              />
-            ) : (
-              <div className="flex justify-center items-center h-64 text-gray-500">
-                <div className="text-center">
-                  <div className="text-lg font-semibold mb-2">No Data Available</div>
-                  <div className="text-sm">Please wait for data to load...</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Tabs - Only affects table, not chart - Button style */}
+        {/* Tabs - At the top to control both chart and table - Button style */}
         <div className="mb-6">
           <div className="grid grid-cols-12 gap-3">
             <button
@@ -615,6 +819,34 @@ const Dashboardtaluka = () => {
             >
               केंद्र निहाय
             </button>
+          </div>
+        </div>
+
+        {/* Bar Chart Section - Changes based on active tab */}
+        <div className="mb-8">
+          <div className="bg-transparent">
+            {activeTab === 'taluka' && talukaData.length > 0 ? (
+              <Chart
+                options={chartData.options}
+                series={chartData.series}
+                type="bar"
+                height={400}
+              />
+            ) : activeTab === 'center' && centerDataByTaluka.length > 0 ? (
+              <Chart
+                options={chartData.options}
+                series={chartData.series}
+                type="bar"
+                height={400}
+              />
+            ) : (
+              <div className="flex justify-center items-center h-64 text-gray-500">
+                <div className="text-center">
+                  <div className="text-lg font-semibold mb-2">No Data Available</div>
+                  <div className="text-sm">Please wait for data to load...</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

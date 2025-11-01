@@ -21,55 +21,7 @@ export const metadata: Metadata = {
     "MDM",
 };
 
-// async function fetchMetrics() {
 
-//   try {
-//     const [schemesRes, usersRes, talukaRes, villageRes, grampanchayatRes, vykatiRes, bhautikapiRes] = await Promise.all([
-
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schemescrud`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/taluka`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/villages`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/grampanchayt`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vyktikapi`, { cache: 'no-store' }),
-//       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bhautikapi`, { cache: 'no-store' }),
-//     ]);
-
-//     const [schemes, users, taluka, village, grampanchayat, vyaktidata, bhautikdata] = await Promise.all([
-
-//       schemesRes.json(),
-//       usersRes.json(),
-//       talukaRes.json(),
-//       villageRes.json(),
-//       grampanchayatRes.json(),
-//       vykatiRes.json(),
-//       bhautikapiRes.json()
-//     ]);
-
-//     return {
-
-//       schemes,
-//       users,
-//       taluka,
-//       village,
-//       grampanchayat,
-//       vyaktidata,
-//       bhautikdata,
-//     };
-//   } catch (error) {
-//     console.error('Error fetching metrics:', error);
-//     return {
-
-//       schemes: [],
-//       users: [],
-//       taluka: [],
-//       village: [],
-//       grampanchayat: [],
-//       vyaktidata: [],
-//       bhautikdata: [],
-//     };
-//   }
-// }
 
 
 
