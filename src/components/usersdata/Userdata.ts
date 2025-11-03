@@ -12,6 +12,8 @@ export interface UserData {
     village_name: string;
     user_category_name: string;
     gp_id: string;
+    company_id?: number | null;
+    company_name?: string | null;
     status: string;
   }
   

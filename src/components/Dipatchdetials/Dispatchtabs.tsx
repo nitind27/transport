@@ -5,11 +5,10 @@ import { useState } from 'react';
 import DispatchView from './DispatchView';
 import PendingOrderDetails from './PendingOrderDetails';
 import Routepaperview from '../Routepaperview/Routepaperview';
-import CellsReturn from './CellsReturn';
-import Salesview from './Salesview';
+import SalesTab from './SalesTab';
 
 const DispatchTabs = () => {
-  const [activeTab, setActiveTab] = useState<'view' | 'pending' | 'routepaperview' | 'cellsreturn' | 'salesview'>('pending');
+  const [activeTab, setActiveTab] = useState<'view' | 'pending' | 'routepaperview' | 'salesreturn' | 'viewsalesreturn'>('pending');
 
   return (
     <div className="w-full">
@@ -47,24 +46,14 @@ const DispatchTabs = () => {
             View Route Paper
           </button>
           <button
-            onClick={() => setActiveTab('cellsreturn')}
+            onClick={() => setActiveTab('salesreturn')}
             className={`px-6 py-3 text-sm font-medium transition-all duration-200 rounded-lg shadow-sm ${
-              activeTab === 'cellsreturn'
+              activeTab === 'salesreturn' || activeTab === 'viewsalesreturn'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
             }`}
           >
             Sales Return
-          </button>
-          <button
-            onClick={() => setActiveTab('salesview')}
-            className={`px-6 py-3 text-sm font-medium transition-all duration-200 rounded-lg shadow-sm ${
-              activeTab === 'salesview'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            View Sales Return
           </button>
         </nav>
       </div>
@@ -74,8 +63,7 @@ const DispatchTabs = () => {
         {activeTab === 'view' && <DispatchView />}
         {activeTab === 'pending' && <PendingOrderDetails />}
         {activeTab === 'routepaperview' && <Routepaperview />}
-        {activeTab === 'cellsreturn' && <CellsReturn />}
-        {activeTab === 'salesview' && <Salesview />}
+        {(activeTab === 'salesreturn' || activeTab === 'viewsalesreturn') && <SalesTab />}
       </div>
     </div>
   );

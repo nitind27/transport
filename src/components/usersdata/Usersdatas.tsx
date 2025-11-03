@@ -39,12 +39,23 @@ type FormErrors = {
   Taluka?: string;
   Village?: string;
   gp?: string;
+  company?: string;
 
 };
+type Company = {
+  id: number;
+  name: string;
+  contactnumber: string;
+  address: string;
+  gstno: string;
+  status: string;
+};
+
 const Usersdatas = ({ users, datausercategorycrud }: Props) => {
 
   const [data, setData] = useState<UserData[]>(users || []);
   const [usercategory, setUsercategory] = useState(0);
+  const [companies, setCompanies] = useState<Company[]>([]);
 
   const [name, setName] = useState('');
   const [Contact, setContact] = useState('');
@@ -54,6 +65,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
   // const [Taluka, setTaluka] = useState(0);
   // const [Village, setVillage] = useState(0);
   const [gp, setgp] = useState(0);
+  const [company_id, setCompany_id] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
@@ -71,6 +83,20 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       setLoading(false); // End loading
     }
   };
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/company');
+      const result = await response.json();
+      setCompanies(result || []);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
   useEffect(() => {
 
@@ -91,6 +117,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     // setTaluka(Number(""))
     // setVillage(Number(""))
     setgp(Number(""))
+    setCompany_id(null);
     setEditId(0);
   }
 
@@ -124,9 +151,9 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     if (!address || address.length === 0) {
       newErrors.address = "Address is required";
     }
-
-
-
+    if (!company_id) {
+      newErrors.company = "Company is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -150,6 +177,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
           contact_no: Contact,
           address: address,
           gp_id: gp,
+          company_id: company_id,
           status: "Active"
 
         })
@@ -195,6 +223,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     // setTaluka(item.taluka_id)
     // setVillage(item.village_id)
     setgp(Number(item.gp_id))
+    setCompany_id(item.company_id || null)
   };
 
   const handleFlush = async (userId: number) => {
@@ -281,7 +310,12 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       accessor: 'address',
       render: (data) => <span>{data.address}</span>
     },
-
+    {
+      key: 'company_name',
+      label: 'Company',
+      accessor: 'company_name',
+      render: (data) => <span>{data.company_name || '-'}</span>
+    },
     {
       key: 'status',
       label: 'Status',
@@ -356,6 +390,29 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
                   {error.usercategory}
+                </div>
+              )}
+            </div>
+            <div className="col-span-1">
+              <Label>Company</Label>
+              <select
+                name=""
+                id=""
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.company ? "border-red-500" : ""
+                  }`}
+                value={company_id || ""}
+                onChange={(e) => setCompany_id(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+              {error && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.company}
                 </div>
               )}
             </div>

@@ -13,6 +13,7 @@ interface User {
   contact_no: string;
   address?: string | null;
   gp_id?: number | null;
+  company_id?: number | null;
   status?: string | null;
 }
 
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
       contact_no,
       address,
       gp_id,
+      company_id,
       status
     } = await request.json();
 
@@ -47,10 +49,10 @@ export async function POST(request: Request) {
           password,
           contact_no,
           address,
-       
           gp_id,
+          company_id,
           status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           name,
           user_category_id,
@@ -58,8 +60,8 @@ export async function POST(request: Request) {
           password,
           contact_no,
           address,
-        
           gp_id,
+          company_id,
           status
         ]
       );
@@ -127,6 +129,7 @@ export async function PUT(request: Request) {
       contact_no,
       address,
       gp_id,
+      company_id,
       status
     } = await request.json();
 
@@ -148,6 +151,7 @@ export async function PUT(request: Request) {
           contact_no = ?,
           address = ?,
           gp_id = ?,
+          company_id = ?,
           status = ?
         WHERE user_id = ?`,
         [
@@ -158,6 +162,7 @@ export async function PUT(request: Request) {
           contact_no,
           address,
           gp_id,
+          company_id,
           status,
           user_id
         ]

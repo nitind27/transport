@@ -15,6 +15,8 @@ interface User extends RowDataPacket {
   taluka_id: number;
   village_id: number;
   gp_id: number;
+  company_id?: number | null;
+  company_name?: string | null;
   status: number | string;
   created_at: string;
   updated_at: string;
@@ -30,12 +32,15 @@ export async function GET() {
         user_category.category_name AS user_category_name,
         taluka.name AS taluka_name,
         village.name AS village_name,
-        grampanchayat.marathi_name AS grampanchayat_name
+        grampanchayat.marathi_name AS grampanchayat_name,
+        company.id AS company_id,
+        company.name AS company_name
       FROM users
       LEFT JOIN user_category ON users.user_category_id = user_category.user_category_id
       LEFT JOIN taluka ON users.taluka_id = taluka.taluka_id
       LEFT JOIN village ON users.village_id = village.village_id
       LEFT JOIN grampanchayat ON users.gp_id = grampanchayat.id
+      LEFT JOIN company ON users.company_id = company.id
       WHERE users.status = "Active";
     `);
 

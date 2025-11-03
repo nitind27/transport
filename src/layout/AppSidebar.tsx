@@ -36,12 +36,14 @@ const adminNavItems: NavItem[] = [
       { name: "District", path: "/distdata" },
       { name: "Taluka", path: "/taluka" },
       { name: "Center's", path: "/center" },
+      { name: "Companies", path: "/companies" },
       { name: "Schools", path: "/school" },
       { name: "Items", path: "/itemsgrains" },
       { name: "Owners", path: "/owner" },
       { name: "Trucks", path: "/trucks" },
       { name: "Dealers", path: "/dealer" },
-      { name: "Godown", path: "/godown" },
+      { name: "Godown", path: "/godown" },  
+      { name: "Sales Return", path: "/salesreturen" }, 
     ],
   },
   // {
@@ -158,6 +160,12 @@ const staffNavItems: NavItem[] = [
     name: "Transportation Detials",
     path: "/transportationdetials",
   },
+  {
+    icon: <TbCategoryPlus />,
+    name: "Sales Return",
+    path: "/salesreturen",
+  },
+  
 ];
 
 // Default fallback - Dashboard only
