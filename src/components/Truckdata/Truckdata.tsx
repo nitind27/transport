@@ -119,6 +119,10 @@ const Truckdata = ({ truckdata }: Props) => {
 		const apiUrl = editId ? '/api/truckdata' : '/api/truckdata';
 		const method = editId ? 'PUT' : 'POST';
 
+		// Get company_id and user_id from sessionStorage
+		const companyId = sessionStorage.getItem('company_id');
+		const userId = sessionStorage.getItem('userid');
+
 		try {
 			const response = await fetch(apiUrl, {
 				method: method,
@@ -132,6 +136,8 @@ const Truckdata = ({ truckdata }: Props) => {
 					driverName,           // new
 					driverMobile,         // new
 					status: "Active",
+					company_id: companyId ? parseInt(companyId) : null,
+					user_id: userId ? parseInt(userId) : null
 				})
 			});
 

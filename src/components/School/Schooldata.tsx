@@ -124,6 +124,10 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     const apiUrl = '/api/scooldata';
     const method = isEditMode ? 'PUT' : 'POST';
 
+    // Get company_id and user_id from sessionStorage
+    const companyId = sessionStorage.getItem('company_id');
+    const userId = sessionStorage.getItem('userid');
+
     try {
       const requestBody = {
         // keep field names consistent for both create and update
@@ -140,6 +144,8 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
         mobile2: mobile2 || null,
         mobile3: mobile3 || null,
         status: "Active",
+        company_id: companyId ? parseInt(companyId) : null,
+        user_id: userId ? parseInt(userId) : null
       };
 
       const response = await fetch(apiUrl, {
@@ -249,6 +255,13 @@ const Schooldata = ({ district, distoption, center, school }: Props) => {
     try {
       const form = new FormData();
       form.append('file', file);
+      
+      // Get company_id and user_id from sessionStorage and add to FormData
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      if (companyId) form.append('company_id', companyId);
+      if (userId) form.append('user_id', userId);
+      
       const res = await fetch('/api/schooldataecelimport', {
         method: 'POST',
         body: form,

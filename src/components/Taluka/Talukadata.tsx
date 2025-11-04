@@ -115,6 +115,10 @@ const Talukadata = ({ district, distoption }: Props) => {
         const apiUrl = isEditMode ? `/api/taluka` : '/api/taluka';
         const method = isEditMode ? 'PUT' : 'POST';
 
+        // Get company_id and user_id from sessionStorage
+        const companyId = sessionStorage.getItem('company_id');
+        const userId = sessionStorage.getItem('userid');
+
         try {
             const response = await fetch(apiUrl, {
                 method: method,
@@ -124,8 +128,9 @@ const Talukadata = ({ district, distoption }: Props) => {
                     dist_id: distrcit,
                     name: Taluka,
                     name_en: entaluka,
-                    status: "Active"
-
+                    status: "Active",
+                    company_id: companyId ? parseInt(companyId) : null,
+                    user_id: userId ? parseInt(userId) : null // Add user_id from sessionStorage
                 })
             });
 
@@ -136,7 +141,6 @@ const Talukadata = ({ district, distoption }: Props) => {
             toast.success(editId
                 ? 'Updated successfully!'
                 : 'Inserted successfully!');
-
 
             reset()
             setEditId(null);

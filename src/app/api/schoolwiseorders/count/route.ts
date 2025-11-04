@@ -2,8 +2,19 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id'); // Get user_id from query params
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    const userParams: string[] = [];
+    const shouldFilterByUser = userId && userId !== '1'; // Only filter if not admin
+    
+    if (shouldFilterByUser) {
+      userParams.push(userId);
+    }
+
     const [rows] = await pool.query<RowDataPacket[]>(`
       SELECT 
         zod.id as order_id,
@@ -17,6 +28,7 @@ export async function GET() {
             AND swo.school_id = s.schoolid 
             AND swo.order_id = zod.id
             AND s.status = 'Active'
+            ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
           THEN s.schoolid 
         END) as total_schools,
         -- Count dispatched schools with proper matching
@@ -28,6 +40,7 @@ export async function GET() {
             AND swo.order_id = zod.id
             AND swo.status = 'Active'
             AND s.status = 'Active'
+            ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
           THEN s.schoolid 
         END) as dispatched_schools,
         -- Calculate remaining schools
@@ -36,6 +49,7 @@ export async function GET() {
             AND swo.school_id = s.schoolid 
             AND swo.order_id = zod.id
             AND s.status = 'Active'
+            ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
           THEN s.schoolid 
         END) - COUNT(DISTINCT CASE 
           WHEN dd.status = 'Active' 
@@ -45,6 +59,7 @@ export async function GET() {
             AND swo.order_id = zod.id
             AND swo.status = 'Active'
             AND s.status = 'Active'
+            ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
           THEN s.schoolid 
         END)) as remaining_schools
       FROM zp_order_details zod
@@ -56,7 +71,10 @@ export async function GET() {
       WHERE zod.status = 'Active'
       GROUP BY zod.id, zod.order_no, zod.period, zod.financial_year, zod.no_of_days
       ORDER BY zod.order_no
-    `);
+    `, shouldFilterByUser
+      ? [...userParams, ...userParams, ...userParams, ...userParams] // 4 times for the 4 CASE statements
+      : []
+    );
     
     return NextResponse.json(rows);
   } catch (error) {

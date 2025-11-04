@@ -19,6 +19,7 @@ import { Village } from '../Village/village';
 import DefaultModal from '../example/ModalExample/DefaultModal';
 import { FaEdit } from 'react-icons/fa';
 import { FaPowerOff } from 'react-icons/fa'; // Add this import for flush icon
+import { useRouter } from 'next/navigation';
 // import { Grampanchayattype } from '../grampanchayat/gptype';
 
 type Props = {
@@ -52,7 +53,7 @@ type Company = {
 };
 
 const Usersdatas = ({ users, datausercategorycrud }: Props) => {
-
+  const router = useRouter();
   const [data, setData] = useState<UserData[]>(users || []);
   const [usercategory, setUsercategory] = useState(0);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -70,6 +71,9 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [error, setErrors] = useState<FormErrors>({});
+  
+  // Add state for showing logout modal
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -158,6 +162,35 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+
+      // Clear ALL client-side storage
+      sessionStorage.clear();
+      localStorage.clear();
+
+      toast.success('Logged out successfully!');
+      
+      // Close modal
+      setShowLogoutModal(false);
+      
+      // Redirect to login page
+      router.push('/signin');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed. Please try again.');
+    }
+  };
+
   const handleSave = async () => {
     if (!validateInputs()) return;
     setLoading(true);
@@ -191,10 +224,14 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
         ? 'updated successfully!'
         : 'Inserted successfully!');
 
-
       reset()
       setEditId(null);
       fetchData();
+      
+      // Show logout modal only when creating new user (not updating)
+      if (!editId) {
+        setShowLogoutModal(true);
+      }
     } catch (error) {
       console.error('Error saving Users:', error);
       toast.error(editId
@@ -340,6 +377,16 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
           <span>
             <DefaultModal id={data.user_id} fetchData={fetchData} endpoint={"users/insert"} bodyname='user_id' newstatus={data.status} />
           </span>
+      
+        </div>
+      )
+    },
+    {
+      key: 'flush-login',
+      label: 'Flush',
+      render: (data) => (
+        <div className="flex ">
+          
           <span
             onClick={() => handleFlush(data.user_id)}
             className="cursor-pointer text-orange-600 hover:text-orange-800 transition-colors duration-200"
@@ -354,6 +401,46 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
 
   return (
     <div className="">
+      {/* Logout Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-9999999 flex items-center justify-center bg-black/40 bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">
+                नवीन वापरकर्ता तयार झाला
+              </h3>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 text-base leading-relaxed">
+                नवीन वापरकर्ता लॉगिन करण्यासाठी, कृपया लॉगआउट करा आणि नंतर कंपनी निवडून लॉगिन करा.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium"
+              >
+                बाद
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
+              >
+                लॉगआउट करा
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end">
         {/* <button
           onClick={handleDownloadExcel}
@@ -368,6 +455,30 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
         inputfiled={
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-1">
 
+        
+            <div className="col-span-1">
+              <Label>Company</Label>
+              <select
+                name=""
+                id=""
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.company ? "border-red-500" : ""
+                  }`}
+                value={company_id || ""}
+                onChange={(e) => setCompany_id(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+              {error && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.company}
+                </div>
+              )}
+            </div>
             <div className="col-span-1">
               <Label>Category</Label>
 
@@ -390,29 +501,6 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
                   {error.usercategory}
-                </div>
-              )}
-            </div>
-            <div className="col-span-1">
-              <Label>Company</Label>
-              <select
-                name=""
-                id=""
-                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.company ? "border-red-500" : ""
-                  }`}
-                value={company_id || ""}
-                onChange={(e) => setCompany_id(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">Select Company</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-              {error && (
-                <div className="text-red-500 text-sm mt-1 pl-1">
-                  {error.company}
                 </div>
               )}
             </div>

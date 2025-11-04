@@ -560,10 +560,32 @@ const DispatchView = () => {
   const fetchDispatchList = async () => {
     try {
       setLoading(true); // Start loading
-      const res = await fetch('/api/dispatchdetails');
+      
+      // Get user_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      
+      // Build API URL with user_id parameter
+      const apiUrl = userId 
+        ? `/api/dispatchdetails?user_id=${userId}`
+        : '/api/dispatchdetails';
+      
+      const res = await fetch(apiUrl);
       if (res.ok) {
         const data = await res.json();
-        setDispatchList(data);
+        
+        // If user_id is provided and no data found, fetch all data
+        if (userId && userId !== '1' && data.length === 0) {
+          // New user_id - no data found, show all data
+          const allDataRes = await fetch('/api/dispatchdetails');
+          if (allDataRes.ok) {
+            const allData = await allDataRes.json();
+            setDispatchList(allData);
+          } else {
+            setDispatchList(data); // Use empty array if fetch fails
+          }
+        } else {
+          setDispatchList(data);
+        }
       }
     } catch (e) {
       console.error(e);

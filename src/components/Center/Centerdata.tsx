@@ -98,50 +98,58 @@ const Centerdata = ({ district, distoption, center }: Props) => {
     const apiUrl = '/api/centerapi';
     const method = isEditMode ? 'PUT' : 'POST';
 
+    // Get company_id and user_id from sessionStorage
+    const companyId = sessionStorage.getItem('company_id');
+    const userId = sessionStorage.getItem('userid');
+
     try {
-      const requestBody = isEditMode ? {
-        center_id: editId,
-        dist_id: selectedDistrict,
-        taluka_id: selectedTaluka,
-        name: centerName,
-        marathi_name: marathiName,
-        status: "Active"
-      } : {
-        dist_id: selectedDistrict,
-        taluka_id: selectedTaluka,
-        name: centerName,
-        marathi_name: marathiName,
-        status: "Active"
-      };
+        const requestBody = isEditMode ? {
+            center_id: editId,
+            dist_id: selectedDistrict,
+            taluka_id: selectedTaluka,
+            name: centerName,
+            marathi_name: marathiName,
+            status: "Active",
+            company_id: companyId ? parseInt(companyId) : null,
+            user_id: userId ? parseInt(userId) : null
+        } : {
+            dist_id: selectedDistrict,
+            taluka_id: selectedTaluka,
+            name: centerName,
+            marathi_name: marathiName,
+            status: "Active",
+            company_id: companyId ? parseInt(companyId) : null,
+            user_id: userId ? parseInt(userId) : null
+        };
 
-      const response = await fetch(apiUrl, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
+        const response = await fetch(apiUrl, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
 
-      toast.success(editId
-        ? 'Center updated successfully!'
-        : 'Center created successfully!');
+        toast.success(editId
+            ? 'Center updated successfully!'
+            : 'Center created successfully!');
 
-      reset();
-      setEditId(null);
-      fetchData();
+        reset();
+        setEditId(null);
+        fetchData();
     } catch (error) {
-      console.error('Error saving Center:', error);
-      toast.error(editId
-        ? 'Failed to update Center. Please try again.'
-        : 'Failed to create Center. Please try again.');
+        console.error('Error saving Center:', error);
+        toast.error(editId
+            ? 'Failed to update Center. Please try again.'
+            : 'Failed to create Center. Please try again.');
     } finally {
-      setLoading(false);
-      setIsmodelopen(false);
+        setLoading(false);
+        setIsmodelopen(false);
     }
-  };
+};
 
   const handleEdit = (item: Taluka) => {
     setIsActive(!isActive);

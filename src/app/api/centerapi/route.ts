@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { taluka_id, center_id, name, marathi_name, dist_id, status } = body;
+        const { taluka_id, center_id, name, marathi_name, dist_id, status, company_id, user_id } = body;
 
         if (!taluka_id || !dist_id || !name || !marathi_name) {
             return NextResponse.json(
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO centerdata (taluka_id, center_id, name, marathi_name, dist_id, status) VALUES (?, ?, ?, ?, ?, ?)',
-            [taluka_id, center_id ?? null, name, marathi_name, dist_id, status ?? 'Active']
+            'INSERT INTO centerdata (taluka_id, center_id, name, marathi_name, dist_id, status, company_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [taluka_id, center_id ?? null, name, marathi_name, dist_id, status ?? 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({

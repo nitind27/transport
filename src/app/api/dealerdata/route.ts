@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { name, contactnumber, address, gstno, status } = body;
+        const { name, contactnumber, address, gstno, status, company_id, user_id } = body;
 
         // Basic Validation
         if (!name || !contactnumber || !address || !gstno) {
@@ -39,8 +39,8 @@ export async function POST(req: Request) {
 
         connection = await pool.getConnection();
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO dealer (name, contactnumber, address, gstno, status) VALUES (?, ?, ?, ?, ?)',
-            [name, contactnumber, address, gstno, status || 'Active']
+            'INSERT INTO dealer (name, contactnumber, address, gstno, status, company_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [name, contactnumber, address, gstno, status || 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({

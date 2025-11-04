@@ -92,6 +92,10 @@ const Ownersdata = ({ district }: Props) => {
         const apiUrl = '/api/ownerdata';
         const method = editId ? 'PUT' : 'POST';
 
+        // Get company_id and user_id from sessionStorage
+        const companyId = sessionStorage.getItem('company_id');
+        const userId = sessionStorage.getItem('userid');
+
         try {
             const response = await fetch(apiUrl, {
                 method: method,
@@ -99,7 +103,9 @@ const Ownersdata = ({ district }: Props) => {
                 body: JSON.stringify({
                     id: editId,
                     name: name,
-                    status: "Active"
+                    status: "Active",
+                    company_id: companyId ? parseInt(companyId) : null,
+                    user_id: userId ? parseInt(userId) : null
                 })
             });
 

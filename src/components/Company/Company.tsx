@@ -93,20 +93,25 @@ const Company = ({ companydata }: Props) => {
         const method = editId ? 'PUT' : 'POST';
 
         try {
+            const requestBody: CompanyRow = {
+                id: editId || 0,
+                name: name.trim(),
+                contactnumber: Number(contactnumber),
+                address: address.trim(),
+                gstno: gstno.trim(),
+                status: "Active",
+            };
+
             const response = await fetch(apiUrl, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: editId,
-                    name: name.trim(),
-                    contactnumber,
-                    address: address.trim(),
-                    gstno: gstno.trim(),
-                    status: "Active",
-                })
+                body: JSON.stringify(requestBody)
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
 
             toast.success(editId
                 ? 'Company updated successfully!'
@@ -115,10 +120,11 @@ const Company = ({ companydata }: Props) => {
             reset();
             setEditId(null);
             fetchData();
-        } catch {
-            toast.error(editId
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : (editId
                 ? 'Failed to update company. Please try again.'
                 : 'Failed to create company. Please try again.');
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
             setIsmodelopen(false);

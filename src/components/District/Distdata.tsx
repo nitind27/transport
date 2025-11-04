@@ -109,6 +109,9 @@ const Distdata = ({ district }: Props) => {
         const apiUrl = isEditMode ? `/api/district` : '/api/district';
         const method = isEditMode ? 'PUT' : 'POST';
 
+        // Get company_id from sessionStorage
+        const companyId = sessionStorage.getItem('company_id');
+
         try {
             const response = await fetch(apiUrl, {
                 method: method,
@@ -117,8 +120,8 @@ const Distdata = ({ district }: Props) => {
                     district_id: editId,
                     name: Taluka,
                     name_en: entaluka,
-                    status: "Active"
-
+                    status: "Active",
+                    company_id: companyId ? parseInt(companyId) : null // Add company_id from sessionStorage
                 })
             });
 

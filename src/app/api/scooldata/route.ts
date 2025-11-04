@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status } = body;
+        const { schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status, company_id, user_id } = body;
         if (!schoolname || !district || !taluka_id || !village_id || !center || !udaisno) {
           return NextResponse.json(
             { message: 'schoolname, district, taluka_id, village_id, center, udais_no are required' },
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
         
         connection = await pool.getConnection();
         const [result] = await connection.query<ResultSetHeader>(
-          'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [schoolname, district, taluka_id, village_id, center, udaisno, mobile1 ?? null, mobile2 ?? null, mobile3 ?? null, status ?? 'Active']
+          'INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status, company_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [schoolname, district, taluka_id, village_id, center, udaisno, mobile1 ?? null, mobile2 ?? null, mobile3 ?? null, status ?? 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({

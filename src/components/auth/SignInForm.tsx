@@ -10,24 +10,70 @@ import { toast } from 'react-toastify';
 
 import Spinner from "@/common/Spinner";
 
+type Company = {
+  id: number;
+  name: string;
+  contactnumber: string;
+  address: string;
+  gstno: string;
+  status: string;
+};
+
 export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
-    password: ""
+    password: "",
+    company_id: ""
   });
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [companyError, setCompanyError] = useState("");
   // const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // New loading state
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Fetch companies on component mount
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoadingCompanies(true);
+        const response = await fetch('/api/company');
+        if (!response.ok) {
+          throw new Error('Failed to fetch companies');
+        }
+        const result = await response.json();
+        setCompanies(result || []);
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+        toast.error('Failed to load companies. Please refresh the page.');
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear company error when user selects a company
+    if (name === 'company_id' && value) {
+      setCompanyError("");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate company selection
+    if (!formData.company_id) {
+      setCompanyError("कृपया कंपनी निवडा");
+      toast.error('कृपया कंपनी निवडा');
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -36,7 +82,10 @@ export default function SignInForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        })
       });
 
       const data = await response.json();
@@ -45,7 +94,7 @@ export default function SignInForm() {
         throw new Error(data.message || 'Login failed');
       }
 
-      // ✅ Store name in session storage
+      // ✅ Store name and other data in session storage
       if (data.user.name) {
         sessionStorage.setItem('userName', data.user.name);
         sessionStorage.setItem('category_name', data.user.category_name);
@@ -53,6 +102,8 @@ export default function SignInForm() {
         sessionStorage.setItem('village_id', data.user.village_id);
         sessionStorage.setItem('taluka_id', data.user.taluka_id);
         sessionStorage.setItem('userid', data.user.user_id);
+        // Store company_id from selected company
+        sessionStorage.setItem('company_id', formData.company_id);
       }
       if (isChecked) {
         localStorage.setItem('rememberedUsername', formData.username);
@@ -77,17 +128,12 @@ export default function SignInForm() {
     const rememberedUsername = localStorage.getItem('rememberedUsername');
     const rememberedpassword = localStorage.getItem('rememberedpassword');
     if (rememberedUsername && rememberedpassword) {
-      setFormData(prev => ({ ...prev, username: rememberedUsername }));
-      setFormData(prev => ({ ...prev, password: rememberedpassword }));
+      setFormData(prev => ({ ...prev, username: rememberedUsername, password: rememberedpassword }));
       setIsChecked(true);
     }
   }, []);
 
-  useEffect(() => {
-    if (isLoading) {
-      toast.success('Login successful!');
-    }
-  }, [isLoading])
+
   return (
     <>
 
@@ -106,6 +152,37 @@ export default function SignInForm() {
 
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
+                {/* Company Select Box */}
+                <div>
+                  <Label>
+                    Company <span className="text-error-500">*</span>
+                  </Label>
+                  <select
+                    name="company_id"
+                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+                      companyError ? "border-red-500" : ""
+                    }`}
+                    value={formData.company_id}
+                    onChange={handleChange}
+                    required
+                    disabled={loadingCompanies}
+                  >
+                    <option value="">
+                      {loadingCompanies ? "Loading companies..." : "Select Company"}
+                    </option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                  {companyError && (
+                    <div className="text-red-500 text-sm mt-1 pl-1">
+                      {companyError}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label>
                     Username <span className="text-error-500">*</span>
@@ -166,7 +243,7 @@ export default function SignInForm() {
                   <Button
                     className="w-full"
                     size="sm"
-                    disabled={isLoading}
+                    disabled={isLoading || loadingCompanies}
                   >
                     {isLoading ? <Spinner /> : 'Sign in'}
                   </Button>

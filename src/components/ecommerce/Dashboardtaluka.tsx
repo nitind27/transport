@@ -77,19 +77,31 @@ const Dashboardtaluka = () => {
   const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
+  // Get userid from sessionStorage
+
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch taluka data, center data, and order counts
+      // Get userid from sessionStorage
+      const storedUserId = sessionStorage.getItem('userid');
+      
+      if (!storedUserId) {
+        console.error('User ID not found in sessionStorage');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch taluka data, center data, and order counts with user_id
       const [talukaResponse, centerResponse, orderCountsResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard?order_no=${selectedOrderNo}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard?order_no=${selectedOrderNo}&user_id=${storedUserId}`, {
           cache: 'no-store'
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centerdashboard?order_no=${selectedOrderNo}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centerdashboard?order_no=${selectedOrderNo}&user_id=${storedUserId}`, {
           cache: 'no-store'
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schoolwiseorders/count`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schoolwiseorders/count?user_id=${storedUserId}`, {
           cache: 'no-store'
         })
       ]);

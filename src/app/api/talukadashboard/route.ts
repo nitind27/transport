@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const orderNo = searchParams.get('order_no') || '20';
     const centerId = searchParams.get('center_id');
     const talukaId = searchParams.get('taluka_id');
+    const userId = searchParams.get('user_id'); // Get user_id from query params
     
     // Build WHERE clause for center filtering
     let centerFilter = '';
@@ -22,6 +23,14 @@ export async function GET(request: Request) {
     if (talukaId) {
       talukaFilter = 'AND t.taluka_id = ?';
     }
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    let userFilter = '';
+    const userParams: string[] = [];
+    if (userId && userId !== '1') { // Only filter if not admin
+      userFilter = 'AND t.user_id = ?';
+      userParams.push(userId);
+    }
     
     const [rows] = await pool.query<RowDataPacket[]>(`
       SELECT 
@@ -29,7 +38,7 @@ export async function GET(request: Request) {
         t.name,
         t.name_en,
         -- Total schools in taluka (filtered by center if provided)
-        COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} THEN s.schoolid END) AS total_schools,
+        COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId !== '1' ? 'AND s.user_id = ?' : ''} THEN s.schoolid END) AS total_schools,
         -- Schools with orders - count distinct schools (not class_range rows)
         (SELECT COUNT(DISTINCT so.school_id) 
          FROM school_wise_order_details so
@@ -38,6 +47,7 @@ export async function GET(request: Request) {
          WHERE sd.taluka_id = t.taluka_id
          AND od.order_no = ?
          ${centerFilter}
+         ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active') AS schools_with_orders,
@@ -51,6 +61,7 @@ export async function GET(request: Request) {
          WHERE sd.taluka_id = t.taluka_id
          AND od.order_no = ?
          ${centerFilter}
+         ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active'
@@ -63,6 +74,7 @@ export async function GET(request: Request) {
           WHERE sd.taluka_id = t.taluka_id
           AND od.order_no = ?
           ${centerFilter}
+          ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active') - 
@@ -75,28 +87,37 @@ export async function GET(request: Request) {
           WHERE sd.taluka_id = t.taluka_id
           AND od.order_no = ?
           ${centerFilter}
+          ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active'
           AND dd.status = 'Active')) AS remaining_schools
       FROM taluka t
-      LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''}
+      LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId !== '1' ? 'AND s.user_id = ?' : ''}
       WHERE t.status = 'Active'
       ${talukaFilter}
+      ${userFilter}
       GROUP BY t.taluka_id, t.name, t.name_en
       ORDER BY t.name
     `, [
+      ...(userId && userId !== '1' ? userParams : []), // for COUNT in main query
       ...centerParams, // for COUNT in main query
       orderNo,
       ...centerParams, // for schools_with_orders subquery
+      ...(userId && userId !== '1' ? userParams : []), // for schools_with_orders subquery
       orderNo,
       ...centerParams, // for distributed_schools subquery
+      ...(userId && userId !== '1' ? userParams : []), // for distributed_schools subquery
       orderNo,
       ...centerParams, // for remaining_schools first subquery
+      ...(userId && userId !== '1' ? userParams : []), // for remaining_schools first subquery
       orderNo,
       ...centerParams, // for remaining_schools second subquery
+      ...(userId && userId !== '1' ? userParams : []), // for remaining_schools second subquery
       ...centerParams, // for LEFT JOIN
-      ...talukaParams // for WHERE taluka filter
+      ...(userId && userId !== '1' ? userParams : []), // for LEFT JOIN
+      ...talukaParams, // for WHERE taluka filter
+      ...userParams // for WHERE user filter
     ]);
     
     return NextResponse.json(rows);

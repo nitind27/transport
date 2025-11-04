@@ -92,6 +92,18 @@ const Godowndata = ({ district }: Props) => {
         const apiUrl = '/api/godowndata';
         const method = editId ? 'PUT' : 'POST';
 
+        // Get company_id and user_id from sessionStorage - ensure they are valid numbers, not 0
+        const companyIdStr = sessionStorage.getItem('company_id');
+        const userIdStr = sessionStorage.getItem('userid');
+        
+        // Parse and validate - only include if they are valid numbers greater than 0
+        const companyId = companyIdStr && !isNaN(Number(companyIdStr)) && Number(companyIdStr) > 0 
+            ? parseInt(companyIdStr) 
+            : null;
+        const userId = userIdStr && !isNaN(Number(userIdStr)) && Number(userIdStr) > 0 
+            ? parseInt(userIdStr) 
+            : null;
+
         try {
             const response = await fetch(apiUrl, {
                 method: method,
@@ -99,7 +111,9 @@ const Godowndata = ({ district }: Props) => {
                 body: JSON.stringify({
                     id: editId,
                     name: name,
-                    status: "Active"
+                    status: "Active",
+                    company_id: companyId,
+                    user_id: userId
                 })
             });
 
@@ -113,7 +127,7 @@ const Godowndata = ({ district }: Props) => {
             setEditId(null);
             fetchData();
         } catch (error) {
-            console.error('Error saving owner:', error);
+            console.error('Error saving godown:', error);
             toast.error(editId ? 'Failed to update. Please try again.' : 'Failed to create. Please try again.');
         } finally {
             setLoading(false);

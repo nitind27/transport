@@ -3,8 +3,31 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
 // GET - Fetch school-wise orders with proper filtering logic
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('user_id');
+        const companyId = searchParams.get('company_id');
+
+        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+        let userFilter = '';
+        const userParams: string[] = [];
+        if (userId && userId !== '1') {
+            userFilter = 'AND s.user_id = ?';
+            userParams.push(userId);
+        }
+
+        // Build WHERE clause for company_id filtering
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId) {
+            companyFilter = 'AND s.company_id = ?';
+            companyParams.push(companyId);
+        }
+
+        // Combine all parameters
+        const allParams = [...userParams, ...companyParams];
+
         const [rows] = await pool.query<RowDataPacket[]>(`
             SELECT 
                 swo.*,
@@ -71,6 +94,8 @@ export async function GET() {
                 AND swo.class_range = dd.class_range
                 AND dd.status = 'Active'
             WHERE swo.status = 'Active'
+            ${userFilter}
+            ${companyFilter}
             GROUP BY swo.id, swo.order_id, swo.school_id, swo.class_range
             HAVING 
                 -- Show only if not dispatched at all
@@ -97,7 +122,7 @@ export async function GET() {
                     OR GREATEST(0, COALESCE(JSON_UNQUOTE(JSON_EXTRACT(swo.items_data, '$.जीरा')), 0) - COALESCE(SUM(CASE WHEN dd.item_name = 'जीरा' THEN dd.qty_dispatch ELSE 0 END), 0)) > 0
                 ))
             ORDER BY s.schoolname, swo.class_range, swo.created_at DESC
-        `);
+        `, allParams);
         
         console.log('Total rows fetched:', rows.length);
         

@@ -30,6 +30,10 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData();
     const file = form.get('file');
+    // Get company_id and user_id from FormData
+    const companyId = form.get('company_id');
+    const userId = form.get('user_id');
+    
     if (!file || !(file instanceof Blob)) {
       return NextResponse.json({ message: 'file is required' }, { status: 400 });
     }
@@ -84,6 +88,10 @@ export async function POST(request: Request) {
     let inserted = 0;
     const errors: ErrorRow[] = [];
 
+    // Parse company_id and user_id to integers
+    const company_id = companyId ? parseInt(String(companyId)) : null;
+    const user_id = userId ? parseInt(String(userId)) : null;
+
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const rowNum = i + 2; // header at row 1
@@ -120,11 +128,11 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Always INSERT (no update)
+      // Always INSERT (no update) - Include company_id and user_id
       await pool.query(
-        `INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')`,
-        [schoolName, dist.district_id, taluka.taluka_id, 1, center.center_id, udaisno, mobile1 || null, mobile2 || null, mobile3 || null]
+        `INSERT INTO schooldata (schoolname, district, taluka_id, village_id, center, udaisno, mobile1, mobile2, mobile3, status, company_id, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?)`,
+        [schoolName, dist.district_id, taluka.taluka_id, 1, center.center_id, udaisno, mobile1 || null, mobile2 || null, mobile3 || null, company_id, user_id]
       );
       inserted += 1;
     }

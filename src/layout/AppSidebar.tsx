@@ -32,11 +32,11 @@ const adminNavItems: NavItem[] = [
     icon: <TbCategoryPlus />,
     name: "Masters",
     subItems: [
+      { name: "Companies", path: "/companies" },
       { name: "Users", path: "/users" },
       { name: "District", path: "/distdata" },
       { name: "Taluka", path: "/taluka" },
       { name: "Center's", path: "/center" },
-      { name: "Companies", path: "/companies" },
       { name: "Schools", path: "/school" },
       { name: "Items", path: "/itemsgrains" },
       { name: "Owners", path: "/owner" },

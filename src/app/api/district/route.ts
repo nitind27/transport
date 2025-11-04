@@ -29,24 +29,23 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { name, name_en, status } = body;
-
+        const { name, name_en, status, company_id } = body;
 
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO district (name, name_en, status) VALUES (?, ?, ?)',
-            [name, name_en, status || 'Active']
+            'INSERT INTO district (name, name_en, status, company_id) VALUES (?, ?, ?, ?)',
+            [name, name_en, status || 'Active', company_id || null]
         );
 
         return NextResponse.json({
-            message: 'Taluka added successfully',
+            message: 'District added successfully',
             district_id: result.insertId,
         });
     } catch (error) {
         console.error('Database insert failed (POST):', error);
         return NextResponse.json(
-            { message: 'Failed to add taluka' },
+            { message: 'Failed to add district' },
             { status: 500 }
         );
     } finally {

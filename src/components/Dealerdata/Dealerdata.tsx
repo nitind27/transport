@@ -92,6 +92,18 @@ const Dealerdata = ({ dealerdata }: Props) => {
         const apiUrl = '/api/dealerdata';
         const method = editId ? 'PUT' : 'POST';
 
+        // Get company_id and user_id from sessionStorage - ensure they are valid numbers, not 0
+        const companyIdStr = sessionStorage.getItem('company_id');
+        const userIdStr = sessionStorage.getItem('userid');
+        
+        // Parse and validate - only include if they are valid numbers greater than 0
+        const companyId = companyIdStr && !isNaN(Number(companyIdStr)) && Number(companyIdStr) > 0 
+            ? parseInt(companyIdStr) 
+            : null;
+        const userId = userIdStr && !isNaN(Number(userIdStr)) && Number(userIdStr) > 0 
+            ? parseInt(userIdStr) 
+            : null;
+
         try {
             const response = await fetch(apiUrl, {
                 method,
@@ -103,6 +115,8 @@ const Dealerdata = ({ dealerdata }: Props) => {
                     address,
                     gstno,
                     status: "Active",
+                    company_id: companyId,
+                    user_id: userId
                 })
             });
 

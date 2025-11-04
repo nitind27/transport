@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { name, name_en, dist_id, status } = body;
+        const { name, name_en, dist_id, status, company_id, user_id } = body;
 
         // Basic Validation
         if (!name) {
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO taluka (name, name_en, dist_id, status) VALUES (?, ?, ?, ?)',
-            [name, name_en, dist_id, status || 'Active']
+            'INSERT INTO taluka (name, name_en, dist_id, status, company_id, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, name_en, dist_id, status || 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({

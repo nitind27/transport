@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     try {
     
         const body = await req.json();
-        const { truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status } = body;
+        const { truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status, company_id, user_id } = body;
         
         // Basic Validation
         if (!truckNo || !ownerId) {
@@ -44,8 +44,8 @@ export async function POST(req: Request) {
         connection = await pool.getConnection();
         
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO truckdata (truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [truckNo, ownerId, ownerName, mobileNumber, driverName || null, driverMobile || null, status || 'Active']
+            'INSERT INTO truckdata (truckNo, ownerId, ownerName, mobileNumber, driverName, driverMobile, status, company_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [truckNo, ownerId, ownerName, mobileNumber, driverName || null, driverMobile || null, status || 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({
