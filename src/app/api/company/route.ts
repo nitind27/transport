@@ -3,14 +3,28 @@ import pool from '@/lib/db';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // --- GET Method ---
-export async function GET() {
+export async function GET(req: Request) {
     let connection;
     try {
+        const { searchParams } = new URL(req.url);
+        const id = searchParams.get('id');
+        
         connection = await pool.getConnection();
-        const [rows] = await connection.query<RowDataPacket[]>(
-            `SELECT * FROM company WHERE status = "Active"`
-        );
-        return NextResponse.json(rows);
+        
+        if (id) {
+            // Fetch single company by ID
+            const [rows] = await connection.query<RowDataPacket[]>(
+                `SELECT * FROM company WHERE id = ? AND status = "Active"`,
+                [id]
+            );
+            return NextResponse.json(rows.length > 0 ? rows[0] : null);
+        } else {
+            // Fetch all active companies (existing behavior)
+            const [rows] = await connection.query<RowDataPacket[]>(
+                `SELECT * FROM company WHERE status = "Active"`
+            );
+            return NextResponse.json(rows);
+        }
     } catch (error) {
         console.error('Database query failed (GET):', error);
         return NextResponse.json(

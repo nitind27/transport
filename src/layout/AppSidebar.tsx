@@ -21,7 +21,7 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-// Admin (category_id = 1) - Full access to all menus including Masters
+// Super Admin (category_id = 5) - Full access to all menus including Masters
 const adminNavItems: NavItem[] = [
   {
     icon: <RxDashboard />,
@@ -73,6 +73,19 @@ const adminNavItems: NavItem[] = [
 ];
 
 // Owner (category_id = 2) - Dashboard and ZP Order Details only
+const superadmin: NavItem[] = [
+  {
+    icon: <RxDashboard />,
+    name: "Companies",
+    path: "/companies",
+  },
+  {
+    icon: <RxDashboard />,
+    name: "Create Admin",
+    path: "/admincompanies",
+  },
+ 
+];
 const ownerNavItems: NavItem[] = [
   {
     icon: <RxDashboard />,
@@ -94,8 +107,8 @@ const ownerNavItems: NavItem[] = [
 const supervisorNavItems: NavItem[] = [
   {
     icon: <RxDashboard />,
-    name: "Dashboard",
-    path: "/",
+    name: "Companies",
+    path: "/companies",
   },
   {
     icon: <TbCategoryPlus />,
@@ -178,16 +191,31 @@ const defaultNavItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
+  // All hooks must be called first - before any conditional returns
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
   const { setIsglobleloading } = useToggleContext();
   const router = usePathname();
   const [storedValue, setStoredValue] = useState<string | null>(null);
   const [storedValuecategory_id, setStoredValuecategory_id] = useState<string | null>(null);
+  // const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   
+  // All state hooks
+  const [openSubmenu, setOpenSubmenu] = useState<{
+    type: "main" | "others";
+    index: number;
+  } | null>(null);
+  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
+  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // All callbacks
+  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+
   // Function to get navigation items based on user category
   const getNavItemsByCategory = (categoryId: string | null): NavItem[] => {
     switch (categoryId) {
+      case "5": // Super Admin
+        return superadmin;
       case "1": // Admin
         return adminNavItems;
       case "2": // Owner
@@ -203,18 +231,23 @@ const AppSidebar: React.FC = () => {
 
   const navItems: NavItem[] = getNavItemsByCategory(storedValuecategory_id);
 
+  // All useEffect hooks - must be called before any conditional returns
   useEffect(() => {
     const value = sessionStorage.getItem('userName');
     const category_id = sessionStorage.getItem('category_id');
+    const superAdmin = sessionStorage.getItem('isSuperAdmin');
+    
+    // Debug logs
+    console.log('AppSidebar Debug:', {
+      userName: value,
+      category_id: category_id,
+      isSuperAdmin: superAdmin,
+      isSuperAdminCheck: superAdmin === "true" && category_id === "5"
+    });
     setStoredValue(value);
     setStoredValuecategory_id(category_id);
+    // setIsSuperAdmin(superAdmin === "true" && category_id === "5");
   }, []);
-
-  // Function to handle click and store path in localStorage
-  const handleItemClick = (path: string) => {
-    setIsglobleloading(true);
-    localStorage.setItem("currentPath", path);
-  };
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -227,7 +260,65 @@ const AppSidebar: React.FC = () => {
     return () => {
       // Cleanup if needed
     };
-  }, [router]);
+  }, [router, setIsglobleloading]);
+
+  useEffect(() => {
+    // Check if the current path matches any submenu item
+    let submenuMatched = false;
+    ["main", "others"].forEach((menuType) => {
+      const items = menuType === "main" ? navItems : [];
+      items.forEach((nav, index) => {
+        if (nav.subItems) {
+          nav.subItems.forEach((subItem) => {
+            if (isActive(subItem.path)) {
+              setOpenSubmenu({
+                type: menuType as "main" | "others",
+                index,
+              });
+              submenuMatched = true;
+            }
+          });
+        }
+      });
+    });
+
+    // If no submenu item matches, close the open submenu
+    if (!submenuMatched) {
+      setOpenSubmenu(null);
+    }
+  }, [pathname, isActive, navItems]);
+
+  useEffect(() => {
+    // Set the height of the submenu items when the submenu is opened
+    if (openSubmenu !== null) {
+      const key = `${openSubmenu.type}-${openSubmenu.index}`;
+      if (subMenuRefs.current[key]) {
+        setSubMenuHeight((prevHeights) => ({
+          ...prevHeights,
+          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
+        }));
+      }
+    }
+  }, [openSubmenu]);
+
+  // Function to handle click and store path in localStorage
+  const handleItemClick = (path: string) => {
+    setIsglobleloading(true);
+    localStorage.setItem("currentPath", path);
+  };
+
+  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+    setOpenSubmenu((prevOpenSubmenu) => {
+      if (
+        prevOpenSubmenu &&
+        prevOpenSubmenu.type === menuType &&
+        prevOpenSubmenu.index === index
+      ) {
+        return null;
+      }
+      return { type: menuType, index };
+    });
+  };
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -333,69 +424,13 @@ const AppSidebar: React.FC = () => {
     </ul>
   );
 
-  const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
-    {}
-  );
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Early return AFTER all hooks - Remove the super admin check
+  // Sidebar should show for all logged-in users based on their category
+  if (!storedValuecategory_id) {
+    return null; // Only hide if no category_id is set
+  }
 
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
-
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : [];
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
-
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [pathname, isActive, navItems]);
-
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
-  };
-
+  // JSX return
   return (
     <aside
       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
@@ -456,3 +491,4 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
+

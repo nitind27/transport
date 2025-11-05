@@ -5,10 +5,10 @@ import { useState } from 'react';
 import DispatchView from './DispatchView';
 import PendingOrderDetails from './PendingOrderDetails';
 import Routepaperview from '../Routepaperview/Routepaperview';
-import SalesTab from './SalesTab';
+// import SalesTab from './SalesTab';
 
 const DispatchTabs = () => {
-  const [activeTab, setActiveTab] = useState<'view' | 'pending' | 'routepaperview' | 'salesreturn' | 'viewsalesreturn'>('pending');
+  const [activeTab, setActiveTab] = useState<'view' | 'pending' | 'routepaperview' | 'viewsalesreturn'>('pending');
 
   return (
     <div className="w-full">
@@ -45,7 +45,7 @@ const DispatchTabs = () => {
           >
             View Route Paper
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveTab('salesreturn')}
             className={`px-6 py-3 text-sm font-medium transition-all duration-200 rounded-lg shadow-sm ${
               activeTab === 'salesreturn' || activeTab === 'viewsalesreturn'
@@ -54,7 +54,7 @@ const DispatchTabs = () => {
             }`}
           >
             Sales Return
-          </button>
+          </button> */}
         </nav>
       </div>
 
@@ -63,7 +63,7 @@ const DispatchTabs = () => {
         {activeTab === 'view' && <DispatchView />}
         {activeTab === 'pending' && <PendingOrderDetails />}
         {activeTab === 'routepaperview' && <Routepaperview />}
-        {(activeTab === 'salesreturn' || activeTab === 'viewsalesreturn') && <SalesTab />}
+        {/* {(activeTab === 'salesreturn' || activeTab === 'viewsalesreturn') && <SalesTab />} */}
       </div>
     </div>
   );

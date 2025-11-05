@@ -23,7 +23,7 @@ interface User {
 export async function POST(req: Request) {
   let connection;
   try {
-    const { username, password } = await req.json();
+    const { username, password, isAdminLogin } = await req.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -51,10 +51,21 @@ export async function POST(req: Request) {
 
     const user = users[0] as User;
    
+
+
     if (password !== user.password) {
       connection.release();
       return NextResponse.json(
         { message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Check if admin login is restricted to category_id 5
+    if (isAdminLogin && user.user_category_id !== 5) {
+      connection.release();
+      return NextResponse.json(
+        { message: 'Invalid credentials. Admin login is only allowed for Super Admin users.' },
         { status: 401 }
       );
     }
@@ -76,7 +87,7 @@ export async function POST(req: Request) {
 
     connection.release();
 
-    // Set a cookie with user info (e.g., user id)
+    // Set a cookie with user info
     const cookie = serialize('auth_token', String(user.user_id), {
       httpOnly: true,
       path: '/',
@@ -85,10 +96,17 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === 'production',
     });
 
-    // Note: category_id is stored in sessionStorage client-side, not in cookies
     const response = NextResponse.json({
       message: 'Login successful',
-      user: { name: user.name, user_id: user.user_id, category_name: user.category_name, taluka_id: user.taluka_id, village_id: user.village_id, category_id: user.user_category_id }
+      user: { 
+        name: user.name, 
+        user_id: user.user_id, 
+        category_name: user.category_name, 
+        taluka_id: user.taluka_id, 
+        village_id: user.village_id, 
+        category_id: user.user_category_id,
+        isSuperAdmin: isAdminLogin && user.user_category_id === 5
+      }
     });
     response.headers.set('Set-Cookie', cookie);
 

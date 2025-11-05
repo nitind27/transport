@@ -7,7 +7,34 @@ import React, { useState, useEffect, useRef } from "react";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
+  const [companyName, setCompanyName] = useState<string>("Mid Day Meal");
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+
+  // Fetch company name from sessionStorage company_id
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      try {
+        const companyId = sessionStorage.getItem('company_id');
+        
+        if (companyId) {
+          const response = await fetch(`/api/company?id=${companyId}`);
+          
+          if (response.ok) {
+            const companyData = await response.json();
+            if (companyData && companyData.name) {
+              setCompanyName(companyData.name);
+            }
+          } else {
+            console.error('Failed to fetch company name');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching company name:', error);
+      }
+    };
+
+    fetchCompanyName();
+  }, []);
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -82,12 +109,10 @@ const AppHeader: React.FC = () => {
           </button>
 
           <Link href="/" className="lg:hidden">
-
             <span className="text-white text-[12px] whitespace-nowrap">
-
-              Mid Day Meal
+            Mid Day Meal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              {companyName}
             </span>
-
           </Link>
 
           <button
@@ -111,7 +136,7 @@ const AppHeader: React.FC = () => {
           </button>
 
           <div className="hidden lg:block">
-            <h1 className="text-2xl font-semibold text-white whitespace-nowrap">Mid Day Meal </h1>
+            <h1 className="text-2xl font-semibold text-white whitespace-nowrap">Mid Day Meal &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {companyName}</h1>
           </div>
         </div>
         <div

@@ -23,6 +23,7 @@ export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false); // New state for admin login
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -31,45 +32,54 @@ export default function SignInForm() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [companyError, setCompanyError] = useState("");
-  // const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch companies on component mount
+  // Fetch companies on component mount (only if not admin login)
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoadingCompanies(true);
-        const response = await fetch('/api/company');
-        if (!response.ok) {
-          throw new Error('Failed to fetch companies');
+    if (!isAdminLogin) {
+      const fetchCompanies = async () => {
+        try {
+          setLoadingCompanies(true);
+          const response = await fetch('/api/company');
+          if (!response.ok) {
+            throw new Error('Failed to fetch companies');
+          }
+          const result = await response.json();
+          setCompanies(result || []);
+        } catch (error) {
+          console.error('Error fetching companies:', error);
+          toast.error('Failed to load companies. Please refresh the page.');
+        } finally {
+          setLoadingCompanies(false);
         }
-        const result = await response.json();
-        setCompanies(result || []);
-      } catch (error) {
-        console.error('Error fetching companies:', error);
-        toast.error('Failed to load companies. Please refresh the page.');
-      } finally {
-        setLoadingCompanies(false);
-      }
-    };
+      };
 
-    fetchCompanies();
-  }, []);
+      fetchCompanies();
+    } else {
+      setLoadingCompanies(false);
+      setFormData(prev => ({ ...prev, company_id: "" }));
+    }
+  }, [isAdminLogin]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear company error when user selects a company
     if (name === 'company_id' && value) {
       setCompanyError("");
     }
   };
 
+  const handleAdminLoginToggle = (checked: boolean) => {
+    setIsAdminLogin(checked);
+    setFormData(prev => ({ ...prev, company_id: "" }));
+    setCompanyError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate company selection
-    if (!formData.company_id) {
+    // Validate company selection only if not admin login
+    if (!isAdminLogin && !formData.company_id) {
       setCompanyError("कृपया कंपनी निवडा");
       toast.error('कृपया कंपनी निवडा');
       return;
@@ -84,7 +94,8 @@ export default function SignInForm() {
         },
         body: JSON.stringify({
           username: formData.username,
-          password: formData.password
+          password: formData.password,
+          isAdminLogin: isAdminLogin // Pass admin login flag
         })
       });
 
@@ -94,17 +105,28 @@ export default function SignInForm() {
         throw new Error(data.message || 'Login failed');
       }
 
-      // ✅ Store name and other data in session storage
+      // Store user data in session storage
       if (data.user.name) {
         sessionStorage.setItem('userName', data.user.name);
         sessionStorage.setItem('category_name', data.user.category_name);
         sessionStorage.setItem('category_id', data.user.category_id);
-        sessionStorage.setItem('village_id', data.user.village_id);
-        sessionStorage.setItem('taluka_id', data.user.taluka_id);
+        sessionStorage.setItem('village_id', data.user.village_id || "");
+        sessionStorage.setItem('taluka_id', data.user.taluka_id || "");
         sessionStorage.setItem('userid', data.user.user_id);
-        // Store company_id from selected company
-        sessionStorage.setItem('company_id', formData.company_id);
+        
+        // Check if user is super admin (category_id = 5) and admin login was used
+        if (isAdminLogin && data.user.category_id === 5) {
+          sessionStorage.setItem('company_id', "");
+          sessionStorage.setItem('isSuperAdmin', "true");
+        } else if (!isAdminLogin && formData.company_id) {
+          sessionStorage.setItem('company_id', formData.company_id);
+          sessionStorage.removeItem('isSuperAdmin');
+        } else {
+          sessionStorage.setItem('company_id', "");
+          sessionStorage.removeItem('isSuperAdmin');
+        }
       }
+      
       if (isChecked) {
         localStorage.setItem('rememberedUsername', formData.username);
         localStorage.setItem('rememberedpassword', formData.password);
@@ -114,7 +136,13 @@ export default function SignInForm() {
       }
 
       toast.success('Login successful!');
-      router.push('/');
+      
+      // Redirect admin login to companies page immediately
+      if (isAdminLogin) {
+        router.replace('/companies'); // Use replace instead of push
+      } else {
+        router.replace('/'); // Use replace for regular users too
+      }
        
     } catch (error) {
       console.error('Login error:', error);
@@ -133,10 +161,8 @@ export default function SignInForm() {
     }
   }, []);
 
-
   return (
     <>
-
       <div className="flex flex-col flex-1 lg:w-1/2 w-full">
         <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
           <div>
@@ -149,39 +175,48 @@ export default function SignInForm() {
               </p>
             </div>
 
-
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
-                {/* Company Select Box */}
-                <div>
-                  <Label>
-                    Company <span className="text-error-500">*</span>
-                  </Label>
-                  <select
-                    name="company_id"
-                    className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
-                      companyError ? "border-red-500" : ""
-                    }`}
-                    value={formData.company_id}
-                    onChange={handleChange}
-                    required
-                    disabled={loadingCompanies}
-                  >
-                    <option value="">
-                      {loadingCompanies ? "Loading companies..." : "Select Company"}
-                    </option>
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name}
-                      </option>
-                    ))}
-                  </select>
-                  {companyError && (
-                    <div className="text-red-500 text-sm mt-1 pl-1">
-                      {companyError}
-                    </div>
-                  )}
+                {/* Admin Login Toggle */}
+                <div className="flex items-center gap-3">
+                  <Checkbox checked={isAdminLogin} onChange={handleAdminLoginToggle} />
+                  <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                    Admin Login (Super Admin)
+                  </span>
                 </div>
+
+                {/* Company Select Box - Only show if not admin login */}
+                {!isAdminLogin && (
+                  <div>
+                    <Label>
+                      Company <span className="text-error-500">*</span>
+                    </Label>
+                    <select
+                      name="company_id"
+                      className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+                        companyError ? "border-red-500" : ""
+                      }`}
+                      value={formData.company_id}
+                      onChange={handleChange}
+                      required={!isAdminLogin}
+                      disabled={loadingCompanies}
+                    >
+                      <option value="">
+                        {loadingCompanies ? "Loading companies..." : "Select Company"}
+                      </option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                    {companyError && (
+                      <div className="text-red-500 text-sm mt-1 pl-1">
+                        {companyError}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <Label>
@@ -259,7 +294,6 @@ export default function SignInForm() {
                 </div>
               </div>
             </form>
-
           </div>
         </div>
       </div>
