@@ -56,7 +56,9 @@ export default function SignInForm() {
 
       fetchCompanies();
     } else {
+      // When admin login is enabled, don't fetch companies and clear company data
       setLoadingCompanies(false);
+      setCompanies([]); // Clear companies array
       setFormData(prev => ({ ...prev, company_id: "" }));
     }
   }, [isAdminLogin]);
@@ -85,43 +87,80 @@ export default function SignInForm() {
       return;
     }
 
+    // Clear any previous company errors when admin login is enabled
+    if (isAdminLogin) {
+      setCompanyError("");
+    }
+
     try {
       setIsLoading(true);
+      
+      // For Admin Login, don't send company_id at all
+      const requestBody: {
+        username: string;
+        password: string;
+        isAdminLogin: boolean;
+      } = {
+        username: formData.username.trim(),
+        password: formData.password,
+        isAdminLogin: Boolean(isAdminLogin) // Ensure it's a proper boolean
+      };
+
+      console.log('Login Request:', { ...requestBody, password: '***' }); // Debug log
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-          isAdminLogin: isAdminLogin // Pass admin login flag
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // Log debug info if available
+        if (data.debug) {
+          console.error('Login Debug Info:', data.debug);
+          console.error('Expected: isAdminLogin=true, category_id=5');
+          console.error('Actual:', {
+            isAdminLogin: data.debug.isAdminLogin,
+            category_id: data.debug.userCategoryId
+          });
+        }
         throw new Error(data.message || 'Login failed');
       }
 
       // Store user data in session storage
-      if (data.user.name) {
-        sessionStorage.setItem('userName', data.user.name);
-        sessionStorage.setItem('category_name', data.user.category_name);
-        sessionStorage.setItem('category_id', data.user.category_id);
-        sessionStorage.setItem('village_id', data.user.village_id || "");
-        sessionStorage.setItem('taluka_id', data.user.taluka_id || "");
-        sessionStorage.setItem('userid', data.user.user_id);
+      if (data.user && data.user.name) {
+        // Always set basic user info first
+        sessionStorage.setItem('userName', data.user.name || "");
+        sessionStorage.setItem('category_name', data.user.category_name || "");
+        sessionStorage.setItem('category_id', String(data.user.category_id || ""));
+        sessionStorage.setItem('village_id', String(data.user.village_id || ""));
+        sessionStorage.setItem('taluka_id', String(data.user.taluka_id || ""));
+        sessionStorage.setItem('userid', String(data.user.user_id || ""));
         
-        // Check if user is super admin (category_id = 5) and admin login was used
-        if (isAdminLogin && data.user.category_id === 5) {
+        // Check if Admin Login was used AND user is Super Admin (category_id = 5)
+        const isSuperAdminLogin = isAdminLogin && data.user.category_id === 5;
+        
+        if (isSuperAdminLogin) {
+          // Super Admin Login - No company_id needed, set empty string
           sessionStorage.setItem('company_id', "");
           sessionStorage.setItem('isSuperAdmin', "true");
+          
+          console.log('✅ Super Admin logged in successfully:', {
+            username: formData.username,
+            category_id: data.user.category_id,
+            isAdminLogin: isAdminLogin,
+            isSuperAdmin: true
+          });
         } else if (!isAdminLogin && formData.company_id) {
-          sessionStorage.setItem('company_id', formData.company_id);
+          // Regular user login with company
+          sessionStorage.setItem('company_id', String(formData.company_id));
           sessionStorage.removeItem('isSuperAdmin');
         } else {
+          // Regular user login without company
           sessionStorage.setItem('company_id', "");
           sessionStorage.removeItem('isSuperAdmin');
         }
@@ -139,9 +178,9 @@ export default function SignInForm() {
       
       // Redirect admin login to companies page immediately
       if (isAdminLogin) {
-        router.replace('/companies'); // Use replace instead of push
+        router.replace('/companies');
       } else {
-        router.replace('/'); // Use replace for regular users too
+        router.replace('/');
       }
        
     } catch (error) {

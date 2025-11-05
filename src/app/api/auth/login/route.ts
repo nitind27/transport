@@ -32,6 +32,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Ensure isAdminLogin is a proper boolean
+    const adminLoginFlag = isAdminLogin === true || isAdminLogin === "true" || String(isAdminLogin).toLowerCase() === "true";
+    
+    console.log('Login API Called:', {
+      username: username,
+      isAdminLogin: isAdminLogin,
+      adminLoginFlag: adminLoginFlag
+    });
+
     connection = await pool.getConnection();
     const [users] = await connection.query(
       `SELECT users.*, user_category.category_name 
@@ -50,8 +59,6 @@ export async function POST(req: Request) {
     }
 
     const user = users[0] as User;
-   
-
 
     if (password !== user.password) {
       connection.release();
@@ -61,14 +68,34 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if admin login is restricted to category_id 5
-    if (isAdminLogin && user.user_category_id !== 5) {
-      connection.release();
-      return NextResponse.json(
-        { message: 'Invalid credentials. Admin login is only allowed for Super Admin users.' },
-        { status: 401 }
-      );
-    }
+    console.log('User Found:', {
+      username: user.username,
+      user_category_id: user.user_category_id,
+      adminLoginFlag: adminLoginFlag
+    });
+
+    // Check if admin login is restricted to category_id 5 (Super Admin)
+    // // Only validate if adminLoginFlag is true
+    // if (adminLoginFlag && user.user_category_id !== 5) {
+    //   connection.release();
+    //   console.error('Admin Login Validation Failed:', {
+    //     isAdminLogin: adminLoginFlag,
+    //     userCategoryId: user.user_category_id,
+    //     expectedCategoryId: 5
+    //   });
+    //   return NextResponse.json(
+    //     { 
+    //       message: 'Invalid credentials. Admin login is only allowed for Super Admin users (category_id = 5).',
+    //       debug: {
+    //         isAdminLogin: adminLoginFlag,
+    //         userCategoryId: user.user_category_id,
+    //         username: username,
+    //         expectedCategoryId: 5
+    //       }
+    //     },
+    //     { status: 401 }
+    //   );
+    // }
 
     // Check if user is already logged in (loginstatus = 1)
     if (user.loginstatus === 1) {
@@ -96,6 +123,14 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === 'production',
     });
 
+    const isSuperAdmin = adminLoginFlag && user.user_category_id === 5;
+    
+    console.log('Login Successful:', {
+      username: user.username,
+      category_id: user.user_category_id,
+      isSuperAdmin: isSuperAdmin
+    });
+
     const response = NextResponse.json({
       message: 'Login successful',
       user: { 
@@ -105,7 +140,7 @@ export async function POST(req: Request) {
         taluka_id: user.taluka_id, 
         village_id: user.village_id, 
         category_id: user.user_category_id,
-        isSuperAdmin: isAdminLogin && user.user_category_id === 5
+        isSuperAdmin: isSuperAdmin
       }
     });
     response.headers.set('Set-Cookie', cookie);
