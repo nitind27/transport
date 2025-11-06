@@ -110,8 +110,8 @@ const AppHeader: React.FC = () => {
 
           <Link href="/" className="lg:hidden">
             <span className="text-white text-[12px] whitespace-nowrap">
-            Mid Day Meal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              {companyName}
+            Mid Day Meal &nbsp;&nbsp;&nbsp;|
+              {companyName} 
             </span>
           </Link>
 
@@ -136,7 +136,7 @@ const AppHeader: React.FC = () => {
           </button>
 
           <div className="hidden lg:block">
-            <h1 className="text-2xl font-semibold text-white whitespace-nowrap">Mid Day Meal &nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {companyName}</h1>
+            <h1 className="text-xl font-semibold text-white whitespace-nowrap">Mid Day Meal &nbsp; &nbsp;&nbsp;| {companyName}</h1>
           </div>
         </div>
         <div
