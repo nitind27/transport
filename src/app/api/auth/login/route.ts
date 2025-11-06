@@ -129,7 +129,8 @@ export async function POST(req: Request) {
     // }
 
     // Check if user is already logged in (loginstatus = 1)
-    if (user.loginstatus === 1) {
+    // Skip this check for superadmin (user_id = 1)
+    if (user.user_id !== 1 && user.loginstatus === 1) {
       connection.release();
       return NextResponse.json(
         { message: 'User is already logged in. Please logout from other device/session first.' },
@@ -138,10 +139,13 @@ export async function POST(req: Request) {
     }
 
     // Update loginstatus to 1 (logged in)
-    await connection.query(
-      `UPDATE users SET loginstatus = 1 WHERE user_id = ?`,
-      [user.user_id]
-    );
+    // Skip loginstatus update for superadmin (user_id = 1)
+    if (user.user_id !== 1) {
+      await connection.query(
+        `UPDATE users SET loginstatus = 1 WHERE user_id = ?`,
+        [user.user_id]
+      );
+    }
 
     connection.release();
 
