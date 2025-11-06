@@ -12,17 +12,17 @@ export async function GET(request: Request) {
         // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
         let userFilter = '';
         const userParams: string[] = [];
-        if (userId && userId !== '1') {
+        if (userId && userId.trim() !== '' && userId !== '1') {
             userFilter = 'AND s.user_id = ?';
-            userParams.push(userId);
+            userParams.push(userId.trim());
         }
 
-        // Build WHERE clause for company_id filtering
+        // Build WHERE clause for company_id filtering - Only add if not empty
         let companyFilter = '';
         const companyParams: string[] = [];
-        if (companyId) {
+        if (companyId && companyId.trim() !== '') {
             companyFilter = 'AND s.company_id = ?';
-            companyParams.push(companyId);
+            companyParams.push(companyId.trim());
         }
 
         // Combine all parameters

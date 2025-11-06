@@ -15,10 +15,22 @@ type Props = {
   zpOrderDetails: ZPOrderDetail[];
 };
 
+interface ZPOrderRequestBody {
+  id?: number | null;
+  order_no: string;
+  no_of_days: number;
+  period: string;
+  financial_year: string;
+  user_id?: string;
+  company_id?: string;
+}
+
 const ZPorderdetails = ({ zpOrderDetails }: Props) => {
+  // Initialize with prop data from server-side rendering, will be updated by fetchData with filtered data
   const [data, setData] = useState<ZPOrderDetail[]>(zpOrderDetails || []);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true); // Loading state for initial data fetch
   const [error, setErrors] = useState<FormErrors>({});
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -58,6 +70,15 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     if (!isEditMode) reset();
   }, [isEditMode]);
 
+  // Fetch filtered data on component mount
+  useEffect(() => {
+    // Wait a bit to ensure sessionStorage is populated
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const validateInputs = () => {
     const newErrors: FormErrors = {};
     setisvalidation(true);
@@ -73,13 +94,68 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('/api/zporderdetails');
+      setDataLoading(true);
+      
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      console.log('ZP Order Details - SessionStorage values:', { 
+        userId: userId || 'NOT FOUND', 
+        companyId: companyId || 'NOT FOUND' 
+      });
+      
+      // Build query parameters - only add if exists and not empty string
+      const params = new URLSearchParams();
+      if (userId && userId.trim() !== '') {
+        params.append('user_id', userId.trim());
+      }
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const queryString = params.toString();
+      const apiUrl = `/api/zporderdetails${queryString ? '?' + queryString : ''}`;
+      
+      console.log('ZP Order Details - Fetching from:', apiUrl);
+      console.log('ZP Order Details - Query params:', { user_id: userId, company_id: companyId });
+      
+      const response = await fetch(apiUrl, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
       if (response.ok) {
         const result = await response.json();
-        setData(result);
+        console.log('ZP Order Details - Fetched successfully:', result?.length || 0, 'records');
+        console.log('ZP Order Details - Sample data:', result?.slice(0, 2));
+        
+        if (Array.isArray(result)) {
+          setData(result);
+        } else {
+          console.error('ZP Order Details - Invalid response format:', result);
+          setData([]);
+          toast.error('Invalid data format received');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('ZP Order Details - API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        toast.error(`Failed to fetch order details: ${response.statusText}`);
+        setData([]);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (error: unknown) {
+      console.error('ZP Order Details - Fetch error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to fetch order details: ${errorMessage}`);
+      setData([]);
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -87,20 +163,30 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     if (!validateInputs()) return;
     setLoading(true);
 
+    // Get user_id and company_id from sessionStorage
+    const userId = sessionStorage.getItem('userid');
+    const companyId = sessionStorage.getItem('company_id');
+
     const apiUrl = '/api/zporderdetails';
     const method = isEditMode ? 'PUT' : 'POST';
 
     try {
+      // Build request body
+      const requestBody: ZPOrderRequestBody = {
+        ...(editId && { id: editId }),
+        order_no: orderNo,
+        no_of_days: Number(days),
+        period: period,
+        financial_year: financialYear,
+        // Only add user_id and company_id for new records (POST), not for updates
+        ...(!isEditMode && userId && userId.trim() !== '' && { user_id: userId.trim() }),
+        ...(!isEditMode && companyId && companyId.trim() !== '' && { company_id: companyId.trim() })
+      };
+
       const response = await fetch(apiUrl, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editId,
-          order_no: orderNo,
-          no_of_days: Number(days),
-          period: period,
-          financial_year: financialYear
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -186,6 +272,18 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
       )
     }
   ];
+
+  // Show loading state
+  if (dataLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="">

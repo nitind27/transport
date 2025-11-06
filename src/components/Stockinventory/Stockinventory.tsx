@@ -111,14 +111,10 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
 
-  // Load initial data
+  // Load initial data - Always fetch from API with user/company filters instead of using initialStockData
   useEffect(() => {
-    if (initialStockData) {
-      setData(initialStockData);
-    }
-  }, [initialStockData]);
-
-  useEffect(() => {
+    // Fetch data with proper user_id and company_id filtering
+    fetchStockData();
     fetchEnhancedStockData();
   }, []);
 
@@ -167,7 +163,16 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   // Fetch enhanced stock data from API
   const fetchEnhancedStockData = async () => {
     try {
-      const response = await fetch('/api/stockinventory/enhanced');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      const params = new URLSearchParams();
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const response = await fetch(`/api/stockinventory/enhanced${params.toString() ? '?' + params.toString() : ''}`);
       if (response.ok) {
         const enhancedStockData = await response.json();
         setEnhancedData(enhancedStockData);
@@ -181,7 +186,16 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   // Fetch stock data from API
   const fetchStockData = async () => {
     try {
-      const response = await fetch('/api/stockinventory');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      const params = new URLSearchParams();
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const response = await fetch(`/api/stockinventory${params.toString() ? '?' + params.toString() : ''}`);
       if (response.ok) {
         const stockData = await response.json();
         setData(stockData);

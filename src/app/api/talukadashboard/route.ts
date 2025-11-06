@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const centerId = searchParams.get('center_id');
     const talukaId = searchParams.get('taluka_id');
     const userId = searchParams.get('user_id'); // Get user_id from query params
+    const companyId = searchParams.get('company_id'); // Get company_id from query params
     
     // Build WHERE clause for center filtering
     let centerFilter = '';
@@ -27,9 +28,17 @@ export async function GET(request: Request) {
     // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
     let userFilter = '';
     const userParams: string[] = [];
-    if (userId && userId !== '1') { // Only filter if not admin
+    if (userId && userId.trim() !== '' && userId !== '1') { // Only filter if not admin
       userFilter = 'AND t.user_id = ?';
-      userParams.push(userId);
+      userParams.push(userId.trim());
+    }
+
+    // Build WHERE clause for company_id filtering - Only add if not empty
+    let companyFilter = '';
+    const companyParams: string[] = [];
+    if (companyId && companyId.trim() !== '') {
+      companyFilter = 'AND sd.company_id = ?';
+      companyParams.push(companyId.trim());
     }
     
     const [rows] = await pool.query<RowDataPacket[]>(`
@@ -38,7 +47,7 @@ export async function GET(request: Request) {
         t.name,
         t.name_en,
         -- Total schools in taluka (filtered by center if provided)
-        COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId !== '1' ? 'AND s.user_id = ?' : ''} THEN s.schoolid END) AS total_schools,
+        COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId.trim() !== '' && userId !== '1' ? 'AND s.user_id = ?' : ''} ${companyId && companyId.trim() !== '' ? 'AND s.company_id = ?' : ''} THEN s.schoolid END) AS total_schools,
         -- Schools with orders - count distinct schools (not class_range rows)
         (SELECT COUNT(DISTINCT so.school_id) 
          FROM school_wise_order_details so
@@ -47,7 +56,8 @@ export async function GET(request: Request) {
          WHERE sd.taluka_id = t.taluka_id
          AND od.order_no = ?
          ${centerFilter}
-         ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+         ${userId && userId.trim() !== '' && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+         ${companyFilter}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active') AS schools_with_orders,
@@ -61,7 +71,8 @@ export async function GET(request: Request) {
          WHERE sd.taluka_id = t.taluka_id
          AND od.order_no = ?
          ${centerFilter}
-         ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+         ${userId && userId.trim() !== '' && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+         ${companyFilter}
          AND so.status = 'Active'
          AND sd.status = 'Active'
          AND od.status = 'Active'
@@ -93,29 +104,35 @@ export async function GET(request: Request) {
           AND od.status = 'Active'
           AND dd.status = 'Active')) AS remaining_schools
       FROM taluka t
-      LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId !== '1' ? 'AND s.user_id = ?' : ''}
+      LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId.trim() !== '' && userId !== '1' ? 'AND s.user_id = ?' : ''} ${companyId && companyId.trim() !== '' ? 'AND s.company_id = ?' : ''}
       WHERE t.status = 'Active'
       ${talukaFilter}
       ${userFilter}
       GROUP BY t.taluka_id, t.name, t.name_en
       ORDER BY t.name
     `, [
-      ...(userId && userId !== '1' ? userParams : []), // for COUNT in main query
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for COUNT in main query
       ...centerParams, // for COUNT in main query
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for COUNT in main query
       orderNo,
       ...centerParams, // for schools_with_orders subquery
-      ...(userId && userId !== '1' ? userParams : []), // for schools_with_orders subquery
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for schools_with_orders subquery
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for schools_with_orders subquery
       orderNo,
       ...centerParams, // for distributed_schools subquery
-      ...(userId && userId !== '1' ? userParams : []), // for distributed_schools subquery
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for distributed_schools subquery
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for distributed_schools subquery
       orderNo,
       ...centerParams, // for remaining_schools first subquery
-      ...(userId && userId !== '1' ? userParams : []), // for remaining_schools first subquery
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for remaining_schools first subquery
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for remaining_schools first subquery
       orderNo,
       ...centerParams, // for remaining_schools second subquery
-      ...(userId && userId !== '1' ? userParams : []), // for remaining_schools second subquery
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for remaining_schools second subquery
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for remaining_schools second subquery
       ...centerParams, // for LEFT JOIN
-      ...(userId && userId !== '1' ? userParams : []), // for LEFT JOIN
+      ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for LEFT JOIN
+      ...(companyId && companyId.trim() !== '' ? companyParams : []), // for LEFT JOIN
       ...talukaParams, // for WHERE taluka filter
       ...userParams // for WHERE user filter
     ]);

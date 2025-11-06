@@ -75,7 +75,16 @@ const Salessummary = () => {
 
     const fetchAllTalukas = async () => {
         try {
-            const res = await fetch('/api/taluka');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 setAllTalukas(data);
@@ -91,7 +100,16 @@ const Salessummary = () => {
     const fetchDispatchDetails = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/dispatchdetails');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('Fetched data:', data.slice(0, 2)); // Debug: Check first 2 rows

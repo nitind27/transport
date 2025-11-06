@@ -72,20 +72,19 @@ const Dashboardtaluka = () => {
   const [talukaData, setTalukaData] = useState<TalukaData[]>([]);
   const [centerData, setCenterData] = useState<CenterData[]>([]);
   const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
-  const [selectedOrderNo] = useState('20');
+  const [selectedOrderNo, setSelectedOrderNo] = useState<string>('0');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
   // Get userid from sessionStorage
-
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Get userid from sessionStorage
+      // Get userid and company_id from sessionStorage
       const storedUserId = sessionStorage.getItem('userid');
+      const storedCompanyId = sessionStorage.getItem('company_id');
       
       if (!storedUserId) {
         console.error('User ID not found in sessionStorage');
@@ -93,15 +92,64 @@ const Dashboardtaluka = () => {
         return;
       }
 
-      // Fetch taluka data, center data, and order counts with user_id
+      // Build query parameters for zporderdetails API
+      const orderParams = new URLSearchParams();
+      if (storedUserId && storedUserId.trim() !== '') {
+        orderParams.append('user_id', storedUserId.trim());
+      }
+      if (storedCompanyId && storedCompanyId.trim() !== '') {
+        orderParams.append('company_id', storedCompanyId.trim());
+      }
+
+      // First, fetch zporderdetails to get order number based on user_id and company_id
+      const zpOrderResponse = await fetch(`/api/zporderdetails?${orderParams.toString()}`, {
+        cache: 'no-store'
+      });
+
+      if (!zpOrderResponse.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const zpOrderData = await zpOrderResponse.json();
+      
+      // Get the first order number from the filtered results
+      let orderNoToUse = '0'; // Default fallback
+      if (zpOrderData && zpOrderData.length > 0) {
+        const firstOrder = zpOrderData[0];
+        if (firstOrder && firstOrder.order_no) {
+          orderNoToUse = String(firstOrder.order_no);
+          setSelectedOrderNo(orderNoToUse);
+        }
+      }
+
+      // Build query parameters for taluka and center dashboard APIs
+      const params = new URLSearchParams();
+      params.append('order_no', orderNoToUse);
+      if (storedUserId && storedUserId.trim() !== '') {
+        params.append('user_id', storedUserId.trim());
+      }
+      if (storedCompanyId && storedCompanyId.trim() !== '') {
+        params.append('company_id', storedCompanyId.trim());
+      }
+
+      // Build query parameters for count API (without order_no)
+      const countParams = new URLSearchParams();
+      if (storedUserId && storedUserId.trim() !== '') {
+        countParams.append('user_id', storedUserId.trim());
+      }
+      if (storedCompanyId && storedCompanyId.trim() !== '') {
+        countParams.append('company_id', storedCompanyId.trim());
+      }
+
+      // Fetch taluka data, center data, and order counts with user_id and company_id
       const [talukaResponse, centerResponse, orderCountsResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/talukadashboard?order_no=${selectedOrderNo}&user_id=${storedUserId}`, {
+        fetch(`/api/talukadashboard?${params.toString()}`, {
           cache: 'no-store'
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centerdashboard?order_no=${selectedOrderNo}&user_id=${storedUserId}`, {
+        fetch(`/api/centerdashboard?${params.toString()}`, {
           cache: 'no-store'
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schoolwiseorders/count?user_id=${storedUserId}`, {
+        fetch(`/api/schoolwiseorders/count?${countParams.toString()}`, {
           cache: 'no-store'
         })
       ]);
@@ -115,46 +163,58 @@ const Dashboardtaluka = () => {
       const orderCountsData: OrderCount[] = await orderCountsResponse.json();
 
       // Transform taluka data
-      const processedTalukaData: TalukaData[] = talukaData.map((taluka) => ({
-        taluka_id: taluka.taluka_id,
-        name: taluka.name,
-        name_en: taluka.name_en,
-        total_schools: typeof taluka.total_schools === 'string'
+      const processedTalukaData: TalukaData[] = talukaData.map((taluka) => {
+        const totalSchools = typeof taluka.total_schools === 'string'
           ? parseInt(taluka.total_schools) || 0
-          : taluka.total_schools,
-        schools_with_orders: typeof taluka.schools_with_orders === 'string'
+          : taluka.total_schools;
+        const schoolsWithOrders = typeof taluka.schools_with_orders === 'string'
           ? parseInt(taluka.schools_with_orders) || 0
-          : taluka.schools_with_orders || 0,
-        distributed_schools: typeof taluka.distributed_schools === 'string'
+          : taluka.schools_with_orders || 0;
+        const distributedSchools = typeof taluka.distributed_schools === 'string'
           ? parseInt(taluka.distributed_schools) || 0
-          : taluka.distributed_schools,
-        remaining_schools: Math.max(0, typeof taluka.remaining_schools === 'string'
-          ? parseInt(taluka.remaining_schools) || 0
-          : taluka.remaining_schools),
-        date: currentDate
-      }));
+          : taluka.distributed_schools;
+        // Calculate remaining schools: एकूण शाळा - एकूण शाळा वाटप = बाकी शाळा
+        const remainingSchools = Math.max(0, schoolsWithOrders - distributedSchools);
+        
+        return {
+          taluka_id: taluka.taluka_id,
+          name: taluka.name,
+          name_en: taluka.name_en,
+          total_schools: totalSchools,
+          schools_with_orders: schoolsWithOrders,
+          distributed_schools: distributedSchools,
+          remaining_schools: remainingSchools,
+          date: currentDate
+        };
+      });
 
       // Transform center data
-      const processedCenterData: CenterData[] = centerDataRaw.map((center) => ({
-        center_id: center.center_id,
-        name: center.name,
-        marathi_name: center.marathi_name || center.name,
-        taluka_id: center.taluka_id,
-        taluka_name: center.taluka_name || '',
-        total_schools: typeof center.total_schools === 'string'
+      const processedCenterData: CenterData[] = centerDataRaw.map((center) => {
+        const totalSchools = typeof center.total_schools === 'string'
           ? parseInt(center.total_schools) || 0
-          : center.total_schools,
-        schools_with_orders: typeof center.schools_with_orders === 'string'
+          : center.total_schools;
+        const schoolsWithOrders = typeof center.schools_with_orders === 'string'
           ? parseInt(center.schools_with_orders) || 0
-          : center.schools_with_orders || 0,
-        distributed_schools: typeof center.distributed_schools === 'string'
+          : center.schools_with_orders || 0;
+        const distributedSchools = typeof center.distributed_schools === 'string'
           ? parseInt(center.distributed_schools) || 0
-          : center.distributed_schools,
-        remaining_schools: Math.max(0, typeof center.remaining_schools === 'string'
-          ? parseInt(center.remaining_schools) || 0
-          : center.remaining_schools),
-        date: currentDate
-      }));
+          : center.distributed_schools;
+        // Calculate remaining schools: एकूण शाळा - एकूण शाळा वाटप = बाकी शाळा
+        const remainingSchools = Math.max(0, schoolsWithOrders - distributedSchools);
+        
+        return {
+          center_id: center.center_id,
+          name: center.name,
+          marathi_name: center.marathi_name || center.name,
+          taluka_id: center.taluka_id,
+          taluka_name: center.taluka_name || '',
+          total_schools: totalSchools,
+          schools_with_orders: schoolsWithOrders,
+          distributed_schools: distributedSchools,
+          remaining_schools: remainingSchools,
+          date: currentDate
+        };
+      });
 
       setTalukaData(processedTalukaData);
       setCenterData(processedCenterData);
@@ -164,7 +224,7 @@ const Dashboardtaluka = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedOrderNo, currentDate]);
+  }, [currentDate]); // Removed selectedOrderNo from dependencies since we set it dynamically from API
 
   useEffect(() => {
     fetchData();

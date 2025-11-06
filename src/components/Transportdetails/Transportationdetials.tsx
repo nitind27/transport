@@ -107,7 +107,16 @@ const Transportationdetials = () => {
     const fetchRoutePaperDetails = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/transportationdetails');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/transportationdetails${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('Route paper data fetched:', data?.length || 0);
@@ -133,7 +142,16 @@ const Transportationdetials = () => {
 
     const fetchOwners = async () => {
         try {
-            const res = await fetch('/api/ownerdata');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/ownerdata${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('Owners fetched:', data?.length || 0);
@@ -152,7 +170,16 @@ const Transportationdetials = () => {
 
     const fetchTrucks = async () => {
         try {
-            const res = await fetch('/api/truckdata');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('Trucks fetched:', data?.length || 0);
@@ -171,7 +198,16 @@ const Transportationdetials = () => {
 
     const fetchOrderNumbers = async () => {
         try {
-            const res = await fetch('/api/zporderdetails');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/zporderdetails${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 console.log('ZP Order Details fetched:', data?.length || 0);

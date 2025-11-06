@@ -8,10 +8,34 @@ interface OwnerRow {
   status?: string;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('user_id');
+    const companyId = searchParams.get('company_id');
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    let userFilter = '';
+    const userParams: string[] = [];
+    if (userId && userId.trim() !== '' && userId !== '1') {
+      userFilter = 'AND user_id = ?';
+      userParams.push(userId.trim());
+    }
+
+    // Build WHERE clause for company_id filtering - Only add if not empty
+    let companyFilter = '';
+    const companyParams: string[] = [];
+    if (companyId && companyId.trim() !== '') {
+      companyFilter = 'AND company_id = ?';
+      companyParams.push(companyId.trim());
+    }
+
+    // Combine all parameters
+    const allParams = [...userParams, ...companyParams];
+
     const [rows] = await pool.query<RowDataPacket[] & OwnerRow[]>(
-      'SELECT * FROM ownerdata WHERE status = "Active"'
+      `SELECT * FROM ownerdata WHERE status = "Active" ${userFilter} ${companyFilter}`,
+      allParams.length > 0 ? allParams : undefined
     );
     return NextResponse.json(rows as OwnerRow[]);
   } catch (error) {

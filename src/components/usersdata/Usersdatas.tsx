@@ -492,11 +492,13 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
                 onChange={(e) => setUsercategory(Number(e.target.value))}
               >
                 <option value="">Category</option>
-                {datausercategorycrud.map((category) => (
-                  <option key={category.user_category_id} value={category.user_category_id}>
-                    {category.category_name}
-                  </option>
-                ))}
+                {datausercategorycrud
+                  .filter((category) => category.user_category_id !== 1 && category.user_category_id !== 5)
+                  .map((category) => (
+                    <option key={category.user_category_id} value={category.user_category_id}>
+                      {category.category_name}
+                    </option>
+                  ))}
               </select>
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">

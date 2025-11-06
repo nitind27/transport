@@ -167,7 +167,16 @@ const Salesview = () => {
 
     const fetchDispatchList = async () => {
         try {
-            const res = await fetch('/api/dispatchdetails');
+            // Get user_id and company_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            
+            const res = await fetch(`/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) setDispatchList(await res.json());
         } catch (e) {
             console.error(e);

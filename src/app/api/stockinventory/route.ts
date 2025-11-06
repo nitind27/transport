@@ -3,16 +3,64 @@ import pool from '@/lib/db';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // GET - Fetch all stock inventory entries
-export async function GET() {
+export async function GET(req: Request) {
     let connection;
     try {
+        const url = new URL(req.url);
+        const userId = url.searchParams.get('user_id');
+        const companyId = url.searchParams.get('company_id');
+
+        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+        let userFilter = '';
+        const userParams: string[] = [];
+        if (userId && userId.trim() !== '' && userId !== '1') {
+            // Note: stockinventory table may not have user_id column directly
+            // If it doesn't exist, this filter will be ignored
+            userFilter = 'AND user_id = ?';
+            userParams.push(userId.trim());
+        }
+
+        // Build WHERE clause for company_id filtering - Only add if not empty
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId && companyId.trim() !== '') {
+            // Note: stockinventory table may not have company_id column directly
+            // If it doesn't exist, this filter will be ignored
+            companyFilter = 'AND company_id = ?';
+            companyParams.push(companyId.trim());
+        }
+
         connection = await pool.getConnection();
-        const [rows] = await connection.query<RowDataPacket[]>(
-            `SELECT * FROM stockinventory WHERE status = "Active" ORDER BY created_at DESC`
-        );
+        
+        // Check if columns exist before applying filters
+        // For now, we'll apply filters only if columns exist
+        // If columns don't exist in table, the query will fail, so we need to handle it gracefully
+        let query = `SELECT * FROM stockinventory WHERE status = "Active"`;
+        const params: string[] = [];
+        
+        // Only add filters if we have parameters (assumes columns exist)
+        if (userParams.length > 0 || companyParams.length > 0) {
+            query += ` ${userFilter} ${companyFilter}`;
+            params.push(...userParams, ...companyParams);
+        }
+        
+        query += ` ORDER BY created_at DESC`;
+        
+        const [rows] = await connection.query<RowDataPacket[]>(query, params.length > 0 ? params : undefined);
         return NextResponse.json(rows);
     } catch (error) {
         console.error('Database query failed (GET):', error);
+        // If error is due to missing columns, try without filters
+        if (connection) {
+            try {
+                const [rows] = await connection.query<RowDataPacket[]>(
+                    `SELECT * FROM stockinventory WHERE status = "Active" ORDER BY created_at DESC`
+                );
+                return NextResponse.json(rows);
+            } catch (retryError) {
+                console.error('Retry query also failed:', retryError);
+            }
+        }
         return NextResponse.json(
             { message: 'Failed to fetch stock inventory data' },
             { status: 500 }

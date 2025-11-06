@@ -11,6 +11,24 @@ export async function GET(req: Request) {
     const endDate = url.searchParams.get('endDate');
     const pageParam = url.searchParams.get('page');
     const limitParam = url.searchParams.get('limit');
+    const userId = url.searchParams.get('user_id');
+    const companyId = url.searchParams.get('company_id');
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    let userFilter = '';
+    const userParams: string[] = [];
+    if (userId && userId.trim() !== '' && userId !== '1') {
+      userFilter = 'AND s.user_id = ?';
+      userParams.push(userId.trim());
+    }
+
+    // Build WHERE clause for company_id filtering - Only add if not empty
+    let companyFilter = '';
+    const companyParams: string[] = [];
+    if (companyId && companyId.trim() !== '') {
+      companyFilter = 'AND s.company_id = ?';
+      companyParams.push(companyId.trim());
+    }
 
     // Build the WHERE clause and params dynamically
     let whereClause = `WHERE d.status = 'Active'`;
@@ -39,6 +57,10 @@ export async function GET(req: Request) {
       params.push(`${startDate} 00:00:00`, `${endDateFilter} 00:00:00`);
     }
 
+    // Add user_id and company_id filters
+    whereClause += ` ${userFilter} ${companyFilter}`;
+    params.push(...userParams, ...companyParams);
+
     // Pagination: default 50 per page
     const page = Math.max(1, Number(pageParam) || 1);
     const limit = Math.max(1, Math.min(200, Number(limitParam) || 50));
@@ -53,6 +75,7 @@ export async function GET(req: Request) {
         SELECT ${routeKeyExpr} AS route_key
         FROM dispatch_details d
         LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
+        LEFT JOIN schooldata s ON d.school_id = s.schoolid
         ${whereClause}
         GROUP BY route_key
       ) AS sub_total`,
@@ -67,6 +90,7 @@ export async function GET(req: Request) {
         SELECT ${routeKeyExpr} AS route_key, MAX(d.created_at) as last_created
         FROM dispatch_details d
         LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
+        LEFT JOIN schooldata s ON d.school_id = s.schoolid
         ${whereClause}
         GROUP BY route_key
         ORDER BY last_created DESC

@@ -173,8 +173,7 @@ const PendingOrderDetails = () => {
   const [selectedTruckId, setSelectedTruckId] = useState<string>('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
-  // Add this state for the correct pending schools count
-  const [pendingSchoolsCount, setPendingSchoolsCount] = useState(0);
+  // Pending schools count will be calculated from pendingOrdersData using useMemo
 
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -535,6 +534,14 @@ const pendingOrdersData = useMemo(() => {
     return a.class_range.localeCompare(b.class_range);
   });
 }, [schoolWiseOrders, schoolDataById, talukaList, centerList, dispatchCart]);
+  
+  // Calculate pending schools count from actual processed data
+  // Count unique schools (not rows, since one school can have multiple class ranges)
+  const pendingSchoolsCount = useMemo(() => {
+    const uniqueSchools = new Set(pendingOrdersData.map(row => row.school_id));
+    return uniqueSchools.size;
+  }, [pendingOrdersData]);
+
   // Apply search filters to the data
   const filteredData = useMemo(() => {
     return filterData(pendingOrdersData);
@@ -714,8 +721,9 @@ const pendingOrdersData = useMemo(() => {
       const companyId = sessionStorage.getItem('company_id');
       
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
-      if (companyId) params.append('company_id', companyId);
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       
       const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTalukaList(await res.json());
@@ -731,8 +739,9 @@ const pendingOrdersData = useMemo(() => {
       const companyId = sessionStorage.getItem('company_id');
       
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
-      if (companyId) params.append('company_id', companyId);
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       
       const res = await fetch(`/api/centerapi${params.toString() ? '?' + params.toString() : ''}`);
       setCenterList(await res.json());
@@ -749,12 +758,13 @@ const pendingOrdersData = useMemo(() => {
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
       
-      // Build query parameters
+      // Build query parameters - only add if exists and not empty string
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
-      if (companyId) params.append('company_id', companyId);
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       
       const apiUrl = `/api/schoolwiseorders/remainingquantities${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('API URL:', apiUrl);
       const response = await fetch(apiUrl);
       console.log('Response status:', response.status);
       
@@ -764,17 +774,7 @@ const pendingOrdersData = useMemo(() => {
       
       const data = await response.json();
       console.log('Data received:', data.length, 'records');
-      
-      // If user_id is provided and no data found, fetch all data (new user case)
-      if (userId && userId !== '1' && data.length === 0) {
-        // New user_id - no data found, show all data
-        const allDataResponse = await fetch('/api/schoolwiseorders/remainingquantities');
-        if (allDataResponse.ok) {
-          const allData = await allDataResponse.json();
-          setSchoolWiseOrders(allData);
-          return;
-        }
-      }
+      console.log('User ID:', userId, 'Company ID:', companyId);
       
       // Reset cached quantity maps so UI reflects latest server values immediately
       setOriginalQuantities(new Map());
@@ -795,8 +795,9 @@ const pendingOrdersData = useMemo(() => {
       const companyId = sessionStorage.getItem('company_id');
       
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
-      if (companyId) params.append('company_id', companyId);
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       
       const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTruckData(await res.json());
@@ -812,8 +813,9 @@ const pendingOrdersData = useMemo(() => {
       const companyId = sessionStorage.getItem('company_id');
       
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
-      if (companyId) params.append('company_id', companyId);
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       
       const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
       if (!res.ok) return;
@@ -836,26 +838,6 @@ const pendingOrdersData = useMemo(() => {
     }
   };
 
-  const fetchPendingSchoolsCount = async () => {
-    try {
-      // Get user_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
-      
-      const params = new URLSearchParams();
-      params.append('order_no', '20');
-      if (userId) params.append('user_id', userId);
-      
-      const response = await fetch(`/api/talukadashboard?${params.toString()}`);
-      const data = await response.json();
-      const totalRemaining = data.reduce((sum: number, taluka: { remaining_schools?: number }) =>
-        sum + (taluka.remaining_schools || 0), 0
-      );
-      setPendingSchoolsCount(totalRemaining);
-    } catch (error) {
-      console.error('Error fetching pending schools count:', error);
-      setPendingSchoolsCount(0);
-    }
-  };
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -866,8 +848,7 @@ const pendingOrdersData = useMemo(() => {
           fetchCenters(),
           fetchSchoolWiseOrders(),
           fetchTruckData(),
-          fetchSchoolDataMap(),
-          fetchPendingSchoolsCount()
+          fetchSchoolDataMap()
         ]);
       } catch (error) {
         console.error('Error loading data:', error);

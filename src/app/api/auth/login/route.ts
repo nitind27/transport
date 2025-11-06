@@ -14,6 +14,7 @@ interface User {
   category_name: string;
   taluka_id: number;
   village_id: number;
+  company_id?: number | null;
   status: string;
   loginstatus?: number; // Add loginstatus field
   created_at: Date;
@@ -23,7 +24,7 @@ interface User {
 export async function POST(req: Request) {
   let connection;
   try {
-    const { username, password, isAdminLogin } = await req.json();
+    const { username, password, isAdminLogin, company_id } = await req.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -38,7 +39,8 @@ export async function POST(req: Request) {
     console.log('Login API Called:', {
       username: username,
       isAdminLogin: isAdminLogin,
-      adminLoginFlag: adminLoginFlag
+      adminLoginFlag: adminLoginFlag,
+      company_id: company_id
     });
 
     connection = await pool.getConnection();
@@ -66,6 +68,35 @@ export async function POST(req: Request) {
         { message: 'Invalid credentials' },
         { status: 401 }
       );
+    }
+
+    // Validate company_id if not admin login
+    if (!adminLoginFlag) {
+      // If company_id is provided in request, validate it matches user's company_id
+      if (company_id) {
+        const userCompanyId = user.company_id ? Number(user.company_id) : null;
+        const requestedCompanyId = Number(company_id);
+        
+        if (userCompanyId !== requestedCompanyId) {
+          connection.release();
+          console.error('Company ID Mismatch:', {
+            username: username,
+            userCompanyId: userCompanyId,
+            requestedCompanyId: requestedCompanyId
+          });
+          return NextResponse.json(
+            { message: 'Invalid credentials. Username and password do not belong to the selected company.' },
+            { status: 401 }
+          );
+        }
+      } else {
+        // If company_id is required but not provided, reject login
+        connection.release();
+        return NextResponse.json(
+          { message: 'Company selection is required for login.' },
+          { status: 400 }
+        );
+      }
     }
 
     console.log('User Found:', {

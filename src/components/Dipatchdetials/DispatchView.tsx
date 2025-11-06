@@ -543,7 +543,16 @@ const DispatchView = () => {
   // Fetchers
   const fetchCenters = async () => {
     try {
-      const res = await fetch('/api/centerapi');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      const params = new URLSearchParams();
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const res = await fetch(`/api/centerapi${params.toString() ? '?' + params.toString() : ''}`);
       setCenterList(await res.json());
     } catch {
       toast.error('Failed to load centers');
@@ -561,34 +570,28 @@ const DispatchView = () => {
     try {
       setLoading(true); // Start loading
       
-      // Get user_id from sessionStorage
+      // Get user_id and company_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
       
-      // Build API URL with user_id parameter
-      const apiUrl = userId 
-        ? `/api/dispatchdetails?user_id=${userId}`
-        : '/api/dispatchdetails';
+      // Build query parameters - only add if exists and not empty string
+      const params = new URLSearchParams();
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const apiUrl = `/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('Fetching dispatch list from:', apiUrl);
       
       const res = await fetch(apiUrl);
       if (res.ok) {
         const data = await res.json();
-        
-        // If user_id is provided and no data found, fetch all data
-        if (userId && userId !== '1' && data.length === 0) {
-          // New user_id - no data found, show all data
-          const allDataRes = await fetch('/api/dispatchdetails');
-          if (allDataRes.ok) {
-            const allData = await allDataRes.json();
-            setDispatchList(allData);
-          } else {
-            setDispatchList(data); // Use empty array if fetch fails
-          }
-        } else {
-          setDispatchList(data);
-        }
+        console.log('Dispatch data received:', data.length, 'records');
+        console.log('User ID:', userId, 'Company ID:', companyId);
+        setDispatchList(data);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching dispatch list:', e);
+      toast.error('Failed to fetch dispatch list');
     } finally {
       setLoading(false); // Stop loading regardless of success/error
     }
@@ -596,7 +599,16 @@ const DispatchView = () => {
 
   const fetchTalukas = async () => {
     try {
-      const res = await fetch('/api/taluka');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      const params = new URLSearchParams();
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTalukaList(await res.json());
     } catch {
       toast.error('Failed to load taluka');
@@ -605,7 +617,16 @@ const DispatchView = () => {
 
   const fetchSchoolDataMap = async () => {
     try {
-      const res = await fetch('/api/scooldata');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      const params = new URLSearchParams();
+      // Only add if exists and not empty string
+      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      
+      const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
       if (!res.ok) return;
       const rows: SchoolDataApiRow[] = await res.json();
       const map = new Map<number, SchoolDataRow>();

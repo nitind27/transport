@@ -103,49 +103,194 @@ const OrderRegisterWithColumnSearch = () => {
 
   const fetchSchools = async () => {
     try {
-      const response = await fetch('/api/scooldata');
-      const data = await response.json();
-      setSchools(data);
-    } catch (error) {
-      console.error('Error fetching schools:', error);
-      toast.error('Failed to fetch school data');
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      // Validate sessionStorage values
+      if (!userId || userId.trim() === '') {
+        console.error('OrderRegister - User ID not found in sessionStorage');
+        setSchools([]);
+        return;
+      }
+      
+      // Build query parameters - always include user_id and company_id if available
+      const params = new URLSearchParams();
+      if (userId && userId.trim() !== '') {
+        params.append('user_id', userId.trim());
+      }
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const queryString = params.toString();
+      if (!queryString) {
+        console.error('OrderRegister - No query parameters to send');
+        setSchools([]);
+        return;
+      }
+      
+      const apiUrl = `/api/scooldata?${queryString}`;
+      console.log('OrderRegister - Fetching Schools:', { userId, companyId, apiUrl });
+      
+      const response = await fetch(apiUrl, { 
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('OrderRegister - Schools fetched successfully:', data?.length || 0, 'records');
+        if (Array.isArray(data)) {
+          setSchools(data);
+        } else {
+          console.error('OrderRegister - Invalid response format:', data);
+          setSchools([]);
+          toast.error('Invalid data format received');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('OrderRegister - Failed to fetch schools:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        toast.error(`Failed to fetch school data: ${response.statusText}`);
+        setSchools([]);
+      }
+    } catch (error: unknown) {
+      console.error('OrderRegister - Error fetching schools:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to fetch school data: ${errorMessage}`);
+      setSchools([]);
     }
   };
 
   const fetchSchoolWiseOrders = async () => {
     try {
-      const response = await fetch('/api/schoolwiseorders');
-      const data = await response.json();
-      setSchoolWiseOrders(data);
-
-      // Extract all grain items from items_data
-      const grainItemsSet = new Set<string>();
-      data.forEach((order: SchoolWiseOrder) => {
-        if (order.items_data) {
-          try {
-            const itemsData: ItemsData = JSON.parse(order.items_data);
-            Object.keys(itemsData).forEach(key => {
-              if (key !== 'एकूण वजन') { // Exclude total weight as it's already a separate column
-                grainItemsSet.add(key);
-              }
-            });
-          } catch (e) {
-            console.error('Error parsing items_data:', e);
-          }
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+      
+      // Validate sessionStorage values
+      if (!userId || userId.trim() === '') {
+        console.error('OrderRegister - User ID not found in sessionStorage');
+        setSchoolWiseOrders([]);
+        setAllGrainItems([]);
+        return;
+      }
+      
+      // Build query parameters - always include user_id and company_id if available
+      const params = new URLSearchParams();
+      if (userId && userId.trim() !== '') {
+        params.append('user_id', userId.trim());
+      }
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const queryString = params.toString();
+      if (!queryString) {
+        console.error('OrderRegister - No query parameters to send');
+        setSchoolWiseOrders([]);
+        setAllGrainItems([]);
+        return;
+      }
+      
+      const apiUrl = `/api/schoolwiseorders?${queryString}`;
+      console.log('OrderRegister - Fetching School Wise Orders:', { userId, companyId, apiUrl });
+      
+      const response = await fetch(apiUrl, { 
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
         }
       });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('OrderRegister - School Wise Orders fetched successfully:', data?.length || 0, 'records');
+        
+        if (Array.isArray(data)) {
+          setSchoolWiseOrders(data);
 
-      // Convert set to array and set state
-      setAllGrainItems(Array.from(grainItemsSet));
-    } catch (error) {
-      console.error('Error fetching school-wise orders:', error);
-      toast.error('Failed to fetch school-wise orders');
+          // Extract all grain items from items_data
+          const grainItemsSet = new Set<string>();
+          data.forEach((order: SchoolWiseOrder) => {
+            if (order.items_data) {
+              try {
+                const itemsData: ItemsData = JSON.parse(order.items_data);
+                Object.keys(itemsData).forEach(key => {
+                  if (key !== 'एकूण वजन') { // Exclude total weight as it's already a separate column
+                    grainItemsSet.add(key);
+                  }
+                });
+              } catch (e) {
+                console.error('Error parsing items_data:', e);
+              }
+            }
+          });
+
+          // Convert set to array and set state
+          setAllGrainItems(Array.from(grainItemsSet));
+        } else {
+          console.error('OrderRegister - Invalid response format:', data);
+          setSchoolWiseOrders([]);
+          setAllGrainItems([]);
+          toast.error('Invalid data format received');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('OrderRegister - Failed to fetch school-wise orders:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        toast.error(`Failed to fetch school-wise orders: ${response.statusText}`);
+        setSchoolWiseOrders([]);
+        setAllGrainItems([]);
+      }
+    } catch (error: unknown) {
+      console.error('OrderRegister - Error fetching school-wise orders:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to fetch school-wise orders: ${errorMessage}`);
+      setSchoolWiseOrders([]);
+      setAllGrainItems([]);
     }
   };
 
+  // Check if sessionStorage is available and has values
+  const checkSessionStorage = () => {
+    const userId = sessionStorage.getItem('userid');
+    const companyId = sessionStorage.getItem('company_id');
+    
+    if (!userId || userId.trim() === '') {
+      console.warn('OrderRegister - User ID not found in sessionStorage');
+      return false;
+    }
+    
+    console.log('OrderRegister - SessionStorage values:', { 
+      userId: userId || 'NOT FOUND', 
+      companyId: companyId || 'NOT FOUND' 
+    });
+    
+    return true;
+  };
+
   useEffect(() => {
-    fetchSchools();
-    fetchSchoolWiseOrders();
+    // Wait a bit to ensure sessionStorage is populated, then check and fetch
+    const timer = setTimeout(() => {
+      if (checkSessionStorage()) {
+        fetchSchools();
+        fetchSchoolWiseOrders();
+      } else {
+        console.error('OrderRegister - Cannot fetch data: sessionStorage values missing');
+        toast.error('Please login again. Session data not found.');
+      }
+    }, 200);
+    return () => clearTimeout(timer);
   }, []);
 
   type SWOWithTaluka = SchoolWiseOrder & {

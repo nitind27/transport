@@ -4,9 +4,32 @@ import pool from '@/lib/db';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // -------------------- GET Method --------------------
-export async function GET() {
+export async function GET(request: Request) {
     let connection;
     try {
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('user_id');
+        const companyId = searchParams.get('company_id');
+
+        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+        let userFilter = '';
+        const userParams: string[] = [];
+        if (userId && userId.trim() !== '' && userId !== '1') {
+            userFilter = 'AND taluka.user_id = ?';
+            userParams.push(userId.trim());
+        }
+
+        // Build WHERE clause for company_id filtering - Only add if not empty
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId && companyId.trim() !== '') {
+            companyFilter = 'AND taluka.company_id = ?';
+            companyParams.push(companyId.trim());
+        }
+
+        // Combine all parameters
+        const allParams = [...userParams, ...companyParams];
+
         connection = await pool.getConnection();
        const [rows] = await connection.query<RowDataPacket[]>(
   `SELECT 
@@ -14,7 +37,10 @@ export async function GET() {
       district.name AS districtname
    FROM taluka
    INNER JOIN district ON taluka.dist_id = district.district_id
-   WHERE taluka.status = "Active"`
+   WHERE taluka.status = "Active"
+   ${userFilter}
+   ${companyFilter}`,
+  allParams
 );
 
 

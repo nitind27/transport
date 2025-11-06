@@ -96,15 +96,22 @@ export default function SignInForm() {
       setIsLoading(true);
       
       // For Admin Login, don't send company_id at all
+      // For regular login, send company_id
       const requestBody: {
         username: string;
         password: string;
         isAdminLogin: boolean;
+        company_id?: string;
       } = {
         username: formData.username.trim(),
         password: formData.password,
         isAdminLogin: Boolean(isAdminLogin) // Ensure it's a proper boolean
       };
+
+      // Only add company_id if not admin login and company_id is provided
+      if (!isAdminLogin && formData.company_id) {
+        requestBody.company_id = formData.company_id;
+      }
 
       console.log('Login Request:', { ...requestBody, password: '***' }); // Debug log
 

@@ -18,8 +18,31 @@ interface ScoolRow {
     centername?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('user_id');
+        const companyId = searchParams.get('company_id');
+
+        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+        let userFilter = '';
+        const userParams: string[] = [];
+        if (userId && userId.trim() !== '' && userId !== '1') {
+            userFilter = 'AND s.user_id = ?';
+            userParams.push(userId.trim());
+        }
+
+        // Build WHERE clause for company_id filtering - Only add if not empty
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId && companyId.trim() !== '') {
+            companyFilter = 'AND s.company_id = ?';
+            companyParams.push(companyId.trim());
+        }
+
+        // Combine all parameters
+        const allParams = [...userParams, ...companyParams];
+
         const [rows] = await pool.query<RowDataPacket[] & ScoolRow[]>(`
             SELECT s.*, 
                    d.name AS districtname,
@@ -32,7 +55,9 @@ export async function GET() {
             LEFT JOIN village v ON s.village_id = v.village_id
             LEFT JOIN centerdata c ON s.center = c.center_id
             WHERE s.status = "Active"
-        `);
+            ${userFilter}
+            ${companyFilter}
+        `, allParams);
 
         return NextResponse.json(rows as ScoolRow[]);
     } catch (error) {
