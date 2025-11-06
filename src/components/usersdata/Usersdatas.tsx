@@ -79,20 +79,28 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     setLoading(true);
     try {
       // Get company_id from sessionStorage
-      const companyId = sessionStorage.getItem('company_id') || '';
+      const companyId = sessionStorage.getItem('company_id');
       
-      // Build query parameters
+      // Build query parameters - always include company_id if it exists
+      // Empty string means super admin (show all), null/undefined means no filter
       const params = new URLSearchParams();
-      if (companyId && companyId.trim() !== '') {
+      if (companyId !== null && companyId !== undefined) {
+        // Include company_id even if it's empty string (for super admin)
         params.append('company_id', companyId);
       }
       
       const url = `/api/users${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.statusText}`);
+      }
+      
       const result = await response.json();
       setData(result);
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Failed to load users data');
     } finally {
       setLoading(false); // End loading
     }

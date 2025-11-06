@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     // Get company_id from query parameters
     const url = new URL(req.url);
-    const companyId = url.searchParams.get('company_id');
+    const companyIdParam = url.searchParams.get('company_id');
 
     connection = await pool.getConnection();
 
@@ -41,16 +41,23 @@ export async function GET(req: Request) {
     const whereConditions = ['users.status = "Active"'];
     const queryParams: number[] = [];
 
-    // Filter by company_id if provided
-    if (companyId && companyId.trim() !== '') {
-      whereConditions.push('users.company_id = ?');
-      queryParams.push(parseInt(companyId));
-    }
-
-    // Filter by user_id if available (skip for admin users with user_id = 1)
-    if (currentUserId && !isNaN(currentUserId) && currentUserId !== 1) {
-      whereConditions.push('users.user_id = ?');
-      queryParams.push(currentUserId);
+    // Filter by company_id if provided and not empty
+    // Empty string means super admin - show all users
+    if (companyIdParam && companyIdParam.trim() !== '') {
+      const companyId = parseInt(companyIdParam.trim());
+      if (!isNaN(companyId)) {
+        whereConditions.push('users.company_id = ?');
+        queryParams.push(companyId);
+        // When company_id is provided, show all users of that company
+        // Don't filter by user_id - we want all users from the company
+      }
+    } else {
+      // If no company_id provided, only show current user (for safety)
+      // Skip for admin users with user_id = 1
+      if (currentUserId && !isNaN(currentUserId) && currentUserId !== 1) {
+        whereConditions.push('users.user_id = ?');
+        queryParams.push(currentUserId);
+      }
     }
 
     const whereClause = whereConditions.length > 0 
