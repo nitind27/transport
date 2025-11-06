@@ -68,7 +68,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
   const [gp, setgp] = useState(0);
   const [company_id, setCompany_id] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
-  const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
+  const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isModelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [error, setErrors] = useState<FormErrors>({});
   
@@ -78,7 +78,17 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/users');
+      // Get company_id from sessionStorage
+      const companyId = sessionStorage.getItem('company_id') || '';
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId);
+      }
+      
+      const url = `/api/users${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -100,6 +110,7 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
 
   useEffect(() => {
     fetchCompanies();
+    fetchData(); // Fetch filtered data on mount
   }, []);
 
   useEffect(() => {
@@ -121,7 +132,15 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
     // setTaluka(Number(""))
     // setVillage(Number(""))
     setgp(Number(""))
-    setCompany_id(null);
+    
+    // Set default company_id from sessionStorage when resetting (not in edit mode)
+    const companyIdFromStorage = sessionStorage.getItem('company_id');
+    if (companyIdFromStorage && companyIdFromStorage.trim() !== '') {
+      setCompany_id(Number(companyIdFromStorage));
+    } else {
+      setCompany_id(null);
+    }
+    
     setEditId(0);
   }
 
@@ -130,6 +149,21 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
       reset()
     }
   }, [isEditMode]);
+
+  // Set default company when modal opens and companies are loaded (only when not in edit mode)
+  useEffect(() => {
+    if (isModelopen && !isEditMode && companies.length > 0) {
+      const companyIdFromStorage = sessionStorage.getItem('company_id');
+      if (companyIdFromStorage && companyIdFromStorage.trim() !== '' && !company_id) {
+        const companyIdNum = Number(companyIdFromStorage);
+        // Verify the company exists in the companies list
+        const companyExists = companies.some(company => company.id === companyIdNum);
+        if (companyExists) {
+          setCompany_id(companyIdNum);
+        }
+      }
+    }
+  }, [isModelopen, isEditMode, companies, company_id]);
 
   const validateInputs = () => {
     const newErrors: FormErrors = {};
@@ -457,7 +491,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
 
         
             <div className="col-span-1">
-              <Label>Company</Label>
+            
+              {false && (
               <select
                 name=""
                 id=""
@@ -473,11 +508,8 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
                   </option>
                 ))}
               </select>
-              {error && (
-                <div className="text-red-500 text-sm mt-1 pl-1">
-                  {error.company}
-                </div>
-              )}
+             
+            )}
             </div>
             <div className="col-span-1">
               <Label>Category</Label>
@@ -604,7 +636,14 @@ const Usersdatas = ({ users, datausercategorycrud }: Props) => {
         }
 
         columns={columns}
-        title="Users"
+        title={
+          <span>
+            New User for{' '}
+            <span className="text-blue-600 dark:text-blue-400 font-semibold">
+              {companies.find(c => c.id === company_id)?.name || ''}
+            </span>
+          </span>
+        }
         filterOptions={[]}
         // filterKey="role"
         submitbutton={

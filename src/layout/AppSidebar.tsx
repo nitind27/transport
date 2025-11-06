@@ -43,7 +43,7 @@ const adminNavItems: NavItem[] = [
       { name: "Trucks", path: "/trucks" },
       { name: "Dealers", path: "/dealer" },
       { name: "Godown", path: "/godown" },  
-      { name: "Sales Return", path: "/salesreturen" }, 
+      // { name: "Sales Return", path: "/salesreturen" }, 
     ],
   },
   // {

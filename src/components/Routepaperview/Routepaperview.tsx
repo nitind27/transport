@@ -134,6 +134,7 @@ const Routepaperview = () => {
     const [totalCount, setTotalCount] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [perPage, setPerPage] = useState<number>(50);
+    const [companyName, setCompanyName] = useState<string>('Mid Day Meal Scheme'); // Default fallback
 
     // Initialize Flatpickr for From Date picker
     useEffect(() => {
@@ -214,67 +215,67 @@ const Routepaperview = () => {
             // Get user_id and company_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
-            
+
             const params = new URLSearchParams();
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
-            
+
             const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) setTalukaList(await res.json());
         } catch {
             toast.error('Failed to load taluka');
         }
     };
-// Delete handler function
-// const handleDeleteRoute = async (routeNumber: string) => {
-//     if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
-//         return;
-//     }
+    // Delete handler function
+    // const handleDeleteRoute = async (routeNumber: string) => {
+    //     if (!confirm('Are you sure you want to delete this route? This action cannot be undone.')) {
+    //         return;
+    //     }
 
-//     try {
-//         // Get all dispatch codes for this route
-//         const routeData = getDataByRouteNumber(routeNumber);
-//         const dispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
-        
-//         // Delete each dispatch code
-//         for (const dispatchCode of dispatchCodes) {
-//             const response = await fetch(`/api/routeview`, {
-//                 method: 'DELETE',
-//                 headers: {
-//                     'Content-Type': 'application/json',
-//                 },
-//                 body: JSON.stringify({ dispatch_code: dispatchCode }),
-//             });
+    //     try {
+    //         // Get all dispatch codes for this route
+    //         const routeData = getDataByRouteNumber(routeNumber);
+    //         const dispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
 
-//             if (!response.ok) {
-//                 const errorData = await response.json();
-//                 throw new Error(errorData.message || 'Failed to delete dispatch');
-//             }
-//         }
+    //         // Delete each dispatch code
+    //         for (const dispatchCode of dispatchCodes) {
+    //             const response = await fetch(`/api/routeview`, {
+    //                 method: 'DELETE',
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                 },
+    //                 body: JSON.stringify({ dispatch_code: dispatchCode }),
+    //             });
 
-//         // Remove deleted items from local state
-//         setDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
-//         setFilteredDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
-        
-//         toast.success('Route deleted successfully!');
-//     } catch (error) {
-//         console.error('Error deleting route:', error);
-//         toast.error('Failed to delete route');
-//     }
-// };
+    //             if (!response.ok) {
+    //                 const errorData = await response.json();
+    //                 throw new Error(errorData.message || 'Failed to delete dispatch');
+    //             }
+    //         }
+
+    //         // Remove deleted items from local state
+    //         setDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+    //         setFilteredDispatchList(prev => prev.filter(item => item.route_number !== routeNumber));
+
+    //         toast.success('Route deleted successfully!');
+    //     } catch (error) {
+    //         console.error('Error deleting route:', error);
+    //         toast.error('Failed to delete route');
+    //     }
+    // };
     const fetchDispatchList = useCallback(async (opts?: { page?: number; limit?: number }) => {
         try {
             setIsLoading(true);
             const effectivePage = opts?.page ?? currentPage;
             const effectiveLimit = opts?.limit ?? perPage;
-            
+
             // Get user_id and company_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
-            
+
             console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate, 'page:', effectivePage, 'limit:', effectiveLimit, 'user_id:', userId, 'company_id:', companyId);
-            
+
             // Build query parameters with date filters and user/company filters
             const params = new URLSearchParams();
             if (fromDate && fromDate.trim() !== '') {
@@ -288,14 +289,14 @@ const Routepaperview = () => {
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
             params.append('page', String(effectivePage));
             params.append('limit', String(effectiveLimit));
-            
+
             const queryString = params.toString();
             const url = `/api/routeview/pagination?${queryString}`;
-            
+
             console.log('Fetching from URL:', url);
             const res = await fetch(url);
             console.log('API Response status:', res.status, res.statusText);
-            
+
             if (!res.ok) {
                 const errorText = await res.text();
                 console.error('API Error:', res.status, errorText);
@@ -303,7 +304,7 @@ const Routepaperview = () => {
                 setIsLoading(false);
                 return;
             }
-            
+
             const payload = await res.json();
             const data = Array.isArray(payload) ? payload : payload.rows;
             const total = Array.isArray(payload) ? data.length : Number(payload.total || 0);
@@ -314,15 +315,15 @@ const Routepaperview = () => {
                 console.log('Sample item:', data[0]);
                 console.log('Sample created_at:', data[0]?.created_at);
             }
-            
+
             const dataWithRoute = data.map((item: DispatchListRow) => ({
                 ...item,
                 route_number: item.route_number || item.dispatch_code,
                 created_at: item.created_at || '',
             }));
-            
+
             console.log('Processed data with route:', dataWithRoute.length, 'items');
-            
+
             setDispatchList(dataWithRoute);
             setTotalCount(total);
             setCurrentPage(page);
@@ -340,12 +341,12 @@ const Routepaperview = () => {
             // Get user_id and company_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
-            
+
             const params = new URLSearchParams();
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
-            
+
             const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
             if (!res.ok) return;
             const rows: SchoolDataApiRow[] = await res.json();
@@ -367,11 +368,30 @@ const Routepaperview = () => {
         }
     };
 
+    const fetchCompanyName = async () => {
+        try {
+            const companyId = sessionStorage.getItem('company_id');
+            if (companyId && companyId.trim() !== '') {
+                const res = await fetch(`/api/company?id=${companyId.trim()}`);
+                if (res.ok) {
+                    const company = await res.json();
+                    if (company && company.name) {
+                        setCompanyName(company.name);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching company name:', error);
+            // Keep default fallback
+        }
+    };
+
     // Initial data fetch on mount
     useEffect(() => {
         fetchTalukas();
         // fetchCenters();
         fetchSchoolDataMap();
+        fetchCompanyName();
     }, []);
 
     // Remove auto-fetch on date change; fetch will be triggered explicitly on Search click
@@ -435,13 +455,13 @@ const Routepaperview = () => {
     const sumGrainsForGroup = (items: Array<{ name: string; qty: number }>) => {
         const sums: Record<string, number> = {};
         const mappedItems: string[] = [];
-        
+
         items.forEach(it => {
             if (!it.name || it.qty === 0) return;
-            
+
             const nm = (it.name || '').toLowerCase().trim();
             const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-            
+
             if (match) {
                 const key = match.key;
                 sums[key] = (sums[key] || 0) + Number(it.qty || 0);
@@ -451,19 +471,19 @@ const Routepaperview = () => {
                 sums[it.name] = (sums[it.name] || 0) + Number(it.qty || 0);
             }
         });
-        
+
         return sums;
     };
 
     // Get all unique item names from the data (both mapped and unmapped)
     // const getAllItemNames = (data: DispatchListRow[]) => {
     //     const allItems = new Map<string, boolean>();
-        
+
     //     data.forEach(row => {
     //         if (row.item_name) {
     //             const nm = row.item_name.toLowerCase().trim();
     //             const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-                
+
     //             if (match) {
     //                 allItems.set(match.key, true);
     //             } else {
@@ -471,11 +491,11 @@ const Routepaperview = () => {
     //             }
     //         }
     //     });
-        
+
     //     // Create array with mapped items first, then unmapped items
     //     const mappedKeys = mrGrainColumns.map(g => g.key);
     //     const orderedItems: string[] = [];
-        
+
     //     // Add mapped items in order
     //     mappedKeys.forEach(key => {
     //         if (allItems.has(key)) {
@@ -483,11 +503,11 @@ const Routepaperview = () => {
     //             allItems.delete(key);
     //         }
     //     });
-        
+
     //     // Add unmapped items alphabetically
     //     const unmappedItems = Array.from(allItems.keys()).sort();
     //     orderedItems.push(...unmappedItems);
-        
+
     //     return orderedItems;
     // };
 
@@ -515,27 +535,27 @@ const Routepaperview = () => {
                 routeNumbers.add(item.route_number);
             }
         });
-        
+
         const uniqueRoutes = Array.from(routeNumbers).sort((a, b) => {
             // Convert to number if it's a numeric string, otherwise extract number from string
             let numA = parseInt(a, 10);
             let numB = parseInt(b, 10);
-            
+
             // If parseInt failed (NaN), try to extract numeric part
             if (isNaN(numA)) {
                 const matchA = a.match(/\d+/);
                 numA = matchA ? parseInt(matchA[0], 10) : 0;
             }
-            
+
             if (isNaN(numB)) {
                 const matchB = b.match(/\d+/);
                 numB = matchB ? parseInt(matchB[0], 10) : 0;
             }
-            
+
             // Descending order: b - a means higher numbers first
             return numB - numA;
         });
-        
+
         console.log('Unique route numbers found:', uniqueRoutes.length, uniqueRoutes);
         return uniqueRoutes;
     }, [filteredDispatchList]);
@@ -554,19 +574,19 @@ const Routepaperview = () => {
     //     const year: number = date.getFullYear();
     //     return `${day}-${month}-${year}`;
     //   }
-      
-      const handlePrintDc = (routeNumber: string) => {
+
+    const handlePrintDc = (routeNumber: string) => {
         const routeData = getDataByRouteNumber(routeNumber);
-      
+
         if (routeData.length === 0) {
             toast.error('Route data not found for DC printing');
             return;
         }
-    
+
         // Aggregate items across all schools in the route
         const allItems = routeData.map(r => ({ name: r.item_name, qty: r.new_qty_dispatch }));
         const sums = sumGrainsForGroup(allItems);
-    
+
         // Top meta from first row
         const first = routeData[0];
         const talukaName = first?.taluka_name || '';
@@ -576,10 +596,11 @@ const Routepaperview = () => {
         const dateStr = first?.created_at ? first.created_at : '';
         const periodText = first?.period || 'Aug-Sept-2025';
         const daysText = first?.no_of_days ? `${first.no_of_days} Days` : '42 Days';
-    
+        const centerName = first?.center_name || '';
+
         // Prepare rows with only items that have quantity > 0
         const rows: Array<{ name: string; qty: number }> = [];
-        
+
         // Add mapped grains that have quantity > 0
         mrGrainColumns.forEach(g => {
             const qty = Number(sums[g.key] || 0);
@@ -587,7 +608,7 @@ const Routepaperview = () => {
                 rows.push({ name: g.key, qty: qty });
             }
         });
-    
+
         // Add unmapped items that have quantity > 0
         const knownKeys = mrGrainColumns.map(g => g.key);
         Object.keys(sums)
@@ -596,13 +617,13 @@ const Routepaperview = () => {
             .forEach(k => {
                 rows.push({ name: k, qty: Number(sums[k] || 0) });
             });
-    
+
         // Calculate grand total from all items that will be displayed
         const grandTotal = rows.reduce((total, row) => total + (row.qty || 0), 0);
-    
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
-    
+
         printWindow.document.write(`
         <html>
         <head>
@@ -741,10 +762,12 @@ const Routepaperview = () => {
         </head>
         <body>
             <div class="header">
+                
                 <p>गौरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था</p>
                 <p>शालेय पोषण आहार योजना</p>
                 <p>शिक्षण विभाग (प्राथमिक), जिल्हा परिषद, नंदुरबार</p>
                 <div class="box-title">ड्रायव्हर समरी चार्ट / जावक</div>
+                <p>${companyName}</p>
             </div>
     
             <table class="meta">
@@ -766,10 +789,17 @@ const Routepaperview = () => {
                 </tr>
                 <tr>
                     <td>
-                        <strong>DC पावती क्रमांक:</strong> ${routeNumber}
+                        <strong>केंद्र:</strong> ${centerName}
                     </td>
                     <td style="text-align: right;">
                         <strong>गाडी नं.:</strong> ${vehicleNo}
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>DC पावती क्रमांक:</strong> ${routeNumber}
+                    </td>
+                    <td style="text-align: right;">
                     </td>
                 </tr>
             </table>
@@ -840,12 +870,12 @@ const Routepaperview = () => {
 
     const getAllItemNames = (data: DispatchListRow[]) => {
         const allItems = new Map<string, boolean>();
-        
+
         data.forEach(row => {
             if (row.item_name) {
                 const nm = row.item_name.toLowerCase().trim();
                 const match = mrGrainColumns.find(c => c.aliases.some(a => nm.includes(a.toLowerCase())));
-                
+
                 if (match) {
                     allItems.set(match.key, true);
                 } else {
@@ -853,11 +883,11 @@ const Routepaperview = () => {
                 }
             }
         });
-        
+
         // Create array with mapped items first, then unmapped items
         const mappedKeys = mrGrainColumns.map(g => g.key);
         const orderedItems: string[] = [];
-        
+
         // Add mapped items in order
         mappedKeys.forEach(key => {
             if (allItems.has(key)) {
@@ -865,11 +895,11 @@ const Routepaperview = () => {
                 allItems.delete(key);
             }
         });
-        
+
         // Add unmapped items alphabetically
         const unmappedItems = Array.from(allItems.keys()).sort();
         orderedItems.push(...unmappedItems);
-        
+
         return orderedItems;
     };
 
@@ -903,13 +933,13 @@ const Routepaperview = () => {
                     receipts: new Set<string>(),
                 });
             }
-            
+
             // Use Map to aggregate quantities for the same item
             const schoolData = schoolsMap.get(schoolKey);
             if (!schoolData) return; // Safety check
-            
+
             const itemKey = `${row.item_name}-${row.unit}`;
-            
+
             if (schoolData.items.has(itemKey)) {
                 // If item already exists, add to existing quantity
                 const existingItem = schoolData.items.get(itemKey);
@@ -924,7 +954,7 @@ const Routepaperview = () => {
                     unit: row.unit
                 });
             }
-            
+
             if (row.dispatch_code) {
                 schoolData.receipts.add(String(row.dispatch_code));
             }
@@ -938,11 +968,11 @@ const Routepaperview = () => {
             // Sort by पावती क्रमांक (Receipt Number) in descending order
             const aReceipts = Array.from(a.receipts || new Set<string>()).sort().reverse();
             const bReceipts = Array.from(b.receipts || new Set<string>()).sort().reverse();
-            
+
             // Compare the first (highest) receipt number
             const aFirstReceipt = aReceipts[0] || '';
             const bFirstReceipt = bReceipts[0] || '';
-            
+
             // Extract numeric part for proper sorting
             const getReceiptNumber = (receipt: string) => {
                 if (!receipt || typeof receipt !== 'string') return 0;
@@ -958,7 +988,7 @@ const Routepaperview = () => {
 
         // Calculate grand totals for all items
         const grandTotals: Record<string, number> = {};
-        
+
         schools.forEach(school => {
             const schoolSums = sumGrainsForGroup(school.items);
             Object.entries(schoolSums).forEach(([itemName, qty]) => {
@@ -1127,7 +1157,7 @@ const Routepaperview = () => {
                                         </div>
                                     </div>
                                     <div class="center-title">
-                                        मध्यदाय भोजन योजना <br> Mid Day Meal Scheme 
+                                        मध्यदाय भोजन योजना <br> ${companyName}
                                     </div>
                                 </td>
                             </tr>
@@ -1145,18 +1175,18 @@ const Routepaperview = () => {
                                     <th class="center-align whitespace-nowrap"> वर्ग </th>
                                     <th class="center-align">पट संख्या</th>
                                     ${allItemNames.map(item =>
-                                        `<th class="grain-column">${item}</th>`
-                                    ).join('')}
+                `<th class="grain-column">${item}</th>`
+            ).join('')}
                                     <th class="center-align">एकूण</th>
                                     <th class="center-align">हेड मास्टर मोबाइल No.</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${schools.map((school, index) => {
-                                    const grainSums = sumGrainsForGroup(school.items);
-                                    const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                                    const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
-                                    return `
+                const grainSums = sumGrainsForGroup(school.items);
+                const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
+                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+                return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
                                    
@@ -1167,18 +1197,18 @@ const Routepaperview = () => {
                                        <td class="center-align w-20 min-w-0" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${school.class_range}</td>
                                             <td class="center-align">${school.patsankhya || '-'}</td>
                                             ${allItemNames.map(item =>
-                                                `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
-                                            ).join('')}
+                    `<td class="right-align">${grainSums[item] ? grainSums[item].toFixed(2) : '0.00'}</td>`
+                ).join('')}
                                             <td class="right-align">${schoolTotal.toFixed(2)}</td>
                                             <td class="center-align"></td>
                                         </tr>
                                     `;
-                                }).join('')}
+            }).join('')}
                                 <tr class="total-row">
                                     <td colspan="7" class="right-align"><strong>एकूण:</strong></td>
                                     ${allItemNames.map(item =>
-                                        `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
-                                    ).join('')}
+                `<td class="right-align"><strong>${grandTotals[item] ? grandTotals[item].toFixed(2) : '0.00'}</strong></td>`
+            ).join('')}
                                     <td class="right-align"><strong>${overallTotal.toFixed(2)}</strong></td>
                                    
                                 </tr>
@@ -1221,11 +1251,11 @@ const Routepaperview = () => {
     // Update the groupedByRoute creation logic (around line 950)
     const groupedByRoute: RouteGroupRow[] = useMemo(() => {
         console.log('Calculating groupedByRoute from', getUniqueRouteNumbers.length, 'routes');
-        
+
         const grouped = getUniqueRouteNumbers.map(routeNumber => {
             // Get data for this route from filteredDispatchList
             const routeData = filteredDispatchList.filter(item => item.route_number === routeNumber);
-            
+
             if (routeData.length === 0) {
                 console.warn('No data found for route:', routeNumber);
                 return {
@@ -1245,7 +1275,7 @@ const Routepaperview = () => {
 
             // Group by dispatch_code to get unique dispatch codes for this route
             const uniqueDispatchCodes = [...new Set(routeData.map(item => item.dispatch_code))];
-            
+
             // Get first item for basic info
             const firstItem = routeData[0];
 
@@ -1274,7 +1304,7 @@ const Routepaperview = () => {
                 total_weight: totalWeight
             };
         });
-        
+
         console.log('Grouped by route result:', grouped.length, 'groups', grouped);
         return grouped;
     }, [getUniqueRouteNumbers, filteredDispatchList]);
@@ -1308,7 +1338,7 @@ const Routepaperview = () => {
                         <TrashBinIcon />
                     </button> */}
 
-                    
+
                 </div>
             )
         },

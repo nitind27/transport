@@ -1,5 +1,6 @@
 // app/api/users/route.ts
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
@@ -22,10 +23,40 @@ interface User extends RowDataPacket {
   updated_at: string;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   let connection;
   try {
+    // Get user_id from cookie
+    const cookieStore = await cookies();
+    const authToken = cookieStore.get('auth_token');
+    const currentUserId = authToken ? parseInt(authToken.value) : null;
+
+    // Get company_id from query parameters
+    const url = new URL(req.url);
+    const companyId = url.searchParams.get('company_id');
+
     connection = await pool.getConnection();
+
+    // Build WHERE clause conditions
+    const whereConditions = ['users.status = "Active"'];
+    const queryParams: number[] = [];
+
+    // Filter by company_id if provided
+    if (companyId && companyId.trim() !== '') {
+      whereConditions.push('users.company_id = ?');
+      queryParams.push(parseInt(companyId));
+    }
+
+    // Filter by user_id if available (skip for admin users with user_id = 1)
+    if (currentUserId && !isNaN(currentUserId) && currentUserId !== 1) {
+      whereConditions.push('users.user_id = ?');
+      queryParams.push(currentUserId);
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : 'WHERE users.status = "Active"';
+
     const [rows] = await connection.query<User[]>(`
       SELECT 
         users.*,
@@ -41,8 +72,8 @@ export async function GET() {
       LEFT JOIN village ON users.village_id = village.village_id
       LEFT JOIN grampanchayat ON users.gp_id = grampanchayat.id
       LEFT JOIN company ON users.company_id = company.id
-      WHERE users.status = "Active";
-    `);
+      ${whereClause};
+    `, queryParams);
 
     // Type-safe mapping
     const safeUsers = rows.map(({ ...user }) => user);

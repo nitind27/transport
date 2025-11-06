@@ -10,7 +10,7 @@ import { useToggleContext } from "@/context/ToggleContext";
 
 interface FormInModalProps {
   inputfiled: React.ReactNode;
-  title?: string;
+  title?: string | React.ReactNode;
   classname?: string;
   submitbutton: React.ReactNode;
 }

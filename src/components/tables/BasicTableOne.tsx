@@ -12,10 +12,10 @@ type Props<T> = {
   filterKey?: keyof T;
   inputfiled?: React.ReactNode;
   submitbutton?: React.ReactNode;
-  title?: string;
+  title?: string | React.ReactNode;
   searchKey?: string;
   classname?: string;
-   actionsRight?: React.ReactNode;
+  actionsRight?: React.ReactNode;
 };
 
 export function ReusableTable<T extends object>({
