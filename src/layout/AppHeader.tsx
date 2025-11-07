@@ -5,18 +5,60 @@ import { useSidebar } from "@/context/SidebarContext";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 
+type Company = {
+  id: number;
+  name: string;
+  contactnumber: number;
+  address: string;
+  gstno: string;
+  status: string;
+};
+
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [companyName, setCompanyName] = useState<string>("Mid Day Meal");
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+
+  // Check if user is super admin and fetch companies
+  useEffect(() => {
+    const checkSuperAdmin = () => {
+      const categoryId = sessionStorage.getItem('category_id');
+      const isSuperAdminFlag = sessionStorage.getItem('isSuperAdmin') === 'true';
+      const isAdmin = categoryId === '5' || isSuperAdminFlag;
+      setIsSuperAdmin(isAdmin);
+      
+      if (isAdmin) {
+        fetchCompanies();
+      }
+    };
+    
+    checkSuperAdmin();
+  }, []);
+
+  // Fetch companies for super admin
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/company');
+      if (response.ok) {
+        const companiesData = await response.json();
+        setCompanies(companiesData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
 
   // Fetch company name from sessionStorage company_id
   useEffect(() => {
     const fetchCompanyName = async () => {
       try {
         const companyId = sessionStorage.getItem('company_id');
+        setSelectedCompanyId(companyId || "");
         
-        if (companyId) {
+        if (companyId && companyId.trim() !== '') {
           const response = await fetch(`/api/company?id=${companyId}`);
           
           if (response.ok) {
@@ -27,6 +69,8 @@ const AppHeader: React.FC = () => {
           } else {
             console.error('Failed to fetch company name');
           }
+        } else {
+          setCompanyName("All Companies");
         }
       } catch (error) {
         console.error('Error fetching company name:', error);
@@ -35,6 +79,29 @@ const AppHeader: React.FC = () => {
 
     fetchCompanyName();
   }, []);
+
+  // Handle company selection change
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const companyId = e.target.value;
+    setSelectedCompanyId(companyId);
+    
+    if (companyId && companyId.trim() !== '') {
+      sessionStorage.setItem('company_id', companyId);
+      // Find and set company name
+      const selectedCompany = companies.find(c => c.id === Number(companyId));
+      if (selectedCompany) {
+        setCompanyName(selectedCompany.name);
+      }
+    } else {
+      sessionStorage.setItem('company_id', "");
+      setCompanyName("All Companies");
+    }
+    
+    // Dispatch custom event to notify components about company change
+    window.dispatchEvent(new CustomEvent('companyChanged', { 
+      detail: { companyId: companyId || '' } 
+    }));
+  };
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -111,7 +178,22 @@ const AppHeader: React.FC = () => {
           <Link href="/" className="lg:hidden">
             <span className="text-white text-[12px] whitespace-nowrap">
             Mid Day Meal &nbsp;&nbsp;&nbsp;|
-              {companyName} 
+              {isSuperAdmin && (
+                <select
+                  value={selectedCompanyId}
+                  onChange={handleCompanyChange}
+                  className="ml-2 bg-transparent text-white border border-white/30 rounded px-2 py-1 text-xs focus:outline-none focus:border-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="">All Companies</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id} className="bg-gray-800 text-white">
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {!isSuperAdmin && companyName}
             </span>
           </Link>
 
@@ -136,7 +218,26 @@ const AppHeader: React.FC = () => {
           </button>
 
           <div className="hidden lg:block">
-            <h1 className="text-xl font-semibold text-white whitespace-nowrap">Mid Day Meal &nbsp; &nbsp;&nbsp;| {companyName}</h1>
+            <h1 className="text-xl font-semibold text-white whitespace-nowrap">
+              Mid Day Meal &nbsp; &nbsp;&nbsp;| 
+              {isSuperAdmin ? (
+                <select
+                  value={selectedCompanyId}
+                  onChange={handleCompanyChange}
+                  className="ml-2 bg-transparent text-white border border-white/30 rounded px-2 py-1 text-sm focus:outline-none focus:border-white"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="">All Companies</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id} className="bg-gray-800 text-white">
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                ` ${companyName}`
+              )}
+            </h1>
           </div>
         </div>
         <div

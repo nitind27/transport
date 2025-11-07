@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       userParams.push(userId.trim());
     }
 
-    // Build WHERE clause for company_id filtering - Only add if not empty
+    // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
     const companyParams: string[] = [];
     const shouldFilterByCompany = companyId && companyId.trim() !== '';
     

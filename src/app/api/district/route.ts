@@ -4,12 +4,38 @@ import pool from '@/lib/db';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // -------------------- GET Method --------------------
-export async function GET() {
+export async function GET(request: Request) {
     let connection;
     try {
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('user_id');
+        const companyId = searchParams.get('company_id');
+
+        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+        let userFilter = '';
+        const userParams: string[] = [];
+        if (userId && userId.trim() !== '' && userId !== '1') {
+            userFilter = 'AND district.user_id = ?';
+            userParams.push(userId.trim());
+        }
+
+        // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId && companyId.trim() !== '') {
+            companyFilter = 'AND district.company_id = ?';
+            companyParams.push(companyId.trim());
+        }
+
+        // Combine all parameters
+        const allParams = [...userParams, ...companyParams];
+
         connection = await pool.getConnection();
         const [rows] = await connection.query<RowDataPacket[]>(
-            'SELECT * FROM district WHERE status = "Active"'
+            `SELECT * FROM district WHERE status = "Active"
+            ${userFilter}
+            ${companyFilter}`,
+            allParams
         );
 
         return NextResponse.json(rows);
@@ -29,13 +55,13 @@ export async function POST(req: Request) {
     let connection;
     try {
         const body = await req.json();
-        const { name, name_en, status, company_id } = body;
+        const { name, name_en, status, company_id, user_id } = body;
 
         connection = await pool.getConnection();
 
         const [result] = await connection.query<ResultSetHeader>(
-            'INSERT INTO district (name, name_en, status, company_id) VALUES (?, ?, ?, ?)',
-            [name, name_en, status || 'Active', company_id || null]
+            'INSERT INTO district (name, name_en, status, company_id, user_id) VALUES (?, ?, ?, ?, ?)',
+            [name, name_en, status || 'Active', company_id || null, user_id || null]
         );
 
         return NextResponse.json({

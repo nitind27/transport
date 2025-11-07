@@ -9,10 +9,38 @@ interface ItemGrainRow {
   status?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  let connection;
   try {
-    const [rows] = await pool.query<RowDataPacket[] & ItemGrainRow[]>(
-      'SELECT * FROM itemsgrains WHERE status = "Active"'
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id');
+    const companyId = searchParams.get('company_id');
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    let userFilter = '';
+    const userParams: string[] = [];
+    if (userId && userId.trim() !== '' && userId !== '1') {
+      userFilter = 'AND itemsgrains.user_id = ?';
+      userParams.push(userId.trim());
+    }
+
+    // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+    let companyFilter = '';
+    const companyParams: string[] = [];
+    if (companyId && companyId.trim() !== '') {
+      companyFilter = 'AND itemsgrains.company_id = ?';
+      companyParams.push(companyId.trim());
+    }
+
+    // Combine all parameters
+    const allParams = [...userParams, ...companyParams];
+
+    connection = await pool.getConnection();
+    const [rows] = await connection.query<RowDataPacket[] & ItemGrainRow[]>(
+      `SELECT * FROM itemsgrains WHERE status = "Active"
+      ${userFilter}
+      ${companyFilter}`,
+      allParams
     );
     return NextResponse.json(rows as ItemGrainRow[]);
   } catch (error) {
@@ -21,6 +49,8 @@ export async function GET() {
       { message: 'Failed to fetch itemsgrains' },
       { status: 500 }
     );
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -28,7 +58,7 @@ export async function POST(req: Request) {
   let connection;
   try {
     const body = await req.json();
-    const { name, Unit, status } = body;
+    const { name, Unit, status, company_id, user_id } = body;
 
     if (!name || !Unit) {
       return NextResponse.json(
@@ -39,8 +69,8 @@ export async function POST(req: Request) {
 
     connection = await pool.getConnection();
     const [result] = await connection.query<ResultSetHeader>(
-      'INSERT INTO itemsgrains (name, Unit, status) VALUES (?, ?, ?)',
-      [name, Unit, status ?? 'Active']
+      'INSERT INTO itemsgrains (name, Unit, status, company_id, user_id) VALUES (?, ?, ?, ?, ?)',
+      [name, Unit, status ?? 'Active', company_id || null, user_id || null]
     );
 
     return NextResponse.json({

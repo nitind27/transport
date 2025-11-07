@@ -41,14 +41,14 @@ export async function GET(req: Request) {
     const whereConditions = ['users.status = "Active"'];
     const queryParams: number[] = [];
 
-    // Filter by company_id if provided and not empty
+    // Filter by company_id if provided and not empty - Always apply if provided (even for admin)
     // Empty string means super admin - show all users
     if (companyIdParam && companyIdParam.trim() !== '') {
       const companyId = parseInt(companyIdParam.trim());
       if (!isNaN(companyId)) {
         whereConditions.push('users.company_id = ?');
         queryParams.push(companyId);
-        // When company_id is provided, show all users of that company
+        // When company_id is provided, show all users of that company (even for admin)
         // Don't filter by user_id - we want all users from the company
       }
     } else {

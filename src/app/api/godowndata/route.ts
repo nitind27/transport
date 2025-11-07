@@ -8,10 +8,38 @@ interface OwnerRow {
   status?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  let connection;
   try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id');
+    const companyId = searchParams.get('company_id');
+
+    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
+    let userFilter = '';
+    const userParams: string[] = [];
+    if (userId && userId.trim() !== '' && userId !== '1') {
+      userFilter = 'AND godown.user_id = ?';
+      userParams.push(userId.trim());
+    }
+
+    // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+    let companyFilter = '';
+    const companyParams: string[] = [];
+    if (companyId && companyId.trim() !== '') {
+      companyFilter = 'AND godown.company_id = ?';
+      companyParams.push(companyId.trim());
+    }
+
+    // Combine all parameters
+    const allParams = [...userParams, ...companyParams];
+
+    connection = await pool.getConnection();
     const [rows] = await pool.query<RowDataPacket[] & OwnerRow[]>(
-      'SELECT * FROM godown WHERE status = "Active"'
+      `SELECT * FROM godown WHERE status = "Active"
+      ${userFilter}
+      ${companyFilter}`,
+      allParams
     );
     return NextResponse.json(rows as OwnerRow[]);
   } catch (error) {
@@ -20,6 +48,8 @@ export async function GET() {
       { message: 'Failed to fetch godown' },
       { status: 500 }
     );
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -27,7 +57,7 @@ export async function POST(req: Request) {
   let connection;
   try {
     const body = await req.json();
-    const { name, status } = body;
+    const { name, status, company_id, user_id } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -38,18 +68,18 @@ export async function POST(req: Request) {
 
     connection = await pool.getConnection();
     const [result] = await connection.query<ResultSetHeader>(
-      'INSERT INTO godown (name, status) VALUES (?, ?)',
-      [name, status ?? 'Active']
+      'INSERT INTO godown (name, status, company_id, user_id) VALUES (?, ?, ?, ?)',
+      [name, status ?? 'Active', company_id || null, user_id || null]
     );
 
     return NextResponse.json({
-      message: 'Owner added successfully',
+      message: 'Godown added successfully',
       id: result.insertId,
     });
   } catch (error) {
     console.error('Database insert failed (POST godown):', error);
     return NextResponse.json(
-      { message: 'Failed to add owner' },
+      { message: 'Failed to add godown' },
       { status: 500 }
     );
   } finally {

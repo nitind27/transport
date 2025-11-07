@@ -43,7 +43,25 @@ const Godowndata = ({ district }: Props) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/godowndata');
+            // Get company_id and userid from sessionStorage
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const categoryId = sessionStorage.getItem('category_id');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            // Only add user_id if not super admin (category_id = 5) and userid exists
+            if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+                params.append('user_id', userId.trim());
+            }
+            // Add company_id if it exists and is not empty
+            if (companyId && companyId.trim() !== '') {
+                params.append('company_id', companyId.trim());
+            }
+            
+            const url = `/api/godowndata${params.toString() ? `?${params.toString()}` : ''}`;
+            const response = await fetch(url);
             const result = await response.json();
             setData(result);
         } catch (error) {
@@ -53,8 +71,27 @@ const Godowndata = ({ district }: Props) => {
         }
     };
 
+    // Fetch data on component mount and when company_id changes
     useEffect(() => {
         fetchData();
+    }, []);
+
+    // Listen for company change events (when company is selected in header)
+    useEffect(() => {
+        const handleCompanyChange = () => {
+            fetchData();
+        };
+
+        // Listen for custom companyChanged event
+        window.addEventListener('companyChanged', handleCompanyChange);
+        
+        // Also listen for storage events (for cross-tab updates)
+        window.addEventListener('storage', handleCompanyChange);
+
+        return () => {
+            window.removeEventListener('companyChanged', handleCompanyChange);
+            window.removeEventListener('storage', handleCompanyChange);
+        };
     }, []);
 
     useEffect(() => {

@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         userParams.push(userId.trim());
       }
 
-      // Build WHERE clause for company_id filtering - Only add if not empty
+      // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
       let companyFilter = '';
       const companyParams: string[] = [];
       if (companyId && companyId.trim() !== '') {
@@ -79,6 +79,7 @@ export async function GET(req: Request) {
             joinUserParams.push(userId.trim());
           }
 
+          // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
           let joinCompanyFilter = '';
           const joinCompanyParams: string[] = [];
           if (companyId && companyId.trim() !== '') {

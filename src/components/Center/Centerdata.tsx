@@ -26,6 +26,8 @@ type FormErrors = {
 const Centerdata = ({ district, distoption, center }: Props) => {
   // Use center data instead of district data
   const [data, setData] = useState<Taluka[]>(center || []);
+  const [districtOptions, setDistrictOptions] = useState<Taluka[]>(distoption || []);
+  const [talukaOptions, setTalukaOptions] = useState<Taluka[]>(district || []);
   
   const [selectedTaluka, setSelectedTaluka] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -40,7 +42,25 @@ const Centerdata = ({ district, distoption, center }: Props) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/centerapi');
+      // Get company_id and userid from sessionStorage
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const categoryId = sessionStorage.getItem('category_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      // Only add user_id if not super admin (category_id = 5) and userid exists
+      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+        params.append('user_id', userId.trim());
+      }
+      // Add company_id if it exists and is not empty
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const url = `/api/centerapi${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -49,6 +69,91 @@ const Centerdata = ({ district, distoption, center }: Props) => {
       setLoading(false);
     }
   };
+
+  // Fetch district options with company_id filtering
+  const fetchDistrictOptions = async () => {
+    try {
+      // Get company_id and userid from sessionStorage
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const categoryId = sessionStorage.getItem('category_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      // Only add user_id if not super admin (category_id = 5) and userid exists
+      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+        params.append('user_id', userId.trim());
+      }
+      // Add company_id if it exists and is not empty
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const url = `/api/district${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      setDistrictOptions(result);
+    } catch (error) {
+      console.error('Error fetching district options:', error);
+    }
+  };
+
+  // Fetch taluka options with company_id filtering
+  const fetchTalukaOptions = async () => {
+    try {
+      // Get company_id and userid from sessionStorage
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const categoryId = sessionStorage.getItem('category_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      // Only add user_id if not super admin (category_id = 5) and userid exists
+      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+        params.append('user_id', userId.trim());
+      }
+      // Add company_id if it exists and is not empty
+      if (companyId && companyId.trim() !== '') {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const url = `/api/taluka${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      const result = await response.json();
+      setTalukaOptions(result);
+    } catch (error) {
+      console.error('Error fetching taluka options:', error);
+    }
+  };
+
+  // Fetch data on component mount and when company_id changes
+  useEffect(() => {
+    fetchData();
+    fetchDistrictOptions();
+    fetchTalukaOptions();
+  }, []);
+
+  // Listen for company change events (when company is selected in header)
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      fetchData();
+      fetchDistrictOptions();
+      fetchTalukaOptions();
+    };
+
+    // Listen for custom companyChanged event
+    window.addEventListener('companyChanged', handleCompanyChange);
+    
+    // Also listen for storage events (for cross-tab updates)
+    window.addEventListener('storage', handleCompanyChange);
+
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isvalidation) {
@@ -228,10 +333,14 @@ const Centerdata = ({ district, distoption, center }: Props) => {
                 className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
                   border-gray-300 bg-white text-gray-800`}
                 value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
+                onChange={(e) => {
+                  setSelectedDistrict(e.target.value);
+                  // Reset taluka when district changes
+                  setSelectedTaluka('');
+                }}
               >
                 <option value="">सर्व जिल्हा</option>
-                {distoption.map((category) => (
+                {districtOptions.map((category) => (
                   <option key={category.district_id} value={category.district_id}>
                     {category.name}
                   </option>
@@ -251,9 +360,10 @@ const Centerdata = ({ district, distoption, center }: Props) => {
                   border-gray-300 bg-white text-gray-800`}
                 value={selectedTaluka}
                 onChange={(e) => setSelectedTaluka(e.target.value)}
+                disabled={!selectedDistrict}
               >
                 <option value="">सर्व तालुका</option>
-                {district
+                {talukaOptions
                   .filter(data => !selectedDistrict || data.dist_id == Number(selectedDistrict))
                   .map((category) => (
                     <option key={category.taluka_id} value={category.taluka_id}>

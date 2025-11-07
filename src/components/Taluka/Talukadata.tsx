@@ -42,6 +42,7 @@ type FormErrors = {
 const Talukadata = ({ district, distoption }: Props) => {
 
     const [data, setData] = useState<Taluka[]>(district || []);
+    const [districtOptions, setDistrictOptions] = useState<Taluka[]>(distoption || []);
     // console.log("distoption",distoption)
     const [Taluka, setTaluka] = useState('');
     const [entaluka, setEntaluka] = useState('');
@@ -56,7 +57,25 @@ const Talukadata = ({ district, distoption }: Props) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/taluka');
+            // Get company_id and userid from sessionStorage
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const categoryId = sessionStorage.getItem('category_id');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            // Only add user_id if not super admin (category_id = 5) and userid exists
+            if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+                params.append('user_id', userId.trim());
+            }
+            // Add company_id if it exists and is not empty
+            if (companyId && companyId.trim() !== '') {
+                params.append('company_id', companyId.trim());
+            }
+            
+            const url = `/api/taluka${params.toString() ? `?${params.toString()}` : ''}`;
+            const response = await fetch(url);
             const result = await response.json();
             setData(result);
         } catch (error) {
@@ -65,6 +84,60 @@ const Talukadata = ({ district, distoption }: Props) => {
             setLoading(false); // End loading
         }
     };
+
+    // Fetch district options with company_id filtering
+    const fetchDistrictOptions = async () => {
+        try {
+            // Get company_id and userid from sessionStorage
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const categoryId = sessionStorage.getItem('category_id');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            // Only add user_id if not super admin (category_id = 5) and userid exists
+            if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
+                params.append('user_id', userId.trim());
+            }
+            // Add company_id if it exists and is not empty
+            if (companyId && companyId.trim() !== '') {
+                params.append('company_id', companyId.trim());
+            }
+            
+            const url = `/api/district${params.toString() ? `?${params.toString()}` : ''}`;
+            const response = await fetch(url);
+            const result = await response.json();
+            setDistrictOptions(result);
+        } catch (error) {
+            console.error('Error fetching district options:', error);
+        }
+    };
+
+    // Fetch data on component mount and when company_id changes
+    useEffect(() => {
+        fetchData();
+        fetchDistrictOptions();
+    }, []);
+
+    // Listen for company change events (when company is selected in header)
+    useEffect(() => {
+        const handleCompanyChange = () => {
+            fetchData();
+            fetchDistrictOptions();
+        };
+
+        // Listen for custom companyChanged event
+        window.addEventListener('companyChanged', handleCompanyChange);
+        
+        // Also listen for storage events (for cross-tab updates)
+        window.addEventListener('storage', handleCompanyChange);
+
+        return () => {
+            window.removeEventListener('companyChanged', handleCompanyChange);
+            window.removeEventListener('storage', handleCompanyChange);
+        };
+    }, []);
 
     useEffect(() => {
 
@@ -258,7 +331,7 @@ const Talukadata = ({ district, distoption }: Props) => {
                             // disabled={!selectedTaluka || !selectedGrampanchayat}
                             >
                                 <option value="">सर्व जिल्हा</option>
-                                {distoption.map((category) => (
+                                {districtOptions.map((category) => (
                                     <option key={category.district_id} value={category.district_id}>
                                         {category.name}
                                     </option>

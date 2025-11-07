@@ -19,7 +19,7 @@ export async function GET(request: Request) {
             userParams.push(userId.trim());
         }
 
-        // Build WHERE clause for company_id filtering - Only add if not empty
+        // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
         const allParams = [...userParams, ...companyParams];
 
         connection = await pool.getConnection();
-       const [rows] = await connection.query<RowDataPacket[]>(
-  `SELECT 
+        const [rows] = await connection.query<RowDataPacket[]>(
+            `SELECT 
       taluka.*, 
       district.name AS districtname
    FROM taluka
@@ -40,8 +40,8 @@ export async function GET(request: Request) {
    WHERE taluka.status = "Active"
    ${userFilter}
    ${companyFilter}`,
-  allParams
-);
+            allParams
+        );
 
 
         return NextResponse.json(rows);
