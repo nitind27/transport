@@ -212,14 +212,16 @@ const Routepaperview = () => {
 
     const fetchTalukas = async () => {
         try {
-            // Get user_id and company_id from sessionStorage
+            // Get user_id, company_id, and category_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
+            const categoryId = sessionStorage.getItem('category_id');
 
             const params = new URLSearchParams();
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
 
             const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
             if (res.ok) setTalukaList(await res.json());
@@ -270,13 +272,14 @@ const Routepaperview = () => {
             const effectivePage = opts?.page ?? currentPage;
             const effectiveLimit = opts?.limit ?? perPage;
 
-            // Get user_id and company_id from sessionStorage
+            // Get user_id, company_id, and category_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
+            const categoryId = sessionStorage.getItem('category_id');
 
-            console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate, 'page:', effectivePage, 'limit:', effectiveLimit, 'user_id:', userId, 'company_id:', companyId);
+            console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate, 'page:', effectivePage, 'limit:', effectiveLimit, 'user_id:', userId, 'company_id:', companyId, 'category_id:', categoryId);
 
-            // Build query parameters with date filters and user/company filters
+            // Build query parameters with date filters and user/company/category filters
             const params = new URLSearchParams();
             if (fromDate && fromDate.trim() !== '') {
                 params.append('fromDate', fromDate.trim());
@@ -287,6 +290,7 @@ const Routepaperview = () => {
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
             params.append('page', String(effectivePage));
             params.append('limit', String(effectiveLimit));
 
@@ -338,14 +342,16 @@ const Routepaperview = () => {
 
     const fetchSchoolDataMap = async () => {
         try {
-            // Get user_id and company_id from sessionStorage
+            // Get user_id, company_id, and category_id from sessionStorage
             const userId = sessionStorage.getItem('userid');
             const companyId = sessionStorage.getItem('company_id');
+            const categoryId = sessionStorage.getItem('category_id');
 
             const params = new URLSearchParams();
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
 
             const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
             if (!res.ok) return;

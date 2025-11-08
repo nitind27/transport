@@ -77,31 +77,27 @@ const Dashboardtaluka = () => {
   const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
 
-  // Get userid from sessionStorage
+  // Get company_id from sessionStorage and fetch data filtered by company_id only
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Get userid and company_id from sessionStorage
-      const storedUserId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage (only company_id filtering, no user_id)
       const storedCompanyId = sessionStorage.getItem('company_id');
       
-      if (!storedUserId) {
-        console.error('User ID not found in sessionStorage');
+      if (!storedCompanyId) {
+        console.error('Company ID not found in sessionStorage');
         setLoading(false);
         return;
       }
 
-      // Build query parameters for zporderdetails API
+      // Build query parameters for zporderdetails API (only company_id)
       const orderParams = new URLSearchParams();
-      if (storedUserId && storedUserId.trim() !== '') {
-        orderParams.append('user_id', storedUserId.trim());
-      }
       if (storedCompanyId && storedCompanyId.trim() !== '') {
         orderParams.append('company_id', storedCompanyId.trim());
       }
 
-      // First, fetch zporderdetails to get order number based on user_id and company_id
+      // First, fetch zporderdetails to get order number based on company_id
       const zpOrderResponse = await fetch(`/api/zporderdetails?${orderParams.toString()}`, {
         cache: 'no-store'
       });
@@ -122,26 +118,20 @@ const Dashboardtaluka = () => {
         }
       }
 
-      // Build query parameters for taluka and center dashboard APIs
+      // Build query parameters for taluka and center dashboard APIs (only company_id)
       const params = new URLSearchParams();
       params.append('order_no', orderNoToUse);
-      if (storedUserId && storedUserId.trim() !== '') {
-        params.append('user_id', storedUserId.trim());
-      }
       if (storedCompanyId && storedCompanyId.trim() !== '') {
         params.append('company_id', storedCompanyId.trim());
       }
 
-      // Build query parameters for count API (without order_no)
+      // Build query parameters for count API (without order_no, only company_id)
       const countParams = new URLSearchParams();
-      if (storedUserId && storedUserId.trim() !== '') {
-        countParams.append('user_id', storedUserId.trim());
-      }
       if (storedCompanyId && storedCompanyId.trim() !== '') {
         countParams.append('company_id', storedCompanyId.trim());
       }
 
-      // Fetch taluka data, center data, and order counts with user_id and company_id
+      // Fetch taluka data, center data, and order counts with company_id only
       const [talukaResponse, centerResponse, orderCountsResponse] = await Promise.all([
         fetch(`/api/talukadashboard?${params.toString()}`, {
           cache: 'no-store'

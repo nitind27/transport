@@ -106,6 +106,7 @@ type DispatchListRow = {
 
   patsankhya?: string;
   action?: string;
+  entered_by_name?: string;
   // Add all grain properties as optional string types
   "grain_तांदुळ"?: string;
   "grain_मुंगदाळ"?: string;
@@ -543,14 +544,16 @@ const DispatchView = () => {
   // Fetchers
   const fetchCenters = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/centerapi${params.toString() ? '?' + params.toString() : ''}`);
       setCenterList(await res.json());
@@ -570,14 +573,16 @@ const DispatchView = () => {
     try {
       setLoading(true); // Start loading
       
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       // Build query parameters - only add if exists and not empty string
       const params = new URLSearchParams();
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const apiUrl = `/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`;
       console.log('Fetching dispatch list from:', apiUrl);
@@ -586,7 +591,7 @@ const DispatchView = () => {
       if (res.ok) {
         const data = await res.json();
         console.log('Dispatch data received:', data.length, 'records');
-        console.log('User ID:', userId, 'Company ID:', companyId);
+        console.log('User ID:', userId, 'Company ID:', companyId, 'Category ID:', categoryId);
         setDispatchList(data);
       }
     } catch (e) {
@@ -599,14 +604,16 @@ const DispatchView = () => {
 
   const fetchTalukas = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTalukaList(await res.json());
@@ -617,14 +624,16 @@ const DispatchView = () => {
 
   const fetchSchoolDataMap = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
       if (!res.ok) return;
@@ -2453,6 +2462,7 @@ const DispatchView = () => {
     },
     { key: 'dispatch_code', label: 'PAVTI NO', accessor: 'dispatch_code', render: (r) => <span>{r.dispatch_code}</span> },
     { key: 'created_at', label: 'Dispatch Date', accessor: 'created_at', render: (r) => <span>{formatDateToDDMMYYYY(r.created_at)}</span> },
+    { key: 'entered_by_name', label: 'Entered By', accessor: 'entered_by_name', render: (r) => <span>{r.entered_by_name || '-'}</span> },
     { key: 'order_no', label: 'ORDER NO', accessor: 'order_no', render: (r) => <span>{r.order_no || r.order_no}</span> },
     // Taluka (Marathi) resolved via schoolDataById + talukaList
     {
@@ -2916,7 +2926,7 @@ const DispatchView = () => {
           searchKey="schoolname"
           searchableKeys={['order_no', 'schoolname', 'class_range', 'taluka_id', 'dispatch_code', 'center_name', 'udaisno', 'truckNo', 'created_at', 'taluka_name']}
           groupByKeys={['dispatch_code', 'taluka_name', 'truckNo']}
-          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मुग", "grain_वाटाणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "delete", "created_at", "taluka_name"]}
+          colspanKeys={["dispatch_code", "order_no", "taluka", "center_name", "schoolname", "udaisno", "class_range", "truckNo", "grain_तांदुळ", "grain_मुंगदाळ", "grain_मसूरदाळ", "grain_तूरदाळ", "grain_हरभरा", "grain_चवळी", "grain_मटकी", "grain_मुग", "grain_वाटाणा", "grain_सोया वडी", "grain_मसाला", "grain_सोया तेल", "grain_हळद", "grain_मीठ", "grain_मोहरी", "grain_चना", "grain_जीरा", "patsankhya", "total_weight", "action", "delete", "created_at", "taluka_name", "entered_by_name"]}
         />
 
       )}

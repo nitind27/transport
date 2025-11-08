@@ -6,18 +6,11 @@ import { RowDataPacket } from 'mysql2';
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('user_id');
         const companyId = searchParams.get('company_id');
+        const categoryId = searchParams.get('category_id');
 
-        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
-        let userFilter = '';
-        const userParams: string[] = [];
-        if (userId && userId.trim() !== '' && userId !== '1') {
-            userFilter = 'AND s.user_id = ?';
-            userParams.push(userId.trim());
-        }
-
-        // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+        // Remove user_id filtering - only filter by company_id
+        // Build WHERE clause for company_id filtering - Always apply if provided
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
@@ -25,8 +18,34 @@ export async function GET(request: Request) {
             companyParams.push(companyId.trim());
         }
 
-        // Combine all parameters
-        const allParams = [...userParams, ...companyParams];
+        // Build WHERE clause for category_id filtering - Filter by logged-in user's category_id
+        // Logic: Get all category_ids for users in the same company_id, then show data for logged-in user's category_id
+        let categoryFilter = '';
+        let categoryJoin = '';
+        const categoryParams: string[] = [];
+        if (categoryId && categoryId.trim() !== '' && categoryId !== '5') {
+            // Skip category filter for Super Admin (category_id = 5)
+            if (companyId && companyId.trim() !== '') {
+                // If company_id is provided:
+                // 1. Join with users table to get user's category_id
+                // 2. Ensure the user belongs to the same company_id
+                // 3. Filter by logged-in user's category_id
+                // This ensures we only show data for users in the same company with matching category_id
+                categoryJoin = `INNER JOIN users u ON s.user_id = u.user_id AND u.status = "Active" AND u.company_id = ?`;
+                categoryFilter = 'AND u.user_category_id = ?';
+                // First param: company_id for the join condition
+                // Second param: category_id for the filter (logged-in user's category_id)
+                categoryParams.push(companyId.trim(), categoryId.trim());
+            } else {
+                // If no company_id provided, just filter by category_id
+                categoryJoin = 'INNER JOIN users u ON s.user_id = u.user_id AND u.status = "Active"';
+                categoryFilter = 'AND u.user_category_id = ?';
+                categoryParams.push(categoryId.trim());
+            }
+        }
+
+        // Combine all parameters (removed userParams - only company_id and category_id)
+        const allParams = [...companyParams, ...categoryParams];
 
         const [rows] = await pool.query<RowDataPacket[]>(`
             SELECT 
@@ -38,7 +57,9 @@ export async function GET(request: Request) {
                 s.schoolname,
                 s.udaisno,
                 s.taluka_id,
+                s.center as center_id,
                 t.name as taluka_name,
+                c.marathi_name as center_name,
                 -- Parse original items_data from school_wise_order_details
                 swo.items_data as original_items_data,
                 -- Calculate remaining quantities by subtracting dispatched quantities
@@ -88,14 +109,16 @@ export async function GET(request: Request) {
             FROM school_wise_order_details swo
             INNER JOIN zp_order_details zod ON swo.order_id = zod.id AND zod.status = 'Active'
             INNER JOIN schooldata s ON swo.school_id = s.schoolid AND s.status = 'Active'
+            ${categoryJoin}
             LEFT JOIN taluka t ON s.taluka_id = t.taluka_id AND t.status = 'Active'
+            LEFT JOIN centerdata c ON s.center = c.center_id AND c.status = 'Active'
             LEFT JOIN dispatch_details dd ON swo.school_id = dd.school_id 
                 AND swo.order_id = dd.order_id 
                 AND swo.class_range = dd.class_range
                 AND dd.status = 'Active'
             WHERE swo.status = 'Active'
-            ${userFilter}
             ${companyFilter}
+            ${categoryFilter}
             GROUP BY swo.id, swo.order_id, swo.school_id, swo.class_range
             HAVING 
                 -- Show only if not dispatched at all

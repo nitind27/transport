@@ -23,6 +23,10 @@ interface SchoolWiseOrder {
   patsankhya?: number;
   is_dispatched?: boolean | 0;
   remaining_quantities?: Record<string, number>;
+  taluka_name?: string;
+  center_name?: string;
+  center_id?: number;
+  taluka_id?: number;
 }
 
 interface TalukaRow {
@@ -446,8 +450,10 @@ const pendingOrdersData = useMemo(() => {
   // Process each school and create separate rows for each class range
   schoolGroups.forEach((orders, schoolId) => {
     const sd = schoolDataById.get(schoolId);
-    const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
-    const centerName = sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '';
+    // Get taluka_name and center_name from API response (first order has this data)
+    const firstOrder = orders[0];
+    const talukaName = firstOrder?.taluka_name || (sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '');
+    const centerName = firstOrder?.center_name || (sd ? (centerList.find(c => String(c.center_id) === String(sd.center))?.marathi_name || '') : '');
 
     // Group orders by class_range to create separate rows
     const classRangeGroups = new Map<string, SchoolWiseOrder[]>();
@@ -633,6 +639,10 @@ const pendingOrdersData = useMemo(() => {
       const allDispatchIds: number[] = [];
       let routeResult: { route_number?: number; class_ranges?: string[] } | null = null;
 
+      // Get user_id and company_id from sessionStorage
+      const userId = sessionStorage.getItem('userid');
+      const companyId = sessionStorage.getItem('company_id');
+
       // Process each item in dispatch cart separately
       for (const item of dispatchCart) {
         // Convert items_data to lines format for this specific item
@@ -649,6 +659,8 @@ const pendingOrdersData = useMemo(() => {
           center_id: item.center_id,
           truck_id: Number(finalTruckId),
           class_range: item.class_range,
+          user_id: userId && userId.trim() !== '' ? userId.trim() : null,
+          company_id: companyId && companyId.trim() !== '' ? companyId.trim() : null,
           lines
         };
 
@@ -681,7 +693,9 @@ const pendingOrdersData = useMemo(() => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            dispatch_ids: allDispatchIds
+            dispatch_ids: allDispatchIds,
+            user_id: userId && userId.trim() !== '' ? userId.trim() : null,
+            company_id: companyId && companyId.trim() !== '' ? companyId.trim() : null
           }),
         });
 
@@ -716,14 +730,16 @@ const pendingOrdersData = useMemo(() => {
   // Fetch functions
   const fetchTalukas = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTalukaList(await res.json());
@@ -734,14 +750,16 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchCenters = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/centerapi${params.toString() ? '?' + params.toString() : ''}`);
       setCenterList(await res.json());
@@ -754,14 +772,16 @@ const pendingOrdersData = useMemo(() => {
     try {
       console.log('Fetching school-wise orders...');
       
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       // Build query parameters - only add if exists and not empty string
       const params = new URLSearchParams();
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const apiUrl = `/api/schoolwiseorders/remainingquantities${params.toString() ? '?' + params.toString() : ''}`;
       console.log('API URL:', apiUrl);
@@ -774,7 +794,7 @@ const pendingOrdersData = useMemo(() => {
       
       const data = await response.json();
       console.log('Data received:', data.length, 'records');
-      console.log('User ID:', userId, 'Company ID:', companyId);
+      console.log('User ID:', userId, 'Company ID:', companyId, 'Category ID:', categoryId);
       
       // Reset cached quantity maps so UI reflects latest server values immediately
       setOriginalQuantities(new Map());
@@ -790,14 +810,16 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchTruckData = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
       if (res.ok) setTruckData(await res.json());
@@ -808,14 +830,16 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchSchoolDataMap = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
+      // Get user_id, company_id, and category_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
+      const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
       if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const res = await fetch(`/api/scooldata${params.toString() ? '?' + params.toString() : ''}`);
       if (!res.ok) return;

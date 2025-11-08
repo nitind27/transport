@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('user_id');
         const companyId = searchParams.get('company_id');
+        const categoryId = searchParams.get('category_id');
 
         // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
         let userFilter = '';
@@ -40,8 +41,19 @@ export async function GET(request: Request) {
             companyParams.push(companyId.trim());
         }
 
+        // Build WHERE clause for category_id filtering - Filter by logged-in user's category_id
+        let categoryFilter = '';
+        let categoryJoin = '';
+        const categoryParams: string[] = [];
+        if (categoryId && categoryId.trim() !== '' && categoryId !== '5') {
+            // Skip category filter for Super Admin (category_id = 5)
+            categoryJoin = 'INNER JOIN users u ON s.user_id = u.user_id AND u.status = "Active"';
+            categoryFilter = 'AND u.user_category_id = ?';
+            categoryParams.push(categoryId.trim());
+        }
+
         // Combine all parameters
-        const allParams = [...userParams, ...companyParams];
+        const allParams = [...userParams, ...companyParams, ...categoryParams];
 
         const [rows] = await pool.query<RowDataPacket[] & ScoolRow[]>(`
             SELECT s.*, 
@@ -54,9 +66,11 @@ export async function GET(request: Request) {
             LEFT JOIN taluka t ON s.taluka_id = t.taluka_id
             LEFT JOIN village v ON s.village_id = v.village_id
             LEFT JOIN centerdata c ON s.center = c.center_id
+            ${categoryJoin}
             WHERE s.status = "Active"
             ${userFilter}
             ${companyFilter}
+            ${categoryFilter}
         `, allParams);
 
         return NextResponse.json(rows as ScoolRow[]);

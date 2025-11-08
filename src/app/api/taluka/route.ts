@@ -10,6 +10,7 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('user_id');
         const companyId = searchParams.get('company_id');
+        const categoryId = searchParams.get('category_id');
 
         // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
         let userFilter = '';
@@ -27,8 +28,19 @@ export async function GET(request: Request) {
             companyParams.push(companyId.trim());
         }
 
+        // Build WHERE clause for category_id filtering - Filter by logged-in user's category_id
+        let categoryFilter = '';
+        let categoryJoin = '';
+        const categoryParams: string[] = [];
+        if (categoryId && categoryId.trim() !== '' && categoryId !== '5') {
+            // Skip category filter for Super Admin (category_id = 5)
+            categoryJoin = 'INNER JOIN users u ON taluka.user_id = u.user_id AND u.status = "Active"';
+            categoryFilter = 'AND u.user_category_id = ?';
+            categoryParams.push(categoryId.trim());
+        }
+
         // Combine all parameters
-        const allParams = [...userParams, ...companyParams];
+        const allParams = [...userParams, ...companyParams, ...categoryParams];
 
         connection = await pool.getConnection();
         const [rows] = await connection.query<RowDataPacket[]>(
@@ -37,9 +49,11 @@ export async function GET(request: Request) {
       district.name AS districtname
    FROM taluka
    INNER JOIN district ON taluka.dist_id = district.district_id
+   ${categoryJoin}
    WHERE taluka.status = "Active"
    ${userFilter}
-   ${companyFilter}`,
+   ${companyFilter}
+   ${categoryFilter}`,
             allParams
         );
 

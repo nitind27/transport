@@ -10,12 +10,13 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('user_id');
         const companyId = searchParams.get('company_id');
+        const categoryId = searchParams.get('category_id');
 
         // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
         let userFilter = '';
         const userParams: string[] = [];
         if (userId && userId.trim() !== '' && userId !== '1') {
-            userFilter = 'AND user_id = ?';
+            userFilter = 'AND truckdata.user_id = ?';
             userParams.push(userId.trim());
         }
 
@@ -23,18 +24,34 @@ export async function GET(request: Request) {
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
-            companyFilter = 'AND company_id = ?';
+            companyFilter = 'AND truckdata.company_id = ?';
             companyParams.push(companyId.trim());
         }
 
+        // Build WHERE clause for category_id filtering - Filter by logged-in user's category_id
+        let categoryFilter = '';
+        let categoryJoin = '';
+        const categoryParams: string[] = [];
+        if (categoryId && categoryId.trim() !== '' && categoryId !== '5') {
+            // Skip category filter for Super Admin (category_id = 5)
+            // Use LEFT JOIN to include trucks even if they don't have a user_id
+            categoryJoin = 'LEFT JOIN users u ON truckdata.user_id = u.user_id AND u.status = "Active"';
+            // Filter: show trucks where user_category_id matches OR user_id is NULL (no user assigned)
+            categoryFilter = 'AND (u.user_category_id = ? OR truckdata.user_id IS NULL)';
+            categoryParams.push(categoryId.trim());
+        }
+
         // Combine all parameters
-        const allParams = [...userParams, ...companyParams];
+        const allParams = [...userParams, ...companyParams, ...categoryParams];
 
         connection = await pool.getConnection();
         const [rows] = await connection.query<RowDataPacket[]>(
-            `SELECT * FROM truckdata WHERE status = "Active"
+            `SELECT truckdata.* FROM truckdata
+            ${categoryJoin}
+            WHERE truckdata.status = "Active"
             ${userFilter}
-            ${companyFilter}`,
+            ${companyFilter}
+            ${categoryFilter}`,
             allParams
         );
 

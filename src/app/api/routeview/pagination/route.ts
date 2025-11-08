@@ -13,22 +13,29 @@ export async function GET(req: Request) {
     const limitParam = url.searchParams.get('limit');
     const userId = url.searchParams.get('user_id');
     const companyId = url.searchParams.get('company_id');
+    const categoryId = url.searchParams.get('category_id');
 
-    // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
-    let userFilter = '';
-    const userParams: string[] = [];
-    if (userId && userId.trim() !== '' && userId !== '1') {
-      userFilter = 'AND s.user_id = ?';
-      userParams.push(userId.trim());
-    }
+    console.log('Routeview pagination API - Filters:', { fromDate, endDate, userId, companyId, categoryId });
 
-    // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+    // Remove user_id filtering - only filter by company_id
+    // Build WHERE clause for company_id filtering - Always apply if provided
+    // Filter by dispatch_details.company_id (primary) or school's company_id (fallback for older records)
     let companyFilter = '';
     const companyParams: string[] = [];
     if (companyId && companyId.trim() !== '') {
-      companyFilter = 'AND s.company_id = ?';
+      // Use COALESCE to prefer dispatch_details.company_id, fallback to school's company_id
+      // This ensures we get all dispatches for the company regardless of which field has the value
+      companyFilter = 'AND COALESCE(d.company_id, s.company_id) = ?';
       companyParams.push(companyId.trim());
     }
+
+    // Remove category_id filtering - only filter by company_id
+    // No category filtering needed - show all data for the company
+
+    console.log('Routeview pagination API - Filter conditions:', { 
+      companyFilter, 
+      companyParams
+    });
 
     // Build the WHERE clause and params dynamically
     let whereClause = `WHERE d.status = 'Active'`;
@@ -57,9 +64,20 @@ export async function GET(req: Request) {
       params.push(`${startDate} 00:00:00`, `${endDateFilter} 00:00:00`);
     }
 
-    // Add user_id and company_id filters
-    whereClause += ` ${userFilter} ${companyFilter}`;
-    params.push(...userParams, ...companyParams);
+    // Combine all parameters (only company_id, no category filtering)
+    const allParams = [...companyParams];
+    
+    console.log('Routeview pagination API - Final query params:', {
+      paramsCount: params.length,
+      allParamsCount: allParams.length,
+      dateParams: params,
+      filterParams: allParams,
+      whereClause: whereClause
+    });
+    
+    // Add company_id filter only (no category filtering)
+    whereClause += ` ${companyFilter}`;
+    // Note: allParams will be added to params array when executing queries
 
     // Pagination: default 50 per page
     const page = Math.max(1, Number(pageParam) || 1);
@@ -79,10 +97,11 @@ export async function GET(req: Request) {
         ${whereClause}
         GROUP BY route_key
       ) AS sub_total`,
-      params
+      [...params, ...allParams]
     );
 
     const total = Number((totalRows)[0]?.total || 0);
+    console.log('Routeview pagination API - Total routes found:', total);
 
     // Get page route keys ordered by latest created_at
     const [keyRows] = await pool.query<RowDataPacket[]>(
@@ -96,12 +115,14 @@ export async function GET(req: Request) {
         ORDER BY last_created DESC
         LIMIT ? OFFSET ?
       ) AS sub_keys`,
-      [...params, limit, offset]
+      [...params, ...allParams, limit, offset]
     );
 
     const keys = (keyRows as { route_key: string }[]).map((k: { route_key: string }) => k.route_key).filter(Boolean);
+    console.log('Routeview pagination API - Route keys found:', keys.length, keys.slice(0, 5));
 
     if (keys.length === 0) {
+      console.log('Routeview pagination API - No route keys found, returning empty result');
       return NextResponse.json({ rows: [], total, page, limit });
     }
 
@@ -134,7 +155,10 @@ ${whereClause}
 AND ${routeKeyExpr} IN (${placeholders})
 GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
 ORDER BY d.created_at DESC;
-    `, [...params, ...keys]);
+    `, [...params, ...allParams, ...keys]);
+
+    console.log('Routeview pagination API - Rows fetched:', rows.length);
+    console.log('Routeview pagination API - Query params count:', [...params, ...allParams, ...keys].length);
 
     return NextResponse.json({ rows, total, page, limit });
   } catch (e) {

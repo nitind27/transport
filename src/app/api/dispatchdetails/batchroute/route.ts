@@ -6,13 +6,19 @@ export async function POST(req: Request) {
   const conn = await pool.getConnection();
   try {
     const body = await req.json();
-    const { dispatch_ids } = body as {
+    const { dispatch_ids, user_id, company_id } = body as {
       dispatch_ids: number[];
+      user_id?: string | null;
+      company_id?: string | null;
     };
 
     if (!Array.isArray(dispatch_ids) || dispatch_ids.length === 0) {
       return NextResponse.json({ message: 'dispatch_ids array is required' }, { status: 400 });
     }
+
+    // Convert user_id and company_id to numbers if provided
+    const userIdNum = user_id && user_id.trim() !== '' ? parseInt(user_id.trim()) : null;
+    const companyIdNum = company_id && company_id.trim() !== '' ? parseInt(company_id.trim()) : null;
 
     await conn.beginTransaction();
 
@@ -43,9 +49,9 @@ export async function POST(req: Request) {
       
       // Create individual route_paper entry for each dispatch record
       const [result] = await conn.query<ResultSetHeader>(
-        `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code, class_range)
-         VALUES (?, 'Active', NOW(), ?, ?, ?, ?)`,
-        [JSON.stringify([detail.id]), routeNumber, routecode, dispatch_code, class_range]
+        `INSERT INTO route_paper (dispatch_ids, status, created_at, route_number, routecode, dispatch_code, class_range, user_id, company_id)
+         VALUES (?, 'Active', NOW(), ?, ?, ?, ?, ?, ?)`,
+        [JSON.stringify([detail.id]), routeNumber, routecode, dispatch_code, class_range, userIdNum, companyIdNum]
       );
 
       insertedRoutePaperIds.push(result.insertId);
