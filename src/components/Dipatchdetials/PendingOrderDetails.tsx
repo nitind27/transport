@@ -810,14 +810,13 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchTruckData = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage
+      // Filter by company_id only, not user_id
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
