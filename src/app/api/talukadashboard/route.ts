@@ -35,9 +35,11 @@ export async function GET(request: Request) {
 
     // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
     let companyFilter = '';
+    let companyWhereFilter = '';
     const companyParams: string[] = [];
     if (companyId && companyId.trim() !== '') {
       companyFilter = 'AND sd.company_id = ?';
+      companyWhereFilter = 'AND t.company_id = ?';
       companyParams.push(companyId.trim());
     }
     
@@ -46,6 +48,8 @@ export async function GET(request: Request) {
         t.taluka_id,
         t.name,
         t.name_en,
+        t.company_id,
+        COALESCE(c.name, 'N/A') AS company_name,
         -- Total schools in taluka (filtered by center if provided)
         COUNT(DISTINCT CASE WHEN s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId.trim() !== '' && userId !== '1' ? 'AND s.user_id = ?' : ''} ${companyId && companyId.trim() !== '' ? 'AND s.company_id = ?' : ''} THEN s.schoolid END) AS total_schools,
         -- Schools with orders - count distinct schools (not class_range rows)
@@ -85,7 +89,8 @@ export async function GET(request: Request) {
           WHERE sd.taluka_id = t.taluka_id
           AND od.order_no = ?
           ${centerFilter}
-          ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+          ${userId && userId.trim() !== '' && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+          ${companyFilter}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active') - 
@@ -98,17 +103,20 @@ export async function GET(request: Request) {
           WHERE sd.taluka_id = t.taluka_id
           AND od.order_no = ?
           ${centerFilter}
-          ${userId && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+          ${userId && userId.trim() !== '' && userId !== '1' ? 'AND sd.user_id = ?' : ''}
+          ${companyFilter}
           AND so.status = 'Active'
           AND sd.status = 'Active'
           AND od.status = 'Active'
           AND dd.status = 'Active')) AS remaining_schools
       FROM taluka t
+      LEFT JOIN company c ON t.company_id = c.id AND c.status = 'Active'
       LEFT JOIN schooldata s ON t.taluka_id = s.taluka_id AND s.status = 'Active' ${centerId ? 'AND s.center = ?' : ''} ${userId && userId.trim() !== '' && userId !== '1' ? 'AND s.user_id = ?' : ''} ${companyId && companyId.trim() !== '' ? 'AND s.company_id = ?' : ''}
       WHERE t.status = 'Active'
       ${talukaFilter}
       ${userFilter}
-      GROUP BY t.taluka_id, t.name, t.name_en
+      ${companyWhereFilter}
+      GROUP BY t.taluka_id, t.name, t.name_en, t.company_id, c.name
       ORDER BY t.name
     `, [
       ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for COUNT in main query
@@ -134,7 +142,8 @@ export async function GET(request: Request) {
       ...(userId && userId.trim() !== '' && userId !== '1' ? userParams : []), // for LEFT JOIN
       ...(companyId && companyId.trim() !== '' ? companyParams : []), // for LEFT JOIN
       ...talukaParams, // for WHERE taluka filter
-      ...userParams // for WHERE user filter
+      ...userParams, // for WHERE user filter
+      ...(companyId && companyId.trim() !== '' ? companyParams : []) // for WHERE company filter
     ]);
     
     return NextResponse.json(rows);

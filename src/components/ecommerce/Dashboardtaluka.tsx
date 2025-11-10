@@ -11,6 +11,8 @@ interface TalukaApiResponse {
   taluka_id: number;
   name: string;
   name_en: string;
+  company_id: number | null;
+  company_name: string | null;
   total_schools: string | number;
   schools_with_orders: string | number;    // Schools that have orders for specific order_no
   distributed_schools: string | number;   // Schools that have been dispatched
@@ -22,6 +24,8 @@ interface TalukaData {
   taluka_id: number;
   name: string;
   name_en: string;
+  company_id: number | null;
+  company_name: string | null;
   total_schools: number;
   schools_with_orders: number;
   distributed_schools: number;
@@ -170,6 +174,8 @@ const Dashboardtaluka = () => {
           taluka_id: taluka.taluka_id,
           name: taluka.name,
           name_en: taluka.name_en,
+          company_id: taluka.company_id || null,
+          company_name: taluka.company_name || 'N/A',
           total_schools: totalSchools,
           schools_with_orders: schoolsWithOrders,
           distributed_schools: distributedSchools,
@@ -919,6 +925,7 @@ const Dashboardtaluka = () => {
               <thead>
                 <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">कंपनी</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा वाटप</th>
@@ -929,6 +936,7 @@ const Dashboardtaluka = () => {
                 {talukaData.map((taluka, index) => (
                   <tr key={taluka.taluka_id} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="border border-gray-300 px-3 py-2 text-sm">{index + 1}</td>
+                    <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.company_name || 'N/A'}</td>
                     <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.name}</td>
                     <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.schools_with_orders}</td>
                     <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.distributed_schools}</td>
@@ -938,7 +946,7 @@ const Dashboardtaluka = () => {
 
                 {/* Total Row */}
                 <tr className="bg-gradient-to-r from-gray-200 to-gray-300 font-bold">
-                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}>
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={3}>
                     <span className="font-bold">एकूण</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalTalukaSchoolsWithOrders}</td>
@@ -948,7 +956,7 @@ const Dashboardtaluka = () => {
 
                 {/* Percentage Row */}
                 <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
-                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={5}>
                     <span className="font-bold">एकूण वाटप(%)</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{talukaDistributionPercentage}%</td>
