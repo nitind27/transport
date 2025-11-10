@@ -1180,7 +1180,7 @@ const DispatchView = () => {
   <style>
     @page {
       margin: 0;
-      size: A4;
+      size: A4 landscape;
     }
     * {
       margin: 0;
@@ -1196,21 +1196,39 @@ const DispatchView = () => {
       color: #000;
       background: white;
     }
+    .page-wrapper {
+      width: 100%;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      min-height: 100vh;
+    }
+    .page-wrapper:last-child {
+      page-break-after: avoid;
+    }
+    .page-row {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      flex: 1;
+    }
     .copy-container {
       width: 100%;
-      margin-bottom: 20px;
-      page-break-after: always;
-    }
-    .copy-container:last-child {
+      margin-bottom: 0;
       page-break-after: avoid;
+      flex: 1;
+      min-height: 45vh;
     }
     .container {
       max-width: 100%;
       margin: 0 auto;
+      height: 100%;
     }
     .header {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .title {
       display: flex;
@@ -1241,7 +1259,7 @@ const DispatchView = () => {
       margin-bottom: 4px;
     }
     .info-section {
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .info-row {
       display: flex;
@@ -1273,14 +1291,14 @@ const DispatchView = () => {
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 11px;
+      margin: 8px 0;
+      font-size: 10px;
     }
     .table th, .table td {
       border: 1px solid #000;
-      padding: 6px;
+      padding: 4px;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
     }
     .table th {
       background-color: #f0f0f0;
@@ -1301,13 +1319,13 @@ const DispatchView = () => {
       font-weight: bold;
     }
     .footer {
-      margin-top: 15px;
+      margin-top: 8px;
     }
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 20px;
-      font-size: 12px;
+      margin-top: 10px;
+      font-size: 11px;
     }
     .signature-left {
       text-align: left;
@@ -1325,7 +1343,7 @@ const DispatchView = () => {
       }
       @page {
         margin: 0;
-        size: A4;
+        size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
       }
@@ -1336,7 +1354,10 @@ const DispatchView = () => {
   </style>
 </head>
 <body>
- ${Array.from({ length: 4 }, (_, copyIndex) => {
+  <!-- Page 1: हेड मास्टर and बी.आर. सी ऑफीस -->
+  <div class="page-wrapper">
+    <div class="page-row">
+      ${[0, 1].map((copyIndex) => {
    const copyTitles = [
      'हेड मास्टर',
      'बी.आर. सी ऑफीस (तालुका ऑफीस)',
@@ -1390,8 +1411,51 @@ const DispatchView = () => {
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
         </div>
 
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
-          <table class="table" style="flex: 1;">
+        <div style="width: 100%; overflow-x: auto;">
+          ${riceItems.length > 10 ? `
+          <div style="display: flex; gap: 15px; align-items: flex-start; width: 100%;">
+            <table class="table" style="width: 48%; margin: 0;">
+              <thead>
+                <tr>
+                  <th>अ.क्रं.</th>
+                  <th>धान्याचे नाव</th>
+                  <th>वजन किलो ग्रॅम</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.qty}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <table class="table" style="width: 48%; margin: 0;">
+              <thead>
+                <tr>
+                  <th>अ.क्रं.</th>
+                  <th>धान्याचे नाव</th>
+                  <th>वजन किलो ग्रॅम</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
+                  <tr>
+                    <td>${index + 11}</td>
+                    <td>${item.name}</td>
+                    <td>${item.qty}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          </div>
+          ` : `
+          <table class="table" style="width: 100%; margin: 0;">
             <thead>
               <tr>
                 <th>अ.क्रं.</th>
@@ -1400,46 +1464,19 @@ const DispatchView = () => {
               </tr>
             </thead>
             <tbody>
-              ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+              ${riceItems.map((item: DispatchItem, index: number) => `
                 <tr>
                   <td>${index + 1}</td>
                   <td>${item.name}</td>
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
-              ${riceItems.length <= 10 ? `
-                <tr class="total-row">
-                  <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
-                  <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
-                </tr>
-              ` : ''}
             </tbody>
           </table>
-
-          ${riceItems.length > 10 ? `
-          <table class="table" style="flex: 1;">
-            <thead>
-              <tr>
-                <th>अ.क्रं.</th>
-                <th>धान्याचे नाव</th>
-                <th>वजन किलो ग्रॅम</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
-                <tr>
-                  <td>${index + 11}</td>
-                  <td>${item.name}</td>
-                  <td>${item.qty}</td>
-                </tr>
-              `).join('')}
-              <tr class="total-row">
-                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
-                <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-          ` : ''}
+          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          </div>
+          `}
         </div>
 
         <div class="description-text">
@@ -1459,7 +1496,137 @@ const DispatchView = () => {
       </div>
     </div>
   `;
- })}
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- Page 2: O.C and जिल्हा परिषद ऑफीस -->
+  <div class="page-wrapper">
+    <div class="page-row">
+      ${[2, 3].map((copyIndex) => {
+        const copyTitles = [
+          'हेड मास्टर',
+          'बी.आर. सी ऑफीस (तालुका ऑफीस)',
+          'O.C',
+          'जिल्हा परिषद ऑफीस'
+        ];
+        return `
+          <div class="copy-container">
+            <div class="container">
+              <div class="header">
+                <div class="title">
+                  <div class="center-item">डिलीव्हरी चलन</div>
+                  <div class="end-item">${copyTitles[copyIndex]}</div>
+                </div>
+
+                <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+                <div class="subtitle">ता. भोकरदन जि. जालना</div>
+             
+              </div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+                  <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+                </div>
+                   <div class="title">
+                  <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
+                 
+                </div>
+                <div class="info-row">
+                  <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+                  <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+                </div>
+                <div class="info-row">
+                  <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
+                  <span class="info-right"></span>
+                </div>
+              </div>
+
+              
+            <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+              <div class="info-row">
+               
+                <div class="info-left">शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+                  <div class="info-right">केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+               
+              </div>
+             
+
+              <div class="description-text">
+                आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+              </div>
+
+              <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <table class="table" style="flex: 1;">
+                  <thead>
+                    <tr>
+                      <th>अ.क्रं.</th>
+                      <th>धान्याचे नाव</th>
+                      <th>वजन किलो ग्रॅम</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.name}</td>
+                        <td>${item.qty}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                ${riceItems.length <= 10 ? `
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : ''}
+
+                ${riceItems.length > 10 ? `
+                <table class="table" style="flex: 1;">
+                  <thead>
+                    <tr>
+                      <th>अ.क्रं.</th>
+                      <th>धान्याचे नाव</th>
+                      <th>वजन किलो ग्रॅम</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
+                      <tr>
+                        <td>${index + 11}</td>
+                        <td>${item.name}</td>
+                        <td>${item.qty}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : ''}
+              </div>
+
+              <div class="description-text">
+                वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+              </div>
+
+              <div class="footer">
+                <div class="signature-section">
+                  <div class="signature-left">
+                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+                  </div>
+                  <div class="signature-right">
+                    माल ताब्यात घेणाऱ्याची सही व शिक्का
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  </div>
 </body>
 </html>
     `;
@@ -1522,7 +1689,7 @@ const DispatchView = () => {
   <style>
     @page {
       margin: 0;
-      size: A4;
+      size: A4 landscape;
     }
     * {
       margin: 0;
@@ -1538,21 +1705,39 @@ const DispatchView = () => {
       color: #000;
       background: white;
     }
+    .page-wrapper {
+      width: 100%;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      min-height: 100vh;
+    }
+    .page-wrapper:last-child {
+      page-break-after: avoid;
+    }
+    .page-row {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      flex: 1;
+    }
     .copy-container {
       width: 100%;
-      margin-bottom: 20px;
-      page-break-after: always;
-    }
-    .copy-container:last-child {
+      margin-bottom: 0;
       page-break-after: avoid;
+      flex: 1;
+      min-height: 45vh;
     }
     .container {
       max-width: 100%;
       margin: 0 auto;
+      height: 100%;
     }
     .header {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .title {
       display: flex;
@@ -1583,7 +1768,7 @@ const DispatchView = () => {
       margin-bottom: 4px;
     }
     .info-section {
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .info-row {
       display: flex;
@@ -1615,14 +1800,14 @@ const DispatchView = () => {
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin: 8px 0;
-      font-size: 11px;
+      margin: 6px 0;
+      font-size: 10px;
     }
     .table th, .table td {
       border: 1px solid #000;
-      padding: 0.5px;
+      padding: 3px;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
     }
     .table th {
       background-color: #f0f0f0;
@@ -1667,7 +1852,7 @@ const DispatchView = () => {
       }
       @page {
         margin: 0;
-        size: A4;
+        size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
       }
@@ -1678,7 +1863,10 @@ const DispatchView = () => {
   </style>
 </head>
 <body>
- ${Array.from({ length: 4 }, (_, copyIndex) => {
+  <!-- Page 1: हेड मास्टर and बी.आर. सी ऑफीस -->
+  <div class="page-wrapper">
+    <div class="page-row">
+      ${[0, 1].map((copyIndex) => {
    const copyTitles = [
      'हेड मास्टर',
      'बी.आर. सी ऑफीस (तालुका ऑफीस)',
@@ -1717,6 +1905,7 @@ const DispatchView = () => {
             <span class="info-right"></span>
           </div>
         </div>
+
         
  <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
         <div class="info-row">
@@ -1731,8 +1920,51 @@ const DispatchView = () => {
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
         </div>
 
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
-          <table class="table" style="flex: 1;">
+        <div style="width: 100%; overflow-x: auto;">
+          ${kiranaItems.length > 8 ? `
+          <div style="display: flex; gap: 15px; align-items: flex-start; width: 100%;">
+            <table class="table" style="width: 48%; margin: 0;">
+              <thead>
+                <tr>
+                  <th>अ.क्रं.</th>
+                  <th>धान्याचे नाव</th>
+                  <th>वजन किलो ग्रॅम</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.qty}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <table class="table" style="width: 48%; margin: 0;">
+              <thead>
+                <tr>
+                  <th>अ.क्रं.</th>
+                  <th>धान्याचे नाव</th>
+                  <th>वजन किलो ग्रॅम</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
+                  <tr>
+                    <td>${index + 9}</td>
+                    <td>${item.name}</td>
+                    <td>${item.qty}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          </div>
+          ` : `
+          <table class="table" style="width: 100%; margin: 0;">
             <thead>
               <tr>
                 <th>अ.क्रं.</th>
@@ -1741,46 +1973,19 @@ const DispatchView = () => {
               </tr>
             </thead>
             <tbody>
-              ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
+              ${kiranaItems.map((item: DispatchItem, index: number) => `
                 <tr>
                   <td>${index + 1}</td>
                   <td>${item.name}</td>
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
-              ${kiranaItems.length <= 8 ? `
-                <tr class="total-row">
-                  <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
-                  <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
-                </tr>
-              ` : ''}
             </tbody>
           </table>
-
-          ${kiranaItems.length > 8 ? `
-          <table class="table" style="flex: 1;">
-            <thead>
-              <tr>
-                <th>अ.क्रं.</th>
-                <th>धान्याचे नाव</th>
-                <th>वजन किलो ग्रॅम</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
-                <tr>
-                  <td>${index + 9}</td>
-                  <td>${item.name}</td>
-                  <td>${item.qty}</td>
-                </tr>
-              `).join('')}
-              <tr class="total-row">
-                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
-                <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </table>
-          ` : ''}
+          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          </div>
+          `}
         </div>
 
         <div class="description-text">
@@ -1800,7 +2005,137 @@ const DispatchView = () => {
       </div>
     </div>
   `;
- })}
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- Page 2: O.C and जिल्हा परिषद ऑफीस -->
+  <div class="page-wrapper">
+    <div class="page-row">
+      ${[2, 3].map((copyIndex) => {
+        const copyTitles = [
+          'हेड मास्टर',
+          'बी.आर. सी ऑफीस (तालुका ऑफीस)',
+          'O.C',
+          'जिल्हा परिषद ऑफीस'
+        ];
+        return `
+          <div class="copy-container">
+            <div class="container">
+              <div class="header">
+                <div class="title">
+                  <div class="center-item">डिलीव्हरी चलन</div>
+                  <div class="end-item">${copyTitles[copyIndex]}</div>
+                </div>
+
+                <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
+                <div class="subtitle">ता. भोकरदन जि. जालना</div>
+             
+              </div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
+                  <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
+                </div>
+                   <div class="title">
+                  <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
+                 
+                </div>
+                <div class="info-row">
+                  <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
+                  <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+                </div>
+                <div class="info-row">
+                  <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
+                  <span class="info-right"></span>
+                </div>
+              </div>
+
+              
+            <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+              <div class="info-row">
+               
+                <div class="info-left">शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
+                  <div class="info-right">केंद्र / शाळेचा पुर्ण पत्ता: <b>${dispatchData.center_name}</b></div>
+               
+              </div>
+             
+
+              <div class="description-text">
+                आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
+              </div>
+
+              <div style="display: flex; gap: 20px; align-items: flex-start;">
+                <table class="table" style="flex: 1;">
+                  <thead>
+                    <tr>
+                      <th>अ.क्रं.</th>
+                      <th>धान्याचे नाव</th>
+                      <th>वजन किलो ग्रॅम</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.name}</td>
+                        <td>${item.qty}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                ${kiranaItems.length <= 8 ? `
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : ''}
+
+                ${kiranaItems.length > 8 ? `
+                <table class="table" style="flex: 1;">
+                  <thead>
+                    <tr>
+                      <th>अ.क्रं.</th>
+                      <th>धान्याचे नाव</th>
+                      <th>वजन किलो ग्रॅम</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
+                      <tr>
+                        <td>${index + 9}</td>
+                        <td>${item.name}</td>
+                        <td>${item.qty}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : ''}
+              </div>
+
+              <div class="description-text">
+                वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
+              </div>
+
+              <div class="footer">
+                <div class="signature-section">
+                  <div class="signature-left">
+                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+                  </div>
+                  <div class="signature-right">
+                    माल ताब्यात घेणाऱ्याची सही व शिक्का
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  </div>
 </body>
 </html>
     `;
