@@ -23,11 +23,12 @@ type FormErrors = {
   selectedDist?: string;
 };
 
-const Centerdata = ({ district, distoption, center }: Props) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const Centerdata = ({ district: _district, distoption: _distoption, center: _center }: Props) => {
   // Use center data instead of district data
-  const [data, setData] = useState<Taluka[]>(center || []);
-  const [districtOptions, setDistrictOptions] = useState<Taluka[]>(distoption || []);
-  const [talukaOptions, setTalukaOptions] = useState<Taluka[]>(district || []);
+  const [data, setData] = useState<Taluka[]>([]);
+  const [districtOptions, setDistrictOptions] = useState<Taluka[]>([]);
+  const [talukaOptions, setTalukaOptions] = useState<Taluka[]>([]);
   
   const [selectedTaluka, setSelectedTaluka] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -42,97 +43,175 @@ const Centerdata = ({ district, distoption, center }: Props) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Get company_id and userid from sessionStorage
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
       const userId = sessionStorage.getItem('userid');
-      const categoryId = sessionStorage.getItem('category_id');
       const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      // Build query parameters
+      console.log('Fetching center data for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
+      });
+      
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      // Only add user_id if not super admin (category_id = 5) and userid exists
-      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
-        params.append('user_id', userId.trim());
-      }
-      // Add company_id if it exists and is not empty
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
-      const url = `/api/centerapi${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
+      const url = params.toString() 
+        ? `/api/centerapi?${params.toString()}` 
+        : '/api/centerapi';
+      
+      console.log('Fetching center data with URL:', url);
+      console.log('Logged-in user company_id from sessionStorage:', companyId);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result = await response.json();
-      setData(result);
+      console.log('Center data received for company_id:', companyId);
+      console.log('Center data count:', Array.isArray(result) ? result.length : 0, 'records');
+      
+      // Ensure we set an array
+      const dataArray = Array.isArray(result) ? result : [];
+      setData(dataArray);
+      
+      if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+        console.warn('No center data found for logged-in user company_id:', companyId);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast.error('Failed to fetch center data');
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch district options with company_id filtering
+  // Fetch district options with company_id filtering from logged-in user's sessionStorage
   const fetchDistrictOptions = async () => {
     try {
-      // Get company_id and userid from sessionStorage
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
-      const categoryId = sessionStorage.getItem('category_id');
       const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      // Build query parameters
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      // Only add user_id if not super admin (category_id = 5) and userid exists
-      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
-        params.append('user_id', userId.trim());
-      }
-      // Add company_id if it exists and is not empty
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
-      const url = `/api/district${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
+      const url = params.toString() 
+        ? `/api/district?${params.toString()}` 
+        : '/api/district';
+      
+      console.log('Fetching district options for logged-in user company_id:', companyId);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
-      setDistrictOptions(result);
+      setDistrictOptions(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Error fetching district options:', error);
+      toast.error('Failed to fetch district options');
+      setDistrictOptions([]);
     }
   };
 
-  // Fetch taluka options with company_id filtering
+  // Fetch taluka options with company_id filtering from logged-in user's sessionStorage
   const fetchTalukaOptions = async () => {
     try {
-      // Get company_id and userid from sessionStorage
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
-      const categoryId = sessionStorage.getItem('category_id');
       const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      // Build query parameters
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      // Only add user_id if not super admin (category_id = 5) and userid exists
-      if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
-        params.append('user_id', userId.trim());
-      }
-      // Add company_id if it exists and is not empty
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
-      const url = `/api/taluka${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
+      const url = params.toString() 
+        ? `/api/taluka?${params.toString()}` 
+        : '/api/taluka';
+      
+      console.log('Fetching taluka options for logged-in user company_id:', companyId);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result = await response.json();
-      setTalukaOptions(result);
+      setTalukaOptions(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Error fetching taluka options:', error);
+      toast.error('Failed to fetch taluka options');
+      setTalukaOptions([]);
     }
   };
 
-  // Fetch data on component mount and when company_id changes
+  // Fetch data on component mount - using logged-in user's company_id from sessionStorage
   useEffect(() => {
-    fetchData();
-    fetchDistrictOptions();
-    fetchTalukaOptions();
+    // Ensure sessionStorage is available before fetching
+    if (typeof window !== 'undefined') {
+      // Check if user is logged in (has company_id or is super admin)
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      
+      if (!userId) {
+        console.warn('User not logged in - userid not found in sessionStorage');
+        return;
+      }
+      
+      console.log('Component mounted - fetching data for logged-in user:', {
+        userId,
+        companyId
+      });
+      
+      // Small delay to ensure sessionStorage is ready
+      const timer = setTimeout(() => {
+        fetchData();
+        fetchDistrictOptions();
+        fetchTalukaOptions();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Listen for company change events (when company is selected in header)

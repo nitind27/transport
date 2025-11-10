@@ -39,16 +39,20 @@ export async function GET(request: Request) {
             categoryParams.push(categoryId.trim());
         }
 
-        // Combine all parameters
-        const allParams = [...userParams, ...companyParams, ...categoryParams];
-
         connection = await pool.getConnection();
+        
+        // Combine all parameters for WHERE clause
+        const allParams = [...userParams, ...companyParams, ...categoryParams];
+        
+        // Build the query - filter taluka by company_id, district join doesn't need company_id filter
+        // as districts might be shared or have NULL company_id
         const [rows] = await connection.query<RowDataPacket[]>(
             `SELECT 
       taluka.*, 
       district.name AS districtname
    FROM taluka
-   INNER JOIN district ON taluka.dist_id = district.district_id
+   INNER JOIN district ON taluka.dist_id = district.district_id 
+      AND district.status = "Active"
    ${categoryJoin}
    WHERE taluka.status = "Active"
    ${userFilter}
@@ -56,6 +60,8 @@ export async function GET(request: Request) {
    ${categoryFilter}`,
             allParams
         );
+        
+        console.log('Taluka query executed with company_id:', companyId, 'Returned rows:', rows.length);
 
 
         return NextResponse.json(rows);

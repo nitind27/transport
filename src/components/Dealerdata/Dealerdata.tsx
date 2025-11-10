@@ -18,9 +18,7 @@ type TruckRow = {
     status: string;
 };
 
-type Props = {
-    dealerdata: TruckRow[];
-};
+
 
 type FormErrors = {
     name?: string;
@@ -29,8 +27,8 @@ type FormErrors = {
     gstno?: string;
 };
 
-const Dealerdata = ({ dealerdata }: Props) => {
-    const [data, setData] = useState<TruckRow[]>(dealerdata || []);
+const Dealerdata = () => {
+    const [data, setData] = useState<TruckRow[]>([]);
     const [name, setName] = useState('');
     const [contactnumber, setContactnumber] = useState('');
     const [address, setAddress] = useState('');
@@ -41,41 +39,94 @@ const Dealerdata = ({ dealerdata }: Props) => {
     const [loading, setLoading] = useState(false);
     const [error, setErrors] = useState<FormErrors>({});
 
-    // Fetch dealer data
+    // Fetch dealer data - filtered by company_id only
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Get company_id and userid from sessionStorage
+            // Get company_id from sessionStorage - this is set when user logs in
             const companyId = sessionStorage.getItem('company_id');
             const userId = sessionStorage.getItem('userid');
-            const categoryId = sessionStorage.getItem('category_id');
             const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
             
-            // Build query parameters
+            console.log('Fetching dealer data for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
+            
+            // Build query parameters - filter by company_id from logged-in user's sessionStorage
             const params = new URLSearchParams();
-            // Only add user_id if not super admin (category_id = 5) and userid exists
-            if (userId && userId.trim() !== '' && !isSuperAdmin && categoryId !== '5') {
-                params.append('user_id', userId.trim());
-            }
-            // Add company_id if it exists and is not empty
-            if (companyId && companyId.trim() !== '') {
+            
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
                 params.append('company_id', companyId.trim());
             }
             
-            const url = `/api/dealerdata${params.toString() ? `?${params.toString()}` : ''}`;
-            const response = await fetch(url);
+            const url = params.toString() 
+                ? `/api/dealerdata?${params.toString()}` 
+                : '/api/dealerdata';
+            
+            console.log('Fetching dealer data with URL:', url);
+            console.log('Logged-in user company_id from sessionStorage:', companyId);
+            
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API Error Response:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const dealers: TruckRow[] = await response.json();
-            setData(dealers);
-        } catch {
+            const dataArray = Array.isArray(dealers) ? dealers : [];
+            setData(dataArray);
+            
+            console.log('Dealer data received for company_id:', companyId);
+            console.log('Dealer data count:', dataArray.length, 'records');
+            
+            if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+                console.warn('No dealer data found for logged-in user company_id:', companyId);
+            }
+        } catch (error) {
+            console.error('Error fetching dealer data:', error);
             toast.error('Failed to load dealer data');
+            setData([]);
         } finally {
             setLoading(false);
         }
     };
 
-    // Fetch data on component mount and when company_id changes
+    // Fetch data on component mount - using logged-in user's company_id from sessionStorage
     useEffect(() => {
-        fetchData();
+        // Ensure sessionStorage is available before fetching
+        if (typeof window !== 'undefined') {
+            // Check if user is logged in (has company_id or is super admin)
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            
+            if (!userId) {
+                console.warn('User not logged in - userid not found in sessionStorage');
+                return;
+            }
+            
+            console.log('Component mounted - fetching data for logged-in user:', {
+                userId,
+                companyId
+            });
+            
+            // Small delay to ensure sessionStorage is ready
+            const timer = setTimeout(() => {
+                fetchData();
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
     }, []);
 
     // Listen for company change events (when company is selected in header)
