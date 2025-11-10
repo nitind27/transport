@@ -25,9 +25,10 @@ interface ZPOrderRequestBody {
   company_id?: string;
 }
 
-const ZPorderdetails = ({ zpOrderDetails }: Props) => {
-  // Initialize with prop data from server-side rendering, will be updated by fetchData with filtered data
-  const [data, setData] = useState<ZPOrderDetail[]>(zpOrderDetails || []);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ZPorderdetails = ({ zpOrderDetails: _zpOrderDetails }: Props) => {
+  // Initialize with empty array - will be updated by fetchData with filtered data
+  const [data, setData] = useState<ZPOrderDetail[]>([]);
   const { isActive, setIsActive, isEditMode, setIsEditmode, setIsmodelopen, isvalidation, setisvalidation } = useToggleContext();
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true); // Loading state for initial data fetch
@@ -70,13 +71,31 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     if (!isEditMode) reset();
   }, [isEditMode]);
 
-  // Fetch filtered data on component mount
+  // Fetch filtered data on component mount - using logged-in user's company_id from sessionStorage
   useEffect(() => {
-    // Wait a bit to ensure sessionStorage is populated
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 100);
-    return () => clearTimeout(timer);
+    // Ensure sessionStorage is available before fetching
+    if (typeof window !== 'undefined') {
+      // Check if user is logged in (has company_id or is super admin)
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      
+      if (!userId) {
+        console.warn('User not logged in - userid not found in sessionStorage');
+        return;
+      }
+      
+      console.log('Component mounted - fetching data for logged-in user:', {
+        userId,
+        companyId
+      });
+      
+      // Small delay to ensure sessionStorage is ready
+      const timer = setTimeout(() => {
+        fetchData();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const validateInputs = () => {
@@ -96,21 +115,23 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
     try {
       setDataLoading(true);
       
-      // Get user_id and company_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      console.log('ZP Order Details - SessionStorage values:', { 
-        userId: userId || 'NOT FOUND', 
-        companyId: companyId || 'NOT FOUND' 
+      console.log('ZP Order Details - Fetching data for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
       });
       
-      // Build query parameters - only add if exists and not empty string
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      if (userId && userId.trim() !== '') {
-        params.append('user_id', userId.trim());
-      }
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
@@ -118,7 +139,7 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
       const apiUrl = `/api/zporderdetails${queryString ? '?' + queryString : ''}`;
       
       console.log('ZP Order Details - Fetching from:', apiUrl);
-      console.log('ZP Order Details - Query params:', { user_id: userId, company_id: companyId });
+      console.log('ZP Order Details - Logged-in user company_id from sessionStorage:', companyId);
       
       const response = await fetch(apiUrl, {
         cache: 'no-store',
@@ -129,11 +150,16 @@ const ZPorderdetails = ({ zpOrderDetails }: Props) => {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('ZP Order Details - Fetched successfully:', result?.length || 0, 'records');
+        console.log('ZP Order Details - Fetched successfully for company_id:', companyId);
+        console.log('ZP Order Details - Data count:', result?.length || 0, 'records');
         console.log('ZP Order Details - Sample data:', result?.slice(0, 2));
         
         if (Array.isArray(result)) {
           setData(result);
+          
+          if (result.length === 0 && companyId && companyId.trim() !== '') {
+            console.warn('No ZP order details found for logged-in user company_id:', companyId);
+          }
         } else {
           console.error('ZP Order Details - Invalid response format:', result);
           setData([]);

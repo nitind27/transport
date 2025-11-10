@@ -111,11 +111,32 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
 
-  // Load initial data - Always fetch from API with user/company filters instead of using initialStockData
+  // Load initial data - Always fetch from API with company_id filtering
   useEffect(() => {
-    // Fetch data with proper user_id and company_id filtering
-    fetchStockData();
-    fetchEnhancedStockData();
+    // Ensure sessionStorage is available before fetching
+    if (typeof window !== 'undefined') {
+      // Check if user is logged in (has company_id or is super admin)
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      
+      if (!userId) {
+        console.warn('User not logged in - userid not found in sessionStorage');
+        return;
+      }
+      
+      console.log('Component mounted - fetching data for logged-in user:', {
+        userId,
+        companyId
+      });
+      
+      // Small delay to ensure sessionStorage is ready
+      const timer = setTimeout(() => {
+        fetchStockData();
+        fetchEnhancedStockData();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   function formatDate(dateString: string | undefined | null): string {
@@ -163,48 +184,115 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   // Fetch enhanced stock data from API
   const fetchEnhancedStockData = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      console.log('StockInventory - Fetching enhanced stock data for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
+      });
       
       const params = new URLSearchParams();
-      // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        params.append('company_id', companyId.trim());
+      }
       
-      const response = await fetch(`/api/stockinventory/enhanced${params.toString() ? '?' + params.toString() : ''}`);
+      const url = `/api/stockinventory/enhanced${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('StockInventory - Fetching enhanced stock data with URL:', url);
+      console.log('StockInventory - Logged-in user company_id from sessionStorage:', companyId);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
       if (response.ok) {
         const enhancedStockData = await response.json();
-        setEnhancedData(enhancedStockData);
+        const dataArray = Array.isArray(enhancedStockData) ? enhancedStockData : [];
+        setEnhancedData(dataArray);
+        
+        console.log('StockInventory - Enhanced stock data fetched successfully for company_id:', companyId);
+        console.log('StockInventory - Data count:', dataArray.length, 'records');
+        
+        if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+          console.warn('No enhanced stock data found for logged-in user company_id:', companyId);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('StockInventory - API Error Response:', errorText);
+        toast.error('Failed to fetch enhanced stock data');
+        setEnhancedData([]);
       }
     } catch (error) {
       console.error('Error fetching enhanced stock data:', error);
       toast.error('Failed to fetch enhanced stock data');
+      setEnhancedData([]);
     }
   };
 
-  // Fetch stock data from API
+  // Fetch stock data from API - filtered by company_id only
   const fetchStockData = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      console.log('StockInventory - Fetching stock data for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
+      });
       
       const params = new URLSearchParams();
-      // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        params.append('company_id', companyId.trim());
+      }
       
-      const response = await fetch(`/api/stockinventory${params.toString() ? '?' + params.toString() : ''}`);
+      const url = `/api/stockinventory${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('StockInventory - Fetching stock data with URL:', url);
+      console.log('StockInventory - Logged-in user company_id from sessionStorage:', companyId);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
       if (response.ok) {
         const stockData = await response.json();
-        setData(stockData);
+        const dataArray = Array.isArray(stockData) ? stockData : [];
+        setData(dataArray);
+        
+        console.log('StockInventory - Stock data fetched successfully for company_id:', companyId);
+        console.log('StockInventory - Data count:', dataArray.length, 'records');
+        
+        if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+          console.warn('No stock data found for logged-in user company_id:', companyId);
+        }
+        
         // Refresh enhanced data after list load
         await fetchEnhancedStockData();
+      } else {
+        const errorText = await response.text();
+        console.error('StockInventory - API Error Response:', errorText);
+        toast.error('Failed to fetch stock data');
+        setData([]);
       }
     } catch (error) {
       console.error('Error fetching stock data:', error);
       toast.error('Failed to fetch stock data');
+      setData([]);
     }
   };
 

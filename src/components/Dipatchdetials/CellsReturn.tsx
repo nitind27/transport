@@ -1083,19 +1083,56 @@ const CellsReturn = () => {
 
     const fetchDispatchList = async () => {
         try {
-            // Get user_id and company_id from sessionStorage
-            const userId = sessionStorage.getItem('userid');
+            // Get company_id from sessionStorage - this is set when user logs in
             const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            console.log('CellsReturn - Fetching dispatch list for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
             
             const params = new URLSearchParams();
-            // Only add if exists and not empty string
-            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+                params.append('company_id', companyId.trim());
+            }
             
-            const res = await fetch(`/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`);
-            if (res.ok) setDispatchList(await res.json());
+            const url = `/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('CellsReturn - Fetching dispatch list with URL:', url);
+            console.log('CellsReturn - Logged-in user company_id from sessionStorage:', companyId);
+            
+            const res = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                const dataArray = Array.isArray(data) ? data : [];
+                setDispatchList(dataArray);
+                
+                console.log('CellsReturn - Dispatch list fetched successfully for company_id:', companyId);
+                console.log('CellsReturn - Data count:', dataArray.length, 'records');
+                
+                if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+                    console.warn('No dispatch list found for logged-in user company_id:', companyId);
+                }
+            } else {
+                const errorText = await res.text();
+                console.error('CellsReturn - API Error Response:', errorText);
+                toast.error('Failed to fetch dispatch list');
+                setDispatchList([]);
+            }
         } catch (e) {
-            console.error(e);
+            console.error('CellsReturn - Error fetching dispatch list:', e);
+            toast.error('Failed to fetch dispatch list');
+            setDispatchList([]);
         }
     };
 
@@ -1111,28 +1148,50 @@ const CellsReturn = () => {
     
 
     useEffect(() => {
-        const fetchAllData = async () => {
-            setIsLoading(true);
-            try {
-                await Promise.all([
-                    // fetchZpOrders(),
-                    // fetchSchoolWiseOrders(),
-                    // fetchTrucks(),
-                    // fetchTalukas(),
-                    // fetchCenters(),
-                    fetchItemMaster(),
-                    fetchDispatchList(),
-                    // fetchSchoolDataMap()
-                ]);
-            } catch (error) {
-                console.error('Error loading data:', error);
-                toast.error('Failed to load data. Please refresh the page.');
-            } finally {
-                setIsLoading(false);
+        // Ensure sessionStorage is available before fetching
+        if (typeof window !== 'undefined') {
+            // Check if user is logged in (has company_id or is super admin)
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            
+            if (!userId) {
+                console.warn('User not logged in - userid not found in sessionStorage');
+                return;
             }
-        };
-
-        fetchAllData();
+            
+            console.log('Component mounted - fetching data for logged-in user:', {
+                userId,
+                companyId
+            });
+            
+            const fetchAllData = async () => {
+                setIsLoading(true);
+                try {
+                    await Promise.all([
+                        // fetchZpOrders(),
+                        // fetchSchoolWiseOrders(),
+                        // fetchTrucks(),
+                        // fetchTalukas(),
+                        // fetchCenters(),
+                        fetchItemMaster(),
+                        fetchDispatchList(),
+                        // fetchSchoolDataMap()
+                    ]);
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    toast.error('Failed to load data. Please refresh the page.');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            // Small delay to ensure sessionStorage is ready
+            const timer = setTimeout(() => {
+                fetchAllData();
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
     }, []);
 
     // Get dispatch rows for selected dispatch

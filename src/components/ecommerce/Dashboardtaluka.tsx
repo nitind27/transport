@@ -925,7 +925,7 @@ const Dashboardtaluka = () => {
               <thead>
                 <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">अ.क्र</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">कंपनी</th>
+                
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">तालुका</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा</th>
                   <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-sm">एकूण शाळा वाटप</th>
@@ -936,7 +936,7 @@ const Dashboardtaluka = () => {
                 {talukaData.map((taluka, index) => (
                   <tr key={taluka.taluka_id} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="border border-gray-300 px-3 py-2 text-sm">{index + 1}</td>
-                    <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.company_name || 'N/A'}</td>
+                  
                     <td className="border border-gray-300 px-3 py-2 font-medium text-sm">{taluka.name}</td>
                     <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.schools_with_orders}</td>
                     <td className="border border-gray-300 px-3 py-2 text-center text-sm">{taluka.distributed_schools}</td>

@@ -87,35 +87,88 @@ const Billingregister = () => {
     const [centerList, setCenterList] = useState<Center[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Fetch all required data on component mount
+    // Fetch all required data on component mount - using logged-in user's company_id from sessionStorage
     useEffect(() => {
-        fetchDispatchDetails();
-        fetchTalukas();
-        fetchCenters();
+        // Ensure sessionStorage is available before fetching
+        if (typeof window !== 'undefined') {
+            // Check if user is logged in (has company_id or is super admin)
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            
+            if (!userId) {
+                console.warn('User not logged in - userid not found in sessionStorage');
+                return;
+            }
+            
+            console.log('Component mounted - fetching data for logged-in user:', {
+                userId,
+                companyId
+            });
+            
+            // Small delay to ensure sessionStorage is ready
+            const timer = setTimeout(() => {
+                fetchDispatchDetails();
+                fetchTalukas();
+                fetchCenters();
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
     }, []);
 
     const fetchDispatchDetails = async () => {
         setLoading(true);
         try {
-            // Get user_id and company_id from sessionStorage
-            const userId = sessionStorage.getItem('userid');
+            // Get company_id from sessionStorage - this is set when user logs in
             const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            console.log('BillingRegister - Fetching dispatch details for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
             
             const params = new URLSearchParams();
-            // Only add if exists and not empty string
-            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+                params.append('company_id', companyId.trim());
+            }
             
-            const res = await fetch(`/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`);
+            const url = `/api/dispatchdetails${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('BillingRegister - Fetching dispatch details with URL:', url);
+            console.log('BillingRegister - Logged-in user company_id from sessionStorage:', companyId);
+            
+            const res = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             if (res.ok) {
                 const data = await res.json();
-                setDispatchData(data);
+                const dataArray = Array.isArray(data) ? data : [];
+                setDispatchData(dataArray);
+                
+                console.log('BillingRegister - Dispatch details fetched successfully for company_id:', companyId);
+                console.log('BillingRegister - Data count:', dataArray.length, 'records');
+                
+                if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+                    console.warn('No dispatch details found for logged-in user company_id:', companyId);
+                }
             } else {
+                const errorText = await res.text();
+                console.error('BillingRegister - API Error Response:', errorText);
                 toast.error('Failed to fetch dispatch details');
+                setDispatchData([]);
             }
         } catch (error) {
             console.error('Error fetching dispatch details:', error);
             toast.error('Error loading data');
+            setDispatchData([]);
         } finally {
             setLoading(false);
         }
@@ -123,43 +176,95 @@ const Billingregister = () => {
 
     const fetchTalukas = async () => {
         try {
-            // Get user_id and company_id from sessionStorage
-            const userId = sessionStorage.getItem('userid');
+            // Get company_id from sessionStorage - this is set when user logs in
             const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            console.log('BillingRegister - Fetching talukas for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
             
             const params = new URLSearchParams();
-            // Only add if exists and not empty string
-            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+                params.append('company_id', companyId.trim());
+            }
             
-            const res = await fetch(`/api/taluka${params.toString() ? '?' + params.toString() : ''}`);
+            const url = `/api/taluka${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('BillingRegister - Fetching talukas with URL:', url);
+            
+            const res = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             if (res.ok) {
                 const data = await res.json();
-                setTalukaList(data);
+                const dataArray = Array.isArray(data) ? data : [];
+                setTalukaList(dataArray);
+                
+                console.log('BillingRegister - Talukas fetched successfully for company_id:', companyId);
+                console.log('BillingRegister - Data count:', dataArray.length, 'records');
+            } else {
+                console.error('BillingRegister - Failed to fetch talukas');
+                setTalukaList([]);
             }
         } catch (error) {
             console.error('Error fetching talukas:', error);
+            setTalukaList([]);
         }
     };
 
     const fetchCenters = async () => {
         try {
-            // Get user_id and company_id from sessionStorage
-            const userId = sessionStorage.getItem('userid');
+            // Get company_id from sessionStorage - this is set when user logs in
             const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            console.log('BillingRegister - Fetching centers for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
             
             const params = new URLSearchParams();
-            // Only add if exists and not empty string
-            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+                params.append('company_id', companyId.trim());
+            }
             
-            const res = await fetch(`/api/centerapi${params.toString() ? '?' + params.toString() : ''}`);
+            const url = `/api/centerapi${params.toString() ? '?' + params.toString() : ''}`;
+            console.log('BillingRegister - Fetching centers with URL:', url);
+            
+            const res = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             if (res.ok) {
                 const data = await res.json();
-                setCenterList(data);
+                const dataArray = Array.isArray(data) ? data : [];
+                setCenterList(dataArray);
+                
+                console.log('BillingRegister - Centers fetched successfully for company_id:', companyId);
+                console.log('BillingRegister - Data count:', dataArray.length, 'records');
+            } else {
+                console.error('BillingRegister - Failed to fetch centers');
+                setCenterList([]);
             }
         } catch (error) {
             console.error('Error fetching centers:', error);
+            setCenterList([]);
         }
     };
 

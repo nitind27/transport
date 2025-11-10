@@ -103,35 +103,30 @@ const OrderRegisterWithColumnSearch = () => {
 
   const fetchSchools = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      // Validate sessionStorage values
-      if (!userId || userId.trim() === '') {
-        console.error('OrderRegister - User ID not found in sessionStorage');
-        setSchools([]);
-        return;
-      }
+      console.log('OrderRegister - Fetching Schools for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
+      });
       
-      // Build query parameters - always include user_id and company_id if available
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      if (userId && userId.trim() !== '') {
-        params.append('user_id', userId.trim());
-      }
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
       const queryString = params.toString();
-      if (!queryString) {
-        console.error('OrderRegister - No query parameters to send');
-        setSchools([]);
-        return;
-      }
-      
-      const apiUrl = `/api/scooldata?${queryString}`;
-      console.log('OrderRegister - Fetching Schools:', { userId, companyId, apiUrl });
+      const apiUrl = `/api/scooldata${queryString ? '?' + queryString : ''}`;
+      console.log('OrderRegister - Fetching Schools with URL:', apiUrl);
+      console.log('OrderRegister - Logged-in user company_id from sessionStorage:', companyId);
       
       const response = await fetch(apiUrl, { 
         cache: 'no-store',
@@ -142,9 +137,14 @@ const OrderRegisterWithColumnSearch = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('OrderRegister - Schools fetched successfully:', data?.length || 0, 'records');
+        console.log('OrderRegister - Schools fetched successfully for company_id:', companyId);
+        console.log('OrderRegister - Data count:', data?.length || 0, 'records');
         if (Array.isArray(data)) {
           setSchools(data);
+          
+          if (data.length === 0 && companyId && companyId.trim() !== '') {
+            console.warn('No schools found for logged-in user company_id:', companyId);
+          }
         } else {
           console.error('OrderRegister - Invalid response format:', data);
           setSchools([]);
@@ -170,37 +170,30 @@ const OrderRegisterWithColumnSearch = () => {
 
   const fetchSchoolWiseOrders = async () => {
     try {
-      // Get user_id and company_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      // Validate sessionStorage values
-      if (!userId || userId.trim() === '') {
-        console.error('OrderRegister - User ID not found in sessionStorage');
-        setSchoolWiseOrders([]);
-        setAllGrainItems([]);
-        return;
-      }
+      console.log('OrderRegister - Fetching School Wise Orders for logged-in user:', {
+        userId,
+        companyId,
+        isSuperAdmin
+      });
       
-      // Build query parameters - always include user_id and company_id if available
+      // Build query parameters - filter by company_id from logged-in user's sessionStorage
       const params = new URLSearchParams();
-      if (userId && userId.trim() !== '') {
-        params.append('user_id', userId.trim());
-      }
-      if (companyId && companyId.trim() !== '') {
+      
+      // Only filter by company_id if it exists and is not empty
+      // Super admin might have empty company_id, so we don't filter in that case
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
         params.append('company_id', companyId.trim());
       }
       
       const queryString = params.toString();
-      if (!queryString) {
-        console.error('OrderRegister - No query parameters to send');
-        setSchoolWiseOrders([]);
-        setAllGrainItems([]);
-        return;
-      }
-      
-      const apiUrl = `/api/schoolwiseorders?${queryString}`;
-      console.log('OrderRegister - Fetching School Wise Orders:', { userId, companyId, apiUrl });
+      const apiUrl = `/api/schoolwiseorders${queryString ? '?' + queryString : ''}`;
+      console.log('OrderRegister - Fetching School Wise Orders with URL:', apiUrl);
+      console.log('OrderRegister - Logged-in user company_id from sessionStorage:', companyId);
       
       const response = await fetch(apiUrl, { 
         cache: 'no-store',
@@ -211,7 +204,8 @@ const OrderRegisterWithColumnSearch = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('OrderRegister - School Wise Orders fetched successfully:', data?.length || 0, 'records');
+        console.log('OrderRegister - School Wise Orders fetched successfully for company_id:', companyId);
+        console.log('OrderRegister - Data count:', data?.length || 0, 'records');
         
         if (Array.isArray(data)) {
           setSchoolWiseOrders(data);
@@ -235,6 +229,10 @@ const OrderRegisterWithColumnSearch = () => {
 
           // Convert set to array and set state
           setAllGrainItems(Array.from(grainItemsSet));
+          
+          if (data.length === 0 && companyId && companyId.trim() !== '') {
+            console.warn('No school-wise orders found for logged-in user company_id:', companyId);
+          }
         } else {
           console.error('OrderRegister - Invalid response format:', data);
           setSchoolWiseOrders([]);
@@ -280,17 +278,34 @@ const OrderRegisterWithColumnSearch = () => {
   };
 
   useEffect(() => {
-    // Wait a bit to ensure sessionStorage is populated, then check and fetch
-    const timer = setTimeout(() => {
-      if (checkSessionStorage()) {
-        fetchSchools();
-        fetchSchoolWiseOrders();
-      } else {
-        console.error('OrderRegister - Cannot fetch data: sessionStorage values missing');
-        toast.error('Please login again. Session data not found.');
+    // Ensure sessionStorage is available before fetching
+    if (typeof window !== 'undefined') {
+      // Check if user is logged in (has company_id or is super admin)
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      
+      if (!userId) {
+        console.warn('User not logged in - userid not found in sessionStorage');
+        return;
       }
-    }, 200);
-    return () => clearTimeout(timer);
+      
+      console.log('Component mounted - fetching data for logged-in user:', {
+        userId,
+        companyId
+      });
+      
+      // Small delay to ensure sessionStorage is ready
+      const timer = setTimeout(() => {
+        if (checkSessionStorage()) {
+          fetchSchools();
+          fetchSchoolWiseOrders();
+        } else {
+          console.error('OrderRegister - Cannot fetch data: sessionStorage values missing');
+          toast.error('Please login again. Session data not found.');
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   type SWOWithTaluka = SchoolWiseOrder & {

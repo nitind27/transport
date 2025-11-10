@@ -1165,6 +1165,12 @@ const DispatchView = () => {
         return;
       }
 
+      // Calculate total weight (वजन किलो ग्रॅम)
+      const totalQty = riceItems.reduce((sum, item) => {
+        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+        return sum + qty;
+      }, 0);
+
       const printContent = `
 <!DOCTYPE html>
 <html>
@@ -1290,6 +1296,10 @@ const DispatchView = () => {
     .table td:last-child {
       width: 80px;
     }
+    .table .total-row {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
     .footer {
       margin-top: 15px;
     }
@@ -1360,6 +1370,10 @@ const DispatchView = () => {
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
           </div>
+          <div class="info-row">
+            <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
+            <span class="info-right"></span>
+          </div>
         </div>
 
         
@@ -1393,6 +1407,12 @@ const DispatchView = () => {
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
+              ${riceItems.length <= 10 ? `
+                <tr class="total-row">
+                  <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                  <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
+                </tr>
+              ` : ''}
             </tbody>
           </table>
 
@@ -1413,6 +1433,10 @@ const DispatchView = () => {
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
+              <tr class="total-row">
+                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
+              </tr>
             </tbody>
           </table>
           ` : ''}
@@ -1482,6 +1506,12 @@ const DispatchView = () => {
         toast.error('No kirana items found to print');
         return;
       }
+
+      // Calculate total weight (वजन किलो ग्रॅम)
+      const totalQty = kiranaItems.reduce((sum, item) => {
+        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+        return sum + qty;
+      }, 0);
 
       const printContent = `
 <!DOCTYPE html>
@@ -1608,6 +1638,10 @@ const DispatchView = () => {
     .table td:last-child {
       width: 80px;
     }
+    .table .total-row {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
     .footer {
       margin-top: 2px;
     }
@@ -1678,6 +1712,10 @@ const DispatchView = () => {
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
           </div>
+          <div class="info-row">
+            <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
+            <span class="info-right"></span>
+          </div>
         </div>
         
  <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
@@ -1710,6 +1748,12 @@ const DispatchView = () => {
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
+              ${kiranaItems.length <= 8 ? `
+                <tr class="total-row">
+                  <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                  <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
+                </tr>
+              ` : ''}
             </tbody>
           </table>
 
@@ -1730,6 +1774,10 @@ const DispatchView = () => {
                   <td>${item.qty}</td>
                 </tr>
               `).join('')}
+              <tr class="total-row">
+                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                <td style="font-weight: bold;">${totalQty.toFixed(2)}</td>
+              </tr>
             </tbody>
           </table>
           ` : ''}
@@ -1780,7 +1828,7 @@ const DispatchView = () => {
       toast.success('Kirana print window opened');
     } catch (error) {
       console.error('Error printing kirana:', error);
-      toast.error('  to print kirana');
+      toast.error('Failed to print kirana');
     }
   };
 
@@ -2416,6 +2464,7 @@ const DispatchView = () => {
           period: r.period || '',
           no_of_days: r.no_of_days || 0,
           financial_year: r.financial_year || '',
+          patsankhya: r.patsankhya || '0',
           items: schoolItems
         };
 

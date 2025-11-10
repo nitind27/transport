@@ -105,11 +105,11 @@ const ownerNavItems: NavItem[] = [
 
 // Supervisor (category_id = 3) - Dashboard, ZP Order Details, and Stock Inventory
 const supervisorNavItems: NavItem[] = [
-  {
-    icon: <RxDashboard />,
-    name: "Companies",
-    path: "/companies",
-  },
+  // {
+  //   icon: <RxDashboard />,
+  //   name: "Companies",
+  //   path: "/companies",
+  // },
   {
     icon: <TbCategoryPlus />,
     name: "ZP Order Details",
