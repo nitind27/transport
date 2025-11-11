@@ -1190,7 +1190,7 @@ const DispatchView = () => {
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
-      padding: 10px;
+      padding: 0;
       font-size: 12px;
       line-height: 1.3;
       color: #000;
@@ -1198,28 +1198,39 @@ const DispatchView = () => {
     }
     .page-wrapper {
       width: 100%;
+      height: 100vh;
       page-break-after: always;
+      page-break-inside: avoid;
       display: flex;
       flex-direction: column;
-      gap: 15px;
-      min-height: 100vh;
+      gap: 0;
+      overflow: hidden;
     }
     .page-wrapper:last-child {
       page-break-after: avoid;
     }
     .page-row {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
+      flex-direction: row;
+      gap: 0;
       width: 100%;
+      height: 100%;
       flex: 1;
     }
     .copy-container {
-      width: 100%;
+      width: 50%;
+      height: 100%;
       margin-bottom: 0;
       page-break-after: avoid;
+      page-break-inside: avoid;
       flex: 1;
-      min-height: 45vh;
+      padding: 10px;
+      border-right: 2px dashed #000;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .copy-container:last-child {
+      border-right: none;
     }
     .container {
       max-width: 100%;
@@ -1231,23 +1242,25 @@ const DispatchView = () => {
       margin-bottom: 10px;
     }
     .title {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: center;
       font-size: 16px;
       font-weight: bold;
       margin-bottom: 6px;
-      position: relative;
       margin-top: 10px;
+      width: 100%;
+      gap: 10px;
     }
     .center-item {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
+      grid-column: 2;
+      text-align: center;
       white-space: nowrap;
     }
     .end-item {
-      margin-left: auto;
+      grid-column: 3;
+      text-align: right;
+      white-space: nowrap;
     }
     .subtitle {
       font-size: 13px;
@@ -1339,13 +1352,25 @@ const DispatchView = () => {
     /* Hide elements when printing */
     @media print {
       body {
-        padding: 10px;
+        padding: 0;
+        margin: 0;
       }
       @page {
         margin: 0;
         size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
+      }
+      .page-wrapper {
+        height: 100vh;
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+      .page-wrapper:last-child {
+        page-break-after: avoid;
+      }
+      .copy-container {
+        page-break-inside: avoid;
       }
       ::after, ::before {
         content: none !important;
@@ -1360,9 +1385,7 @@ const DispatchView = () => {
       ${[0, 1].map((copyIndex) => {
    const copyTitles = [
      'हेड मास्टर',
-     'बी.आर. सी ऑफीस (तालुका ऑफीस)',
-     'O.C',
-     'जिल्हा परिषद ऑफीस'
+     'बी.आर. सी ऑफीस (तालुका ऑफीस)'
    ];
    return `
     <div class="copy-container">
@@ -1557,8 +1580,51 @@ const DispatchView = () => {
                 आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
               </div>
 
-              <div style="display: flex; gap: 20px; align-items: flex-start;">
-                <table class="table" style="flex: 1;">
+              <div style="width: 100%; overflow-x: auto;">
+                ${riceItems.length > 10 ? `
+                <div style="display: flex; gap: 15px; align-items: flex-start; width: 100%;">
+                  <table class="table" style="width: 48%; margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>अ.क्रं.</th>
+                        <th>धान्याचे नाव</th>
+                        <th>वजन किलो ग्रॅम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                        <tr>
+                          <td>${index + 1}</td>
+                          <td>${item.name}</td>
+                          <td>${item.qty}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                  <table class="table" style="width: 48%; margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>अ.क्रं.</th>
+                        <th>धान्याचे नाव</th>
+                        <th>वजन किलो ग्रॅम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
+                        <tr>
+                          <td>${index + 11}</td>
+                          <td>${item.name}</td>
+                          <td>${item.qty}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : `
+                <table class="table" style="width: 100%; margin: 0;">
                   <thead>
                     <tr>
                       <th>अ.क्रं.</th>
@@ -1567,7 +1633,7 @@ const DispatchView = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    ${riceItems.slice(0, 10).map((item: DispatchItem, index: number) => `
+                    ${riceItems.map((item: DispatchItem, index: number) => `
                       <tr>
                         <td>${index + 1}</td>
                         <td>${item.name}</td>
@@ -1576,35 +1642,10 @@ const DispatchView = () => {
                     `).join('')}
                   </tbody>
                 </table>
-                ${riceItems.length <= 10 ? `
                 <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
                   <span>एकूण: ${totalQty.toFixed(2)}</span>
                 </div>
-                ` : ''}
-
-                ${riceItems.length > 10 ? `
-                <table class="table" style="flex: 1;">
-                  <thead>
-                    <tr>
-                      <th>अ.क्रं.</th>
-                      <th>धान्याचे नाव</th>
-                      <th>वजन किलो ग्रॅम</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${riceItems.slice(10).map((item: DispatchItem, index: number) => `
-                      <tr>
-                        <td>${index + 11}</td>
-                        <td>${item.name}</td>
-                        <td>${item.qty}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
-                </div>
-                ` : ''}
+                `}
               </div>
 
               <div class="description-text">
@@ -1699,7 +1740,7 @@ const DispatchView = () => {
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
-      padding: 10px;
+      padding: 0;
       font-size: 12px;
       line-height: 1.3;
       color: #000;
@@ -1707,28 +1748,39 @@ const DispatchView = () => {
     }
     .page-wrapper {
       width: 100%;
+      height: 100vh;
       page-break-after: always;
+      page-break-inside: avoid;
       display: flex;
       flex-direction: column;
-      gap: 15px;
-      min-height: 100vh;
+      gap: 0;
+      overflow: hidden;
     }
     .page-wrapper:last-child {
       page-break-after: avoid;
     }
     .page-row {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
+      flex-direction: row;
+      gap: 0;
       width: 100%;
+      height: 100%;
       flex: 1;
     }
     .copy-container {
-      width: 100%;
+      width: 50%;
+      height: 100%;
       margin-bottom: 0;
       page-break-after: avoid;
+      page-break-inside: avoid;
       flex: 1;
-      min-height: 45vh;
+      padding: 10px;
+      border-right: 2px dashed #000;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .copy-container:last-child {
+      border-right: none;
     }
     .container {
       max-width: 100%;
@@ -1740,23 +1792,25 @@ const DispatchView = () => {
       margin-bottom: 10px;
     }
     .title {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: center;
       font-size: 16px;
       font-weight: bold;
       margin-bottom: 6px;
-      position: relative;
       margin-top: 10px;
+      width: 100%;
+      gap: 10px;
     }
     .center-item {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
+      grid-column: 2;
+      text-align: center;
       white-space: nowrap;
     }
     .end-item {
-      margin-left: auto;
+      grid-column: 3;
+      text-align: right;
+      white-space: nowrap;
     }
     .subtitle {
       font-size: 13px;
@@ -1848,13 +1902,25 @@ const DispatchView = () => {
     /* Hide elements when printing */
     @media print {
       body {
-        padding: 10px;
+        padding: 0;
+        margin: 0;
       }
       @page {
         margin: 0;
         size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
+      }
+      .page-wrapper {
+        height: 100vh;
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+      .page-wrapper:last-child {
+        page-break-after: avoid;
+      }
+      .copy-container {
+        page-break-inside: avoid;
       }
       ::after, ::before {
         content: none !important;
@@ -1869,9 +1935,7 @@ const DispatchView = () => {
       ${[0, 1].map((copyIndex) => {
    const copyTitles = [
      'हेड मास्टर',
-     'बी.आर. सी ऑफीस (तालुका ऑफीस)',
-     'O.C',
-     'जिल्हा परिषद ऑफीस'
+     'बी.आर. सी ऑफीस (तालुका ऑफीस)'
    ];
    return `
     <div class="copy-container">
@@ -2066,8 +2130,51 @@ const DispatchView = () => {
                 आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
               </div>
 
-              <div style="display: flex; gap: 20px; align-items: flex-start;">
-                <table class="table" style="flex: 1;">
+              <div style="width: 100%; overflow-x: auto;">
+                ${kiranaItems.length > 8 ? `
+                <div style="display: flex; gap: 15px; align-items: flex-start; width: 100%;">
+                  <table class="table" style="width: 48%; margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>अ.क्रं.</th>
+                        <th>धान्याचे नाव</th>
+                        <th>वजन किलो ग्रॅम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
+                        <tr>
+                          <td>${index + 1}</td>
+                          <td>${item.name}</td>
+                          <td>${item.qty}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                  <table class="table" style="width: 48%; margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>अ.क्रं.</th>
+                        <th>धान्याचे नाव</th>
+                        <th>वजन किलो ग्रॅम</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
+                        <tr>
+                          <td>${index + 9}</td>
+                          <td>${item.name}</td>
+                          <td>${item.qty}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
+                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                </div>
+                ` : `
+                <table class="table" style="width: 100%; margin: 0;">
                   <thead>
                     <tr>
                       <th>अ.क्रं.</th>
@@ -2076,7 +2183,7 @@ const DispatchView = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    ${kiranaItems.slice(0, 8).map((item: DispatchItem, index: number) => `
+                    ${kiranaItems.map((item: DispatchItem, index: number) => `
                       <tr>
                         <td>${index + 1}</td>
                         <td>${item.name}</td>
@@ -2085,35 +2192,10 @@ const DispatchView = () => {
                     `).join('')}
                   </tbody>
                 </table>
-                ${kiranaItems.length <= 8 ? `
                 <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
                   <span>एकूण: ${totalQty.toFixed(2)}</span>
                 </div>
-                ` : ''}
-
-                ${kiranaItems.length > 8 ? `
-                <table class="table" style="flex: 1;">
-                  <thead>
-                    <tr>
-                      <th>अ.क्रं.</th>
-                      <th>धान्याचे नाव</th>
-                      <th>वजन किलो ग्रॅम</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${kiranaItems.slice(8, 16).map((item: DispatchItem, index: number) => `
-                      <tr>
-                        <td>${index + 9}</td>
-                        <td>${item.name}</td>
-                        <td>${item.qty}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
-                </div>
-                ` : ''}
+                `}
               </div>
 
               <div class="description-text">
