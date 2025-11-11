@@ -1179,7 +1179,7 @@ const DispatchView = () => {
   <title>Rice Pavti - ${dispatchData.dispatch_code}</title>
   <style>
     @page {
-      margin: 0;
+      margin: 15mm 10mm;
       size: A4 landscape;
     }
     * {
@@ -1190,7 +1190,7 @@ const DispatchView = () => {
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
-      padding: 0;
+      padding: 15px 10px;
       font-size: 12px;
       line-height: 1.3;
       color: #000;
@@ -1205,6 +1205,7 @@ const DispatchView = () => {
       flex-direction: column;
       gap: 0;
       overflow: hidden;
+      padding: 10px 0;
     }
     .page-wrapper:last-child {
       page-break-after: avoid;
@@ -1224,7 +1225,7 @@ const DispatchView = () => {
       page-break-after: avoid;
       page-break-inside: avoid;
       flex: 1;
-      padding: 10px;
+      padding: 15px 12px;
       border-right: 2px dashed #000;
       box-sizing: border-box;
       overflow: hidden;
@@ -1236,10 +1237,12 @@ const DispatchView = () => {
       max-width: 100%;
       margin: 0 auto;
       height: 100%;
+      padding: 5px;
     }
     .header {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      padding: 5px 0;
     }
     .title {
       display: grid;
@@ -1247,10 +1250,11 @@ const DispatchView = () => {
       align-items: center;
       font-size: 16px;
       font-weight: bold;
-      margin-bottom: 6px;
-      margin-top: 10px;
+      margin-bottom: 8px;
+      margin-top: 5px;
       width: 100%;
       gap: 10px;
+      padding: 0 5px;
     }
     .center-item {
       grid-column: 2;
@@ -1265,14 +1269,24 @@ const DispatchView = () => {
     .subtitle {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+    .subtitle-center {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 5px;
+      padding: 2px 0;
+      text-align: center;
+      width: 100%;
     }
     .subtitle-small {
       font-size: 12px;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
     }
     .info-section {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      padding: 5px 0;
     }
     .info-row {
       display: flex;
@@ -1289,6 +1303,10 @@ const DispatchView = () => {
     .info-right {
       text-align: right;
     }
+    .recipient-label {
+      margin-bottom: 8px;
+      margin-top: 5px;
+    }
     .recipient-info {
       margin: 12px 0;
     }
@@ -1296,20 +1314,51 @@ const DispatchView = () => {
       margin-bottom: 4px;
     }
     .description-text {
-      margin: 1px 0;
+      margin: 8px 0;
       font-size: 12px;
       line-height: 1.4;
       text-align: justify;
+      padding: 5px 0;
     }
+    .description-text.before-table {
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    .description-text.after-total {
+      margin-top: 15px;
+      margin-bottom: 8px;
+    }
+      .total-section {
+       text-align: right !important;
+       margin-top: 12px;
+       margin-bottom: 15px;
+       font-weight: bold;
+       font-size: 11px;
+       padding-right: 0;
+       width: 100%;
+       display: block;
+       float: none;
+       clear: both;
+       margin-left: auto;
+       margin-right: 0;
+     }
+    .total-section span {
+      font-weight: bold;
+      display: inline-block;
+      text-align: right;
+      float: right;
+      clear: both;
+    }
+    
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin: 8px 0;
+      margin: 10px 0;
       font-size: 10px;
     }
     .table th, .table td {
       border: 1px solid #000;
-      padding: 4px;
+      padding: 5px 4px;
       text-align: center;
       font-size: 10px;
     }
@@ -1332,13 +1381,15 @@ const DispatchView = () => {
       font-weight: bold;
     }
     .footer {
-      margin-top: 8px;
+      margin-top: 12px;
+      padding-top: 8px;
     }
     .signature-section {
       display: flex;
       justify-content: space-between;
-      margin-top: 10px;
+      margin-top: 12px;
       font-size: 11px;
+      padding: 5px 0;
     }
     .signature-left {
       text-align: left;
@@ -1356,7 +1407,7 @@ const DispatchView = () => {
         margin: 0;
       }
       @page {
-        margin: 0;
+        margin: 15mm 10mm;
         size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
@@ -1365,12 +1416,36 @@ const DispatchView = () => {
         height: 100vh;
         page-break-after: always;
         page-break-inside: avoid;
+        padding: 10px 0;
       }
       .page-wrapper:last-child {
         page-break-after: avoid;
       }
       .copy-container {
         page-break-inside: avoid;
+        padding: 15px 12px;
+      }
+      .container {
+        padding: 5px;
+      }
+      .total-section {
+        text-align: right !important;
+        margin-top: 12px;
+        margin-bottom: 15px;
+        font-weight: bold;
+        font-size: 11px;
+        width: 100%;
+        display: block;
+        float: none;
+        clear: both;
+        margin-left: auto;
+        margin-right: 0;
+      }
+      .total-section span {
+        text-align: right;
+        display: inline-block;
+        float: right;
+        clear: both;
       }
       ::after, ::before {
         content: none !important;
@@ -1406,10 +1481,7 @@ const DispatchView = () => {
             <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
             <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
           </div>
-             <div class="title">
-            <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
-           
-          </div>
+          <div class="subtitle-center">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
@@ -1430,10 +1502,11 @@ const DispatchView = () => {
         </div>
        
 
-        <div class="description-text">
+        <div class="description-text before-table">
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
         </div>
 
+        
         <div style="width: 100%; overflow-x: auto;">
           ${riceItems.length > 10 ? `
           <div style="display: flex; gap: 15px; align-items: flex-start; width: 100%;">
@@ -1474,8 +1547,8 @@ const DispatchView = () => {
               </tbody>
             </table>
           </div>
-          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          <div class="total-section">
+            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
           </div>
           ` : `
           <table class="table" style="width: 100%; margin: 0;">
@@ -1496,13 +1569,13 @@ const DispatchView = () => {
               `).join('')}
             </tbody>
           </table>
-          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          <div class="total-section">
+            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
           </div>
           `}
         </div>
 
-        <div class="description-text">
+        <div class="description-text after-total">
           वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
         </div>
 
@@ -1620,8 +1693,8 @@ const DispatchView = () => {
                     </tbody>
                   </table>
                 </div>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                <div class="total-section">
+                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
                 </div>
                 ` : `
                 <table class="table" style="width: 100%; margin: 0;">
@@ -1642,8 +1715,8 @@ const DispatchView = () => {
                     `).join('')}
                   </tbody>
                 </table>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                <div class="total-section">
+                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
                 </div>
                 `}
               </div>
@@ -1729,7 +1802,7 @@ const DispatchView = () => {
   <title>Kirana - ${dispatchData.dispatch_code}</title>
   <style>
     @page {
-      margin: 0;
+      margin: 15mm 10mm;
       size: A4 landscape;
     }
     * {
@@ -1740,7 +1813,7 @@ const DispatchView = () => {
     body {
       font-family: 'Arial', sans-serif;
       margin: 0;
-      padding: 0;
+      padding: 15px 10px;
       font-size: 12px;
       line-height: 1.3;
       color: #000;
@@ -1755,6 +1828,7 @@ const DispatchView = () => {
       flex-direction: column;
       gap: 0;
       overflow: hidden;
+      padding: 10px 0;
     }
     .page-wrapper:last-child {
       page-break-after: avoid;
@@ -1774,7 +1848,7 @@ const DispatchView = () => {
       page-break-after: avoid;
       page-break-inside: avoid;
       flex: 1;
-      padding: 10px;
+      padding: 15px 12px;
       border-right: 2px dashed #000;
       box-sizing: border-box;
       overflow: hidden;
@@ -1786,10 +1860,12 @@ const DispatchView = () => {
       max-width: 100%;
       margin: 0 auto;
       height: 100%;
+      padding: 5px;
     }
     .header {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      padding: 5px 0;
     }
     .title {
       display: grid;
@@ -1797,10 +1873,11 @@ const DispatchView = () => {
       align-items: center;
       font-size: 16px;
       font-weight: bold;
-      margin-bottom: 6px;
-      margin-top: 10px;
+      margin-bottom: 8px;
+      margin-top: 5px;
       width: 100%;
       gap: 10px;
+      padding: 0 5px;
     }
     .center-item {
       grid-column: 2;
@@ -1815,14 +1892,24 @@ const DispatchView = () => {
     .subtitle {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+    .subtitle-center {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 5px;
+      padding: 2px 0;
+      text-align: center;
+      width: 100%;
     }
     .subtitle-small {
       font-size: 12px;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
     }
     .info-section {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      padding: 5px 0;
     }
     .info-row {
       display: flex;
@@ -1839,17 +1926,30 @@ const DispatchView = () => {
     .info-right {
       text-align: right;
     }
+    .recipient-label {
+      margin-bottom: 8px;
+      margin-top: 5px;
+    }
     .recipient-info {
       margin: 12px 0;
     }
     .recipient-info div {
       margin-bottom: 4px;
     }
-    .description-text {
-      margin: 1px 0;
-      font-size: 11px;
-      line-height: 1;
+  .description-text {
+      margin: 8px 0;
+      font-size: 12px;
+      line-height: 1.4;
       text-align: justify;
+      padding: 5px 0;
+    }
+    .description-text.before-table {
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    .description-text.after-total {
+      margin-top: 15px;
+      margin-bottom: 8px;
     }
     .table {
       width: 100%;
@@ -1906,7 +2006,7 @@ const DispatchView = () => {
         margin: 0;
       }
       @page {
-        margin: 0;
+        margin: 15mm 10mm;
         size: A4 landscape;
         marks: none;
         -webkit-print-color-adjust: exact;
@@ -1915,12 +2015,36 @@ const DispatchView = () => {
         height: 100vh;
         page-break-after: always;
         page-break-inside: avoid;
+        padding: 10px 0;
       }
       .page-wrapper:last-child {
         page-break-after: avoid;
       }
       .copy-container {
         page-break-inside: avoid;
+        padding: 15px 12px;
+      }
+      .container {
+        padding: 5px;
+      }
+      .total-section {
+        text-align: right !important;
+        margin-top: 12px;
+        margin-bottom: 15px;
+        font-weight: bold;
+        font-size: 11px;
+        width: 100%;
+        // display: block;
+        float: none;
+        clear: both;
+        margin-left: auto;
+        margin-right: 0;
+      }
+      .total-section span {
+        text-align: right;
+        display: inline-block;
+        float: right;
+        clear: both;
       }
       ::after, ::before {
         content: none !important;
@@ -1956,10 +2080,7 @@ const DispatchView = () => {
             <span class="info-left">पावती क्र- <b>${dispatchData.dispatch_code}</b></span>
             <span class="info-right">दिनांक : <b>${dispatchData.date}</b></span>
           </div>
-           <div class="title">
-            <span class="subtitle">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</span>
-           
-          </div>
+          <div class="subtitle-center">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
@@ -1971,7 +2092,7 @@ const DispatchView = () => {
         </div>
 
         
- <div class="info-left">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
+ <div class="info-left recipient-label">प्रति, शाळा प्रमुख / मुख्याध्यापक,</div>
         <div class="info-row">
          
           <div class="info-left">शाळेचे नाव: <b>${dispatchData.schoolname}</b></div>
@@ -1980,7 +2101,7 @@ const DispatchView = () => {
         </div>
        
 
-        <div class="description-text">
+        <div class="description-text before-table">
           आपल्या मागणी प्रमाणे आपणास माहे ${dispatchData.period || 'जुन-जुलै 2025'} (${dispatchData.no_of_days || '38'}) दिवस कालावधी साठी सन ${dispatchData.financial_year || '2025-2026'} करीता ${dispatchData.class_range || '1-5'} साठी खालील तपशिलाप्रमाणे शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाचा पुरवठा वाहन क्रमांक <b>${dispatchData.truckNo}</b> मधुन करण्यात आला आहे.
         </div>
 
@@ -2024,8 +2145,8 @@ const DispatchView = () => {
               </tbody>
             </table>
           </div>
-          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          <div class="total-section">
+            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
           </div>
           ` : `
           <table class="table" style="width: 100%; margin: 0;">
@@ -2046,13 +2167,13 @@ const DispatchView = () => {
               `).join('')}
             </tbody>
           </table>
-          <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-            <span>एकूण: ${totalQty.toFixed(2)}</span>
+          <div class="total-section">
+            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
           </div>
           `}
         </div>
 
-        <div class="description-text">
+        <div class="description-text after-total">
           वरील तपशिलाप्रमाणे पुरवठा करण्यात आलेल्या मालाचा दर्जा व वजन योग्य असून प्रत्यक्ष मोजून माल ताब्यात मिळाला, काही तक्रार नाही. करिता पोहोच पावती देण्यात येत आहे.
         </div>
 
@@ -2170,8 +2291,8 @@ const DispatchView = () => {
                     </tbody>
                   </table>
                 </div>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+               <div class="total-section">
+                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
                 </div>
                 ` : `
                 <table class="table" style="width: 100%; margin: 0;">
@@ -2192,8 +2313,8 @@ const DispatchView = () => {
                     `).join('')}
                   </tbody>
                 </table>
-                <div style="text-align: right; margin-top: 8px; font-weight: bold; font-size: 11px;">
-                  <span>एकूण: ${totalQty.toFixed(2)}</span>
+                <div class="total-section">
+                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
                 </div>
                 `}
               </div>
