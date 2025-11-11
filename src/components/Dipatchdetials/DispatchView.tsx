@@ -1225,7 +1225,7 @@ const DispatchView = () => {
       page-break-after: avoid;
       page-break-inside: avoid;
       flex: 1;
-      padding: 15px 12px;
+      padding: 30px 20px;
       border-right: 2px dashed #000;
       box-sizing: border-box;
       overflow: hidden;
@@ -1241,7 +1241,7 @@ const DispatchView = () => {
     }
     .header {
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 5px;
       padding: 5px 0;
     }
     .title {
@@ -1250,7 +1250,7 @@ const DispatchView = () => {
       align-items: center;
       font-size: 16px;
       font-weight: bold;
-      margin-bottom: 8px;
+  margin-bottom: 5px;
       margin-top: 5px;
       width: 100%;
       gap: 10px;
@@ -1269,7 +1269,7 @@ const DispatchView = () => {
     .subtitle {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 5px;
+     
       padding: 2px 0;
     }
     .subtitle-center {
@@ -1285,13 +1285,13 @@ const DispatchView = () => {
       margin-bottom: 5px;
     }
     .info-section {
-      margin-bottom: 10px;
+
       padding: 5px 0;
     }
     .info-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 6px;
+   margin-bottom: 5px;
       font-size: 12px;
     }
     .info-left, .info-right {
@@ -1304,14 +1304,14 @@ const DispatchView = () => {
       text-align: right;
     }
     .recipient-label {
-      margin-bottom: 8px;
+     margin-bottom: 5px;
       margin-top: 5px;
     }
     .recipient-info {
       margin: 12px 0;
     }
     .recipient-info div {
-      margin-bottom: 4px;
+     margin-bottom: 5px;
     }
     .description-text {
       margin: 8px 0;
@@ -1321,17 +1321,17 @@ const DispatchView = () => {
       padding: 5px 0;
     }
     .description-text.before-table {
-      margin-top: 12px;
-      margin-bottom: 20px;
+      margin-top: 10px;
+  margin-bottom: 5px;
     }
     .description-text.after-total {
-      margin-top: 15px;
-      margin-bottom: 8px;
+      margin-top: 5px;
+      margin-bottom: 5px;
     }
       .total-section {
        text-align: right !important;
        margin-top: 12px;
-       margin-bottom: 15px;
+       margin-bottom: 5px;
        font-weight: bold;
        font-size: 11px;
        padding-right: 0;
@@ -1431,7 +1431,7 @@ const DispatchView = () => {
       .total-section {
         text-align: right !important;
         margin-top: 12px;
-        margin-bottom: 15px;
+     margin-bottom: 5px;
         font-weight: bold;
         font-size: 11px;
         width: 100%;
@@ -1467,8 +1467,8 @@ const DispatchView = () => {
       <div class="container">
         <div class="header">
           <div class="title">
+          <div class="end-item">${copyTitles[copyIndex]}</div>
             <div class="center-item">डिलीव्हरी चलन</div>
-            <div class="end-item">${copyTitles[copyIndex]}</div>
           </div>
 
           <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
@@ -1611,8 +1611,8 @@ const DispatchView = () => {
             <div class="container">
               <div class="header">
                 <div class="title">
+                <div class="end-item">${copyTitles[copyIndex]}</div>
                   <div class="center-item">डिलीव्हरी चलन</div>
-                  <div class="end-item">${copyTitles[copyIndex]}</div>
                 </div>
 
                 <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
@@ -1848,7 +1848,7 @@ const DispatchView = () => {
       page-break-after: avoid;
       page-break-inside: avoid;
       flex: 1;
-      padding: 15px 12px;
+      padding: 30px 20px;
       border-right: 2px dashed #000;
       box-sizing: border-box;
       overflow: hidden;
@@ -1864,7 +1864,7 @@ const DispatchView = () => {
     }
     .header {
       text-align: center;
-      margin-bottom: 12px;
+     margin-bottom: 5px;
       padding: 5px 0;
     }
     .title {
@@ -1873,7 +1873,7 @@ const DispatchView = () => {
       align-items: center;
       font-size: 16px;
       font-weight: bold;
-      margin-bottom: 8px;
+     margin-bottom: 5px;
       margin-top: 5px;
       width: 100%;
       gap: 10px;
@@ -1892,7 +1892,7 @@ const DispatchView = () => {
     .subtitle {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 5px;
+      
       padding: 2px 0;
     }
     .subtitle-center {
@@ -1908,13 +1908,13 @@ const DispatchView = () => {
       margin-bottom: 5px;
     }
     .info-section {
-      margin-bottom: 10px;
+
       padding: 5px 0;
     }
     .info-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 6px;
+     margin-bottom: 5px;
       font-size: 12px;
     }
     .info-left, .info-right {
@@ -1927,7 +1927,7 @@ const DispatchView = () => {
       text-align: right;
     }
     .recipient-label {
-      margin-bottom: 8px;
+   margin-bottom: 5px;
       margin-top: 5px;
     }
     .recipient-info {
@@ -1944,12 +1944,12 @@ const DispatchView = () => {
       padding: 5px 0;
     }
     .description-text.before-table {
-      margin-top: 12px;
-      margin-bottom: 20px;
+      margin-top: 10px;
+      margin-bottom: 5px;
     }
     .description-text.after-total {
-      margin-top: 15px;
-      margin-bottom: 8px;
+      margin-top: 5px;
+      margin-bottom: 5px;
     }
     .table {
       width: 100%;
@@ -2030,7 +2030,7 @@ const DispatchView = () => {
       .total-section {
         text-align: right !important;
         margin-top: 12px;
-        margin-bottom: 15px;
+        margin-bottom: 5px;
         font-weight: bold;
         font-size: 11px;
         width: 100%;
@@ -2039,6 +2039,7 @@ const DispatchView = () => {
         clear: both;
         margin-left: auto;
         margin-right: 0;
+        padding-right: 10px;
       }
       .total-section span {
         text-align: right;
@@ -2066,8 +2067,9 @@ const DispatchView = () => {
       <div class="container">
         <div class="header">
           <div class="title">
+           <div class="end-item">${copyTitles[copyIndex]}</div>
             <div class="center-item">डिलीव्हरी चलन</div>
-            <div class="end-item">${copyTitles[copyIndex]}</div>
+           
           </div>
 
           <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
@@ -2209,8 +2211,8 @@ const DispatchView = () => {
             <div class="container">
               <div class="header">
                 <div class="title">
+                <div class="end-item">${copyTitles[copyIndex]}</div>
                   <div class="center-item">डिलीव्हरी चलन</div>
-                  <div class="end-item">${copyTitles[copyIndex]}</div>
                 </div>
 
                 <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
