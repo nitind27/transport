@@ -243,6 +243,33 @@ const ZPorderdetails = ({ zpOrderDetails: _zpOrderDetails }: Props) => {
     setFinancialYear(item.financial_year);
   };
 
+  // const handleToggleStatus = async (id: number, currentStatus: string) => {
+  //   try {
+  //     const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+      
+  //     const response = await fetch('/api/zporderdetails', {
+  //       method: 'PATCH',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         id,
+  //         status: newStatus
+  //       })
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error(`HTTP error! status: ${response.status}`);
+  //     }
+
+  //     toast.success(`Status updated to ${newStatus} successfully!`);
+  //     fetchData(); // Refresh the data
+  //   } catch (error) {
+  //     console.error('Error updating status:', error);
+  //     toast.error('Failed to update status. Please try again.');
+  //   }
+  // };
+
   const columns: Column<ZPOrderDetail>[] = [
     { 
       key: 'order_no', 
@@ -285,6 +312,7 @@ const ZPorderdetails = ({ zpOrderDetails: _zpOrderDetails }: Props) => {
           >
             <FaEdit className="inline-block align-middle text-lg" />
           </span>
+          
           <span>
             <DeleteZapmodel 
               id={row.id} 
@@ -294,6 +322,17 @@ const ZPorderdetails = ({ zpOrderDetails: _zpOrderDetails }: Props) => {
               newstatus={row.status} 
             />
           </span>
+          {/* <button
+            onClick={() => handleToggleStatus(row.id, row.status)}
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors duration-200 ${
+              row.status === 'Active'
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-green-500 text-white hover:bg-green-600'
+            }`}
+            title={row.status === 'Active' ? 'Deactivate' : 'Activate'}
+          >
+            {row.status === 'Active' ? 'Deactivate' : 'Activate'}
+          </button> */}
         </div>
       )
     }

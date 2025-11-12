@@ -1171,6 +1171,16 @@ const DispatchView = () => {
         return sum + qty;
       }, 0);
 
+      // Calculate totals for split tables
+      const firstTableTotal = riceItems.slice(0, 10).reduce((sum, item) => {
+        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+        return sum + qty;
+      }, 0);
+      const secondTableTotal = riceItems.slice(10).reduce((sum, item) => {
+        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+        return sum + qty;
+      }, 0);
+
       const printContent = `
 <!DOCTYPE html>
 <html>
@@ -1447,6 +1457,28 @@ const DispatchView = () => {
         float: right;
         clear: both;
       }
+      .title {
+        display: grid !important;
+        grid-template-columns: 1fr auto 1fr !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 10px !important;
+      }
+    .center-item {
+        grid-column: 2 !important;
+        text-align: center !important;
+            font-size: 16px !important;
+        font-weight: bold !important;
+        margin: 0 auto !important;
+        justify-self: center !important;
+      }
+      .end-item {
+        grid-column: 3 !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        text-align: right !important;
+        justify-self: end !important;
+      }
       ::after, ::before {
         content: none !important;
       }
@@ -1466,7 +1498,7 @@ const DispatchView = () => {
     <div class="copy-container">
       <div class="container">
         <div class="header">
-          <div class="title">
+          <div class="titl">
           <div class="end-item">${copyTitles[copyIndex]}</div>
             <div class="center-item">डिलीव्हरी चलन</div>
           </div>
@@ -1547,9 +1579,14 @@ const DispatchView = () => {
               </tbody>
             </table>
           </div>
-          <div class="total-section">
-            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
-          </div>
+          <table class="table" style="width: 100%; margin: 0;">
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                <td style="text-align: center; font-weight: bold;">${totalQty.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
           ` : `
           <table class="table" style="width: 100%; margin: 0;">
             <thead>
@@ -1568,10 +1605,13 @@ const DispatchView = () => {
                 </tr>
               `).join('')}
             </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                <td style="text-align: center; font-weight: bold;">${totalQty.toFixed(2)}</td>
+              </tr>
+            </tfoot>
           </table>
-          <div class="total-section">
-            <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
-          </div>
           `}
         </div>
 
@@ -1693,9 +1733,14 @@ const DispatchView = () => {
                     </tbody>
                   </table>
                 </div>
-                <div class="total-section">
-                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
-                </div>
+                <table class="table" style="width: 100%; margin: 0;">
+                  <tfoot>
+                    <tr class="total-row">
+                      <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                      <td style="text-align: center; font-weight: bold;">${totalQty.toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
                 ` : `
                 <table class="table" style="width: 100%; margin: 0;">
                   <thead>
@@ -1714,10 +1759,13 @@ const DispatchView = () => {
                       </tr>
                     `).join('')}
                   </tbody>
+                  <tfoot>
+                    <tr class="total-row">
+                      <td colspan="2" style="text-align: right; font-weight: bold;">एकूण:</td>
+                      <td style="text-align: center; font-weight: bold;">${totalQty.toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
-                <div class="total-section">
-                  <span><b>एकूण:</b> ${totalQty.toFixed(2)}</span>
-                </div>
                 `}
               </div>
 
@@ -2047,6 +2095,28 @@ const DispatchView = () => {
         float: right;
         clear: both;
       }
+      .title {
+        display: grid !important;
+        grid-template-columns: 1fr auto 1fr !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 10px !important;
+      }
+      .center-item {
+        grid-column: 2 !important;
+        text-align: center !important;
+            font-size: 16px !important;
+        font-weight: bold !important;
+        margin: 0 auto !important;
+        justify-self: center !important;
+      }
+      .end-item {
+        grid-column: 3 !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        text-align: right !important;
+        justify-self: end !important;
+      }
       ::after, ::before {
         content: none !important;
       }
@@ -2066,7 +2136,7 @@ const DispatchView = () => {
     <div class="copy-container">
       <div class="container">
         <div class="header">
-          <div class="title">
+          <div class="titl">
            <div class="end-item">${copyTitles[copyIndex]}</div>
             <div class="center-item">डिलीव्हरी चलन</div>
            

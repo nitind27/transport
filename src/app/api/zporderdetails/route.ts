@@ -47,15 +47,15 @@ export async function GET(req: Request) {
         query = `
           SELECT zod.*
           FROM zp_order_details zod
-          WHERE zod.status = 'Active'
+          WHERE 1=1
             ${userFilter}
             ${companyFilter}
           ORDER BY zod.order_no
         `;
         params = allParams;
       } else {
-        // No filters - return all active orders
-        query = 'SELECT * FROM zp_order_details WHERE status = "Active" ORDER BY order_no';
+        // No filters - return all orders (active and inactive)
+        query = 'SELECT * FROM zp_order_details ORDER BY order_no';
       }
 
       console.log('ZP Order Details API - Query:', query);
@@ -96,7 +96,7 @@ export async function GET(req: Request) {
               FROM zp_order_details zod
               INNER JOIN school_wise_order_details swo ON zod.id = swo.order_id
               INNER JOIN schooldata s ON swo.school_id = s.schoolid AND s.status = 'Active'
-              WHERE zod.status = 'Active'
+              WHERE 1=1
                 ${joinUserFilter}
                 ${joinCompanyFilter}
               ORDER BY zod.order_no
@@ -107,8 +107,8 @@ export async function GET(req: Request) {
             console.log('ZP Order Details API - Join query success, rows:', rows.length);
             return NextResponse.json(rows);
           } else {
-            // No filters - return all active orders
-            query = 'SELECT * FROM zp_order_details WHERE status = "Active" ORDER BY order_no';
+            // No filters - return all orders (active and inactive)
+            query = 'SELECT * FROM zp_order_details ORDER BY order_no';
             console.log('ZP Order Details API - No filters, returning all orders');
             const [rows] = await pool.query<RowDataPacket[]>(query);
             console.log('ZP Order Details API - All orders query success, rows:', rows.length);
