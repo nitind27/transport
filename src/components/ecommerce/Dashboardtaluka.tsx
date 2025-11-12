@@ -244,6 +244,18 @@ const Dashboardtaluka = () => {
       pending_centers: number; // Centers with pending schools (remaining > 0)
     }> = {};
 
+    // First, initialize all talukas from talukaData with 0 values
+    talukaData.forEach(taluka => {
+      grouped[taluka.taluka_id] = {
+        taluka_id: taluka.taluka_id,
+        taluka_name: taluka.name || '',
+        total_centers: 0,
+        completed_centers: 0,
+        pending_centers: 0
+      };
+    });
+
+    // Then, process center data and update the grouped object
     centerData.forEach(center => {
       if (!grouped[center.taluka_id]) {
         grouped[center.taluka_id] = {
@@ -264,7 +276,7 @@ const Dashboardtaluka = () => {
     });
 
     return Object.values(grouped).sort((a, b) => a.taluka_name.localeCompare(b.taluka_name));
-  }, [centerData]);
+  }, [centerData, talukaData]);
 
   // Calculate totals for center counts
   const totalCentersAllTalukas = centerDataByTaluka.reduce((sum, item) => sum + item.total_centers, 0);
@@ -498,8 +510,8 @@ const Dashboardtaluka = () => {
 
   // Function to create chart data for center view
   const createCenterChartData = () => {
-    // Check if we have center data grouped by taluka
-    if (!centerDataByTaluka || centerDataByTaluka.length === 0) {
+    // Check if we have taluka data (even if no center data)
+    if (!talukaData || talukaData.length === 0) {
       return {
         series: [],
         options: {
@@ -510,6 +522,206 @@ const Dashboardtaluka = () => {
           xaxis: {
             categories: []
           }
+        }
+      };
+    }
+
+    // Use centerDataByTaluka which now includes all talukas
+    if (!centerDataByTaluka || centerDataByTaluka.length === 0) {
+      // If no center data but we have talukas, show talukas with 0 values
+      const talukaNames = talukaData.map(taluka => taluka.name);
+      return {
+        series: [
+          {
+            name: 'एकूण केंद्र',
+            data: new Array(talukaNames.length).fill(0),
+          },
+          {
+            name: 'एकूण केंद्र वाटप',
+            data: new Array(talukaNames.length).fill(0),
+          },
+          {
+            name: 'बाकी केंद्र',
+            data: new Array(talukaNames.length).fill(0),
+          }
+        ],
+        options: {
+          chart: {
+            type: 'bar' as const,
+            height: 500,
+            animations: {
+              enabled: true,
+              easing: 'easeinout' as const,
+              speed: 2000,
+              animateGradually: {
+                enabled: true,
+                delay: 200
+              },
+              dynamicAnimation: {
+                enabled: true,
+                speed: 500
+              }
+            },
+            sparkline: {
+              enabled: false
+            },
+            toolbar: {
+              show: true,
+              tools: {
+                download: true,
+                selection: true,
+                zoom: true,
+                zoomin: true,
+                zoomout: true,
+                pan: true,
+                reset: true
+              }
+            }
+          },
+          plotOptions: {
+            bar: {
+              columnWidth: '60%',
+              borderRadius: 4,
+              dataLabels: {
+                position: 'top'
+              }
+            }
+          },
+          dataLabels: {
+            enabled: true,
+            offsetY: -20,
+            style: {
+              fontSize: '12px',
+              fontWeight: 'bold',
+              colors: ['#1F2937']
+            },
+            formatter: function (val: number) {
+              return val;
+            }
+          },
+          xaxis: {
+            categories: talukaNames,
+            labels: {
+              style: {
+                fontSize: '12px',
+                fontWeight: 'bold',
+                colors: '#1F2937'
+              },
+              rotate: -45,
+              rotateAlways: false
+            },
+            title: {
+              text: 'तालुका',
+              style: {
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#1F2937'
+              }
+            }
+          },
+          yaxis: {
+            title: {
+              text: 'केंद्र संख्या',
+              style: {
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#1F2937'
+              }
+            },
+            labels: {
+              style: {
+                fontSize: '12px',
+                colors: '#1F2937'
+              }
+            }
+          },
+          colors: ['#3B82F6', '#10B981', '#EF4444'],
+          title: {
+            text: 'केंद्र-निहाय वाटप विवरण',
+            align: 'center' as const,
+            style: {
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#1F2937'
+            }
+          },
+          legend: {
+            show: true,
+            position: 'top' as const,
+            horizontalAlign: 'center' as const,
+            fontSize: '14px',
+            fontWeight: 'bold',
+            labels: {
+              colors: '#1F2937'
+            }
+          },
+          grid: {
+            show: true,
+            borderColor: '#E5E7EB',
+            strokeDashArray: 2
+          },
+          tooltip: {
+            enabled: true,
+            fillSeriesColor: false,
+            custom: function({series, seriesIndex, dataPointIndex, w}: {
+              series: number[][];
+              seriesIndex: number;
+              dataPointIndex: number;
+              w: {
+                config: {
+                  xaxis: {
+                    categories: string[];
+                  };
+                };
+              };
+            }) {
+              const categories = ['एकूण केंद्र', 'एकूण केंद्र वाटप', 'बाकी केंद्र'];
+              const itemName = w.config.xaxis.categories[dataPointIndex];
+              const category = categories[seriesIndex];
+              const value = series[seriesIndex][dataPointIndex];
+      
+              return `
+                <div style="
+                  background: #111827;
+                  color: #fff;
+                  border-radius: 8px;
+                  padding: 12px 16px;
+                  font-size: 14px;
+                  font-weight: bold;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                  min-width: 200px;
+                  ">
+                  <div style="color: #fff; margin-bottom: 4px;"><strong>${itemName}</strong></div>
+                  <div style="color: #fff;">${category}: <span style="color: #fff;">${value} केंद्र</span></div>
+                </div>
+              `
+            },
+            style: {
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#fff'
+            },
+            y: {
+              formatter: function(val: number) {
+                return val + ' केंद्र';
+              }
+            }
+          },
+          responsive: [
+            {
+              breakpoint: 768,
+              options: {
+                chart: {
+                  height: 400
+                },
+                xaxis: {
+                  labels: {
+                    rotate: -45
+                  }
+                }
+              }
+            }
+          ]
         }
       };
     }
@@ -745,7 +957,7 @@ const Dashboardtaluka = () => {
             transform: translateX(0);
           }
         }
-
+          
         .animate-slide-in-right {
           animation: slide-in-right 0.8s ease-out forwards;
           opacity: 0;
@@ -946,7 +1158,7 @@ const Dashboardtaluka = () => {
 
                 {/* Total Row */}
                 <tr className="bg-gradient-to-r from-gray-200 to-gray-300 font-bold">
-                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={3}>
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={2}>
                     <span className="font-bold">एकूण</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm">{totalTalukaSchoolsWithOrders}</td>
@@ -956,7 +1168,7 @@ const Dashboardtaluka = () => {
 
                 {/* Percentage Row */}
                 <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold">
-                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={5}>
+                  <td className="border border-gray-300 px-3 py-2 text-sm" colSpan={4}>
                     <span className="font-bold">एकूण वाटप(%)</span>
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center text-sm font-bold text-blue-800">{talukaDistributionPercentage}%</td>
