@@ -1172,14 +1172,14 @@ const DispatchView = () => {
       }, 0);
 
       // Calculate totals for split tables
-      const firstTableTotal = riceItems.slice(0, 10).reduce((sum, item) => {
-        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
-        return sum + qty;
-      }, 0);
-      const secondTableTotal = riceItems.slice(10).reduce((sum, item) => {
-        const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
-        return sum + qty;
-      }, 0);
+      // const firstTableTotal = riceItems.slice(0, 10).reduce((sum, item) => {
+      //   const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+      //   return sum + qty;
+      // }, 0);
+      // const secondTableTotal = riceItems.slice(10).reduce((sum, item) => {
+      //   const qty = typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : Number(item.qty) || 0;
+      //   return sum + qty;
+      // }, 0);
 
       const printContent = `
 <!DOCTYPE html>
