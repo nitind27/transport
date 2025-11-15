@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { toast } from "react-toastify";
 import { useRouter } from 'next/navigation';
+import { getOrCreateDeviceId } from "@/utils/deviceId";
 
 export default function UserDropdown() {
   const router = useRouter();
@@ -21,9 +22,16 @@ export default function UserDropdown() {
 
   const handleLogout = async () => {
     try {
+      // Get device_id from localStorage or sessionStorage
+      const deviceId = getOrCreateDeviceId();
+      
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
+        body: JSON.stringify({ device_id: deviceId })
       });
 
       if (!response.ok) {

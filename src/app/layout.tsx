@@ -10,6 +10,7 @@ import GlobleLoader from '@/components/common/GlobleLoader';
 import { Metadata } from 'next';
 import GoogleMapProvider from '@/components/farmersdata/GoogleMapProvider';
 import CategoryIdGuard from '@/components/common/CategoryIdGuard';
+import SessionGuard from '@/components/common/SessionGuard';
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({
             <GoogleMapProvider>
               <SidebarProvider>
                 <CategoryIdGuard />
+                <SessionGuard />
                 <GlobleLoader />
                 {children}
                 <ToastContainer

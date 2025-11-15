@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { serialize } from 'cookie'; // npm install cookie
+import { RowDataPacket } from 'mysql2';
 
 // Reuse or define this interface if not already present
 interface User {
@@ -24,7 +25,7 @@ interface User {
 export async function POST(req: Request) {
   let connection;
   try {
-    const { username, password, isAdminLogin, company_id } = await req.json();
+    const { username, password, isAdminLogin, company_id, device_id } = await req.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -128,22 +129,77 @@ export async function POST(req: Request) {
     //   );
     // }
 
-    // Check if user is already logged in (loginstatus = 1)
-    // Skip this check for superadmin (user_id = 1)
-    if (user.user_id !== 1 && user.loginstatus === 1) {
+    // Check if device_id is provided
+    if (!device_id) {
       connection.release();
       return NextResponse.json(
-        { message: 'User is already logged in. Please logout from other device/session first.' },
-        { status: 403 }
+        { message: 'Device ID is required' },
+        { status: 400 }
       );
     }
 
-    // Update loginstatus to 1 (logged in)
-    // Skip loginstatus update for superadmin (user_id = 1)
+    // Check if user is already logged in on a different device
+    // First, check if there's an existing session for this user with a different device_id
+    let hasExistingSession = false;
+    let existingDeviceId: string | null = null;
+    
+    interface SessionRow extends RowDataPacket {
+      device_id: string;
+    }
+    
     if (user.user_id !== 1) {
-      await connection.query(
-        `UPDATE users SET loginstatus = 1 WHERE user_id = ?`,
+      // Check for existing sessions in user_sessions table
+      const [existingSessions] = await connection.query<SessionRow[]>(
+        `SELECT device_id FROM user_sessions WHERE user_id = ? AND is_active = 1`,
         [user.user_id]
+      );
+
+      if (Array.isArray(existingSessions) && existingSessions.length > 0) {
+        // Check if any session is from a different device
+        const differentDeviceSession = existingSessions.find(
+          (session: SessionRow) => session.device_id !== device_id
+        );
+        
+        if (differentDeviceSession) {
+          hasExistingSession = true;
+          existingDeviceId = differentDeviceSession.device_id;
+        }
+      }
+
+      // Create or update session in user_sessions table
+      // First, deactivate any existing session for this device_id and user_id
+      await connection.query(
+        `UPDATE user_sessions SET is_active = 0 WHERE user_id = ? AND device_id = ?`,
+        [user.user_id, device_id]
+      );
+
+      // Insert new session or reactivate existing one
+      // Try INSERT first, if it fails due to duplicate, use UPDATE
+      try {
+        await connection.query(
+          `INSERT INTO user_sessions (user_id, device_id, is_active, login_time, last_activity)
+           VALUES (?, ?, 1, NOW(), NOW())`,
+          [user.user_id, device_id]
+        );
+      } catch (insertError: unknown) {
+        // If duplicate key error, update instead
+        const error = insertError as { code?: string; errno?: number };
+        if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+          await connection.query(
+            `UPDATE user_sessions 
+             SET is_active = 1, login_time = NOW(), last_activity = NOW()
+             WHERE user_id = ? AND device_id = ?`,
+            [user.user_id, device_id]
+          );
+        } else {
+          throw insertError;
+        }
+      }
+
+      // Also update loginstatus in users table for backward compatibility
+      await connection.query(
+        `UPDATE users SET loginstatus = 1, device_id = ? WHERE user_id = ?`,
+        [device_id, user.user_id]
       );
     }
 
@@ -168,6 +224,8 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({
       message: 'Login successful',
+      hasExistingSession: hasExistingSession, // Flag to indicate if user was already logged in on another device
+      existingDeviceId: existingDeviceId, // Device ID of the other active session
       user: { 
         name: user.name, 
         user_id: user.user_id, 

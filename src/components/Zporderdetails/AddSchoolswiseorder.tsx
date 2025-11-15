@@ -721,9 +721,13 @@ const AddSchoolswiseorder = () => {
 
       for (const row of excelData) {
         const udise = row._udise.trim();
-        const rowSchoolName = row._schoolName.trim();
-        const rowCenterName = row._centerName.trim();
         const rowClass = (row._classRange || selectedClass || '').trim();
+
+        // Validate UDISE is present
+        if (!udise) {
+          failedRows.push({ ...row, reason: 'UDISE number is required in Excel' });
+          continue;
+        }
 
         // Validate class present
         if (!rowClass) {
@@ -731,24 +735,11 @@ const AddSchoolswiseorder = () => {
           continue;
         }
 
-        // Try to locate school by UDISE or Name(+Center)
-        let school = udise
-          ? schools.find(s => String(s.udaisno || '').trim() === udise)
-          : undefined;
-
-        if (!school && rowSchoolName) {
-          school = schools.find(s => {
-            const byName = String(s.schoolname || '').trim().toLowerCase() === rowSchoolName.toLowerCase();
-            if (!byName) return false;
-            if (rowCenterName && s.centername) {
-              return String(s.centername).trim() === rowCenterName;
-            }
-            return true;
-          });
-        }
+        // Match school only by UDISE number
+        const school = schools.find(s => String(s.udaisno || '').trim() === udise);
 
         if (!school) {
-          failedRows.push({ ...row, reason: udise ? `School not found for UDISE ${udise}` : 'School not found by name/center' });
+          failedRows.push({ ...row, reason: `School not found for UDISE ${udise}` });
           continue;
         }
 
