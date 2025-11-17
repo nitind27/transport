@@ -19,6 +19,13 @@ interface User {
   status?: string | null;
 }
 
+interface MySQLError extends Error {
+  code?: string;
+  errno?: number;
+  sqlState?: string;
+  sqlMessage?: string;
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -106,21 +113,24 @@ export async function POST(request: Request) {
         userId: insertId,
         emailSent: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Database error:', error);
       
       // Check for duplicate email or username
-      if (error.code === 'ER_DUP_ENTRY') {
-        if (error.message.includes('email')) {
-          return NextResponse.json(
-            { error: 'Email already exists' },
-            { status: 409 }
-          );
-        } else if (error.message.includes('username')) {
-          return NextResponse.json(
-            { error: 'Username already exists' },
-            { status: 409 }
-          );
+      if (error instanceof Error && 'code' in error) {
+        const mysqlError = error as MySQLError;
+        if (mysqlError.code === 'ER_DUP_ENTRY') {
+          if (mysqlError.message.includes('email')) {
+            return NextResponse.json(
+              { error: 'Email already exists' },
+              { status: 409 }
+            );
+          } else if (mysqlError.message.includes('username')) {
+            return NextResponse.json(
+              { error: 'Username already exists' },
+              { status: 409 }
+            );
+          }
         }
       }
       
@@ -242,21 +252,24 @@ export async function PUT(request: Request) {
         success: true,
         message: 'User updated successfully',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Database error:', error);
       
       // Check for duplicate email or username
-      if (error.code === 'ER_DUP_ENTRY') {
-        if (error.message.includes('email')) {
-          return NextResponse.json(
-            { error: 'Email already exists' },
-            { status: 409 }
-          );
-        } else if (error.message.includes('username')) {
-          return NextResponse.json(
-            { error: 'Username already exists' },
-            { status: 409 }
-          );
+      if (error instanceof Error && 'code' in error) {
+        const mysqlError = error as MySQLError;
+        if (mysqlError.code === 'ER_DUP_ENTRY') {
+          if (mysqlError.message.includes('email')) {
+            return NextResponse.json(
+              { error: 'Email already exists' },
+              { status: 409 }
+            );
+          } else if (mysqlError.message.includes('username')) {
+            return NextResponse.json(
+              { error: 'Username already exists' },
+              { status: 409 }
+            );
+          }
         }
       }
       

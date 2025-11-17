@@ -18,7 +18,7 @@ export const getUserCredentialsEmailTemplate = (
   name: string,
   username: string,
   password: string,
-  email: string
+//   email: string
 ): string => {
   return `
 <!DOCTYPE html>
@@ -232,18 +232,18 @@ export const sendUserCredentialsEmail = async (
       from: `"${process.env.SMTP_FROM_NAME || 'System Admin'}" <${process.env.SMTP_USER}>`,
       to: to,
       subject: 'Your Account Credentials - Welcome!',
-      html: getUserCredentialsEmailTemplate(name, username, password, to),
+      html: getUserCredentialsEmailTemplate(name, username, password),
     };
 
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent successfully:', info.messageId);
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error sending email:', error);
     return {
       success: false,
-      error: error.message || 'Failed to send email',
+      error: 'Failed to send email',
     };
   }
 };
