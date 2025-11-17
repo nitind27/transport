@@ -12,6 +12,7 @@ interface User extends RowDataPacket {
   username: string;
   password: string;
   contact_no: string;
+  email?: string | null;
   address: string;
   taluka_id: number;
   village_id: number;

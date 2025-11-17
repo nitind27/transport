@@ -34,6 +34,7 @@ type FormErrors = {
   usercategory?: string;
   name?: string;
   Contact?: string;
+  email?: string;
   Username?: string;
   Password?: string;
   address?: string;
@@ -60,6 +61,7 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
 
   const [name, setName] = useState('');
   const [Contact, setContact] = useState('');
+  const [email, setEmail] = useState('');
   const [Username, setUsername] = useState('');
   const [Password, setPassword] = useState('');
   const [address, setaddress] = useState('');
@@ -115,6 +117,7 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
 
     setName("")
     setContact("")
+    setEmail("")
     setUsername("")
     setPassword("")
     setaddress("")
@@ -145,6 +148,15 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
     }
     if (!Contact || Contact.length === 0) {
       newErrors.Contact = "Contact is required";
+    }
+    // Email validation
+    if (!email || email.length === 0) {
+      newErrors.email = "Email is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        newErrors.email = "Please enter a valid email address";
+      }
     }
     if (!Username || Username.length === 0) {
       newErrors.Username = "Username is required";
@@ -208,6 +220,7 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
           username: Username,
           password: Password,
           contact_no: Contact,
+          email: email,
           address: address,
           gp_id: gp,
           company_id: company_id,
@@ -254,6 +267,7 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
     setEditId(item.user_id)
     setName(item.name)
     setContact(item.contact_no)
+    setEmail(item.email || '')
     setUsername(item.username)
     setPassword(item.password)
     setaddress(item.address)
@@ -340,6 +354,12 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
       label: 'Contact No',
       accessor: 'contact_no',
       render: (data) => <span>{data.contact_no}</span>
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      accessor: 'email',
+      render: (data) => <span>{data.email || '-'}</span>
     },
     {
       key: 'address',
@@ -542,6 +562,21 @@ const Adminuser = ({ users, datausercategorycrud }: Props) => {
               {error && (
                 <div className="text-red-500 text-sm mt-1 pl-1">
                   {error.Contact}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Email</Label>
+              <input
+                type="email"
+                placeholder="Enter Email Address"
+                className={`h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${error.email ? "border-red-500" : ""}`}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {error && (
+                <div className="text-red-500 text-sm mt-1 pl-1">
+                  {error.email}
                 </div>
               )}
             </div>

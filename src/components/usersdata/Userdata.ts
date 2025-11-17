@@ -5,6 +5,7 @@ export interface UserData {
     username: string;
     password: string;
     contact_no: string;
+    email?: string;
     address: string;
     taluka_id: number;
     taluka_name: string;

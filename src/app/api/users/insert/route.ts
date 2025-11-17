@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { ResultSetHeader } from 'mysql2';
 import { RowDataPacket } from 'mysql2';
+import { sendUserCredentialsEmail } from '@/lib/email';
 
 // Define the User type to match your database schema
 interface User {
@@ -11,6 +12,7 @@ interface User {
   username: string;
   password: string;
   contact_no: string;
+  email?: string | null;
   address?: string | null;
   gp_id?: number | null;
   company_id?: number | null;
@@ -25,6 +27,7 @@ export async function POST(request: Request) {
       username,
       password,
       contact_no,
+      email,
       address,
       gp_id,
       company_id,
@@ -32,9 +35,18 @@ export async function POST(request: Request) {
     } = await request.json();
 
     // Basic validation
-    if (!name || !username || !password || !contact_no) {
+    if (!name || !username || !password || !contact_no || !email) {
       return NextResponse.json(
-        { error: 'Required fields: name, username, password, contact_no' },
+        { error: 'Required fields: name, username, password, contact_no, email' },
+        { status: 400 }
+      );
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
         { status: 400 }
       );
     }
@@ -48,17 +60,19 @@ export async function POST(request: Request) {
           username,
           password,
           contact_no,
+          email,
           address,
           gp_id,
           company_id,
           status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           name,
           user_category_id,
           username,
           password,
           contact_no,
+          email,
           address,
           gp_id,
           company_id,
@@ -68,12 +82,48 @@ export async function POST(request: Request) {
 
       const insertId = result.insertId;
 
+      // Send email with credentials (only for new users)
+      try {
+        const emailResult = await sendUserCredentialsEmail(
+          email,
+          name,
+          username,
+          password
+        );
+
+        if (!emailResult.success) {
+          console.error('Failed to send email:', emailResult.error);
+          // Don't fail the request if email fails, just log it
+          // User is still created successfully
+        }
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        // Continue even if email fails
+      }
+
       return NextResponse.json({
         success: true,
         userId: insertId,
+        emailSent: true,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Database error:', error);
+      
+      // Check for duplicate email or username
+      if (error.code === 'ER_DUP_ENTRY') {
+        if (error.message.includes('email')) {
+          return NextResponse.json(
+            { error: 'Email already exists' },
+            { status: 409 }
+          );
+        } else if (error.message.includes('username')) {
+          return NextResponse.json(
+            { error: 'Username already exists' },
+            { status: 409 }
+          );
+        }
+      }
+      
       return NextResponse.json(
         { error: 'Internal Server Error' },
         { status: 500 }
@@ -99,6 +149,7 @@ export async function GET() {
           user_category_id,
           username,
           contact_no,
+          email,
           address,
           gp_id,
           status
@@ -127,6 +178,7 @@ export async function PUT(request: Request) {
       username,
       password,
       contact_no,
+      email,
       address,
       gp_id,
       company_id,
@@ -134,9 +186,18 @@ export async function PUT(request: Request) {
     } = await request.json();
 
     // Enhanced validation
-    if (!user_id || !name || !username || !password || !contact_no) {
+    if (!user_id || !name || !username || !password || !contact_no || !email) {
       return NextResponse.json(
-        { error: 'Required fields: user_id, name, username, password, contact_no' },
+        { error: 'Required fields: user_id, name, username, password, contact_no, email' },
+        { status: 400 }
+      );
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
         { status: 400 }
       );
     }
@@ -149,6 +210,7 @@ export async function PUT(request: Request) {
           username = ?,
           password = ?,
           contact_no = ?,
+          email = ?,
           address = ?,
           gp_id = ?,
           company_id = ?,
@@ -160,6 +222,7 @@ export async function PUT(request: Request) {
           username,
           password,
           contact_no,
+          email,
           address,
           gp_id,
           company_id,
@@ -179,8 +242,24 @@ export async function PUT(request: Request) {
         success: true,
         message: 'User updated successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Database error:', error);
+      
+      // Check for duplicate email or username
+      if (error.code === 'ER_DUP_ENTRY') {
+        if (error.message.includes('email')) {
+          return NextResponse.json(
+            { error: 'Email already exists' },
+            { status: 409 }
+          );
+        } else if (error.message.includes('username')) {
+          return NextResponse.json(
+            { error: 'Username already exists' },
+            { status: 409 }
+          );
+        }
+      }
+      
       return NextResponse.json(
         { error: 'Internal Server Error' },
         { status: 500 }
