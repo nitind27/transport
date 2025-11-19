@@ -223,9 +223,13 @@ export default function SignInForm() {
       if (isChecked) {
         localStorage.setItem('rememberedUsername', formData.username);
         localStorage.setItem('rememberedpassword', formData.password);
+        localStorage.setItem('rememberedCompanyId', formData.company_id || "");
+        localStorage.setItem('rememberedIsAdminLogin', JSON.stringify(isAdminLogin));
       } else {
         localStorage.removeItem('rememberedUsername');
         localStorage.removeItem('rememberedpassword');
+        localStorage.removeItem('rememberedCompanyId');
+        localStorage.removeItem('rememberedIsAdminLogin');
       }
 
       toast.success('Login successful!');
@@ -248,8 +252,21 @@ export default function SignInForm() {
   useEffect(() => {
     const rememberedUsername = localStorage.getItem('rememberedUsername');
     const rememberedpassword = localStorage.getItem('rememberedpassword');
+    const rememberedCompanyId = localStorage.getItem('rememberedCompanyId');
+    const rememberedIsAdminLogin = localStorage.getItem('rememberedIsAdminLogin');
+
     if (rememberedUsername && rememberedpassword) {
-      setFormData(prev => ({ ...prev, username: rememberedUsername, password: rememberedpassword }));
+      setFormData(prev => ({
+        ...prev,
+        username: rememberedUsername,
+        password: rememberedpassword,
+        company_id: rememberedCompanyId || ""
+      }));
+
+      if (rememberedIsAdminLogin !== null) {
+        setIsAdminLogin(rememberedIsAdminLogin === "true");
+      }
+
       setIsChecked(true);
     }
   }, []);

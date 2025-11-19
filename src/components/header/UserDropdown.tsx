@@ -38,9 +38,30 @@ export default function UserDropdown() {
         throw new Error('Logout failed');
       }
 
+      // Preserve remembered login details before clearing storage
+      const rememberedEntries: Record<string, string> = {};
+      const rememberedKeys = [
+        'rememberedUsername',
+        'rememberedpassword',
+        'rememberedCompanyId',
+        'rememberedIsAdminLogin'
+      ];
+
+      rememberedKeys.forEach((key) => {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          rememberedEntries[key] = value;
+        }
+      });
+
       // Clear ALL client-side storage
       sessionStorage.clear();
       localStorage.clear();
+
+      // Restore remembered login details so checkbox remains effective
+      Object.entries(rememberedEntries).forEach(([key, value]) => {
+        localStorage.setItem(key, value);
+      });
 
       toast.success('Logged out successfully!');
       

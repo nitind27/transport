@@ -147,61 +147,59 @@ export async function POST(req: Request) {
       device_id: string;
     }
     
-    if (user.user_id !== 1) {
-      // Check for existing sessions in user_sessions table
-      const [existingSessions] = await connection.query<SessionRow[]>(
-        `SELECT device_id FROM user_sessions WHERE user_id = ? AND is_active = 1`,
-        [user.user_id]
+    // Check for existing sessions in user_sessions table (including user_id = 1)
+    const [existingSessions] = await connection.query<SessionRow[]>(
+      `SELECT device_id FROM user_sessions WHERE user_id = ? AND is_active = 1`,
+      [user.user_id]
+    );
+
+    if (Array.isArray(existingSessions) && existingSessions.length > 0) {
+      // Check if any session is from a different device
+      const differentDeviceSession = existingSessions.find(
+        (session: SessionRow) => session.device_id !== device_id
       );
-
-      if (Array.isArray(existingSessions) && existingSessions.length > 0) {
-        // Check if any session is from a different device
-        const differentDeviceSession = existingSessions.find(
-          (session: SessionRow) => session.device_id !== device_id
-        );
-        
-        if (differentDeviceSession) {
-          hasExistingSession = true;
-          existingDeviceId = differentDeviceSession.device_id;
-        }
+      
+      if (differentDeviceSession) {
+        hasExistingSession = true;
+        existingDeviceId = differentDeviceSession.device_id;
       }
+    }
 
-      // Create or update session in user_sessions table
-      // First, deactivate any existing session for this device_id and user_id
+    // Create or update session in user_sessions table (including user_id = 1)
+    // First, deactivate any existing session for this device_id and user_id
+    await connection.query(
+      `UPDATE user_sessions SET is_active = 0 WHERE user_id = ? AND device_id = ?`,
+      [user.user_id, device_id]
+    );
+
+    // Insert new session or reactivate existing one
+    // Try INSERT first, if it fails due to duplicate, use UPDATE
+    try {
       await connection.query(
-        `UPDATE user_sessions SET is_active = 0 WHERE user_id = ? AND device_id = ?`,
+        `INSERT INTO user_sessions (user_id, device_id, is_active, login_time, last_activity)
+         VALUES (?, ?, 1, NOW(), NOW())`,
         [user.user_id, device_id]
       );
-
-      // Insert new session or reactivate existing one
-      // Try INSERT first, if it fails due to duplicate, use UPDATE
-      try {
+    } catch (insertError: unknown) {
+      // If duplicate key error, update instead
+      const error = insertError as { code?: string; errno?: number };
+      if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
         await connection.query(
-          `INSERT INTO user_sessions (user_id, device_id, is_active, login_time, last_activity)
-           VALUES (?, ?, 1, NOW(), NOW())`,
+          `UPDATE user_sessions 
+           SET is_active = 1, login_time = NOW(), last_activity = NOW()
+           WHERE user_id = ? AND device_id = ?`,
           [user.user_id, device_id]
         );
-      } catch (insertError: unknown) {
-        // If duplicate key error, update instead
-        const error = insertError as { code?: string; errno?: number };
-        if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
-          await connection.query(
-            `UPDATE user_sessions 
-             SET is_active = 1, login_time = NOW(), last_activity = NOW()
-             WHERE user_id = ? AND device_id = ?`,
-            [user.user_id, device_id]
-          );
-        } else {
-          throw insertError;
-        }
+      } else {
+        throw insertError;
       }
-
-      // Also update loginstatus in users table for backward compatibility
-      await connection.query(
-        `UPDATE users SET loginstatus = 1, device_id = ? WHERE user_id = ?`,
-        [device_id, user.user_id]
-      );
     }
+
+    // Also update loginstatus in users table for backward compatibility (including user_id = 1)
+    await connection.query(
+      `UPDATE users SET loginstatus = 1, device_id = ? WHERE user_id = ?`,
+      [device_id, user.user_id]
+    );
 
     connection.release();
 

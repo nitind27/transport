@@ -77,9 +77,83 @@ const Dashboardtaluka = () => {
   const [centerData, setCenterData] = useState<CenterData[]>([]);
   const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
   const [selectedOrderNo, setSelectedOrderNo] = useState<string>('0');
+  const [availableOrderNumbers, setAvailableOrderNumbers] = useState<Array<{order_no: string, period: string, financial_year: string}>>([]);
   const [loading, setLoading] = useState(true);
+  const [orderNumbersLoading, setOrderNumbersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
+
+  // Fetch all available order numbers
+  const fetchOrderNumbers = useCallback(async () => {
+    try {
+      setOrderNumbersLoading(true);
+      const storedCompanyId = sessionStorage.getItem('company_id');
+      
+      if (!storedCompanyId) {
+        console.error('Company ID not found in sessionStorage');
+        setOrderNumbersLoading(false);
+        return;
+      }
+
+      const orderParams = new URLSearchParams();
+      if (storedCompanyId && storedCompanyId.trim() !== '') {
+        orderParams.append('company_id', storedCompanyId.trim());
+      }
+
+      const zpOrderResponse = await fetch(`/api/zporderdetails?${orderParams.toString()}`, {
+        cache: 'no-store'
+      });
+
+      if (!zpOrderResponse.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const zpOrderData = await zpOrderResponse.json();
+      
+      // Extract unique order numbers with their details
+      const uniqueOrders = new Map<string, {order_no: string, period: string, financial_year: string}>();
+      if (Array.isArray(zpOrderData)) {
+        zpOrderData.forEach((order: {order_no: string | number, period?: string, financial_year?: string}) => {
+          if (order.order_no) {
+            const orderNo = String(order.order_no);
+            if (!uniqueOrders.has(orderNo)) {
+              uniqueOrders.set(orderNo, {
+                order_no: orderNo,
+                period: order.period || '',
+                financial_year: order.financial_year || ''
+              });
+            }
+          }
+        });
+      }
+
+      const ordersArray = Array.from(uniqueOrders.values()).sort((a, b) => {
+        // Sort by order_no (numeric if possible, otherwise string)
+        const aNum = parseInt(a.order_no);
+        const bNum = parseInt(b.order_no);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return bNum - aNum; // Descending order (newest first)
+        }
+        return b.order_no.localeCompare(a.order_no);
+      });
+
+      setAvailableOrderNumbers(ordersArray);
+
+      // Set the first order as default if no order is selected
+      if (ordersArray.length > 0) {
+        setSelectedOrderNo((prevOrderNo) => {
+          if (prevOrderNo === '0') {
+            return ordersArray[0].order_no;
+          }
+          return prevOrderNo;
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching order numbers:', error);
+    } finally {
+      setOrderNumbersLoading(false);
+    }
+  }, []); // Empty dependency array - only fetch once on mount
 
   // Get company_id from sessionStorage and fetch data filtered by company_id only
   const fetchData = useCallback(async () => {
@@ -95,32 +169,8 @@ const Dashboardtaluka = () => {
         return;
       }
 
-      // Build query parameters for zporderdetails API (only company_id)
-      const orderParams = new URLSearchParams();
-      if (storedCompanyId && storedCompanyId.trim() !== '') {
-        orderParams.append('company_id', storedCompanyId.trim());
-      }
-
-      // First, fetch zporderdetails to get order number based on company_id
-      const zpOrderResponse = await fetch(`/api/zporderdetails?${orderParams.toString()}`, {
-        cache: 'no-store'
-      });
-
-      if (!zpOrderResponse.ok) {
-        throw new Error('Failed to fetch order details');
-      }
-
-      const zpOrderData = await zpOrderResponse.json();
-      
-      // Get the first order number from the filtered results
-      let orderNoToUse = '0'; // Default fallback
-      if (zpOrderData && zpOrderData.length > 0) {
-        const firstOrder = zpOrderData[0];
-        if (firstOrder && firstOrder.order_no) {
-          orderNoToUse = String(firstOrder.order_no);
-          setSelectedOrderNo(orderNoToUse);
-        }
-      }
+      // Use the selected order number from state
+      const orderNoToUse = selectedOrderNo || '0';
 
       // Build query parameters for taluka and center dashboard APIs (only company_id)
       const params = new URLSearchParams();
@@ -220,11 +270,24 @@ const Dashboardtaluka = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentDate]); // Removed selectedOrderNo from dependencies since we set it dynamically from API
+  }, [currentDate, selectedOrderNo]); // Include selectedOrderNo to refetch when it changes
 
+  // Handler for order number change
+  const handleOrderNoChange = (orderNo: string) => {
+    setSelectedOrderNo(orderNo);
+  };
+
+  // Fetch order numbers on component mount
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchOrderNumbers();
+  }, [fetchOrderNumbers]);
+
+  // Fetch data when selectedOrderNo changes and order numbers are available
+  useEffect(() => {
+    if (selectedOrderNo !== '0' && availableOrderNumbers.length > 0) {
+      fetchData();
+    }
+  }, [selectedOrderNo, availableOrderNumbers.length, fetchData]);
 
   // Calculate totals for taluka
   const totalTalukaSchoolsWithOrders = talukaData.reduce((sum, taluka) => sum + taluka.schools_with_orders, 0);
@@ -1041,8 +1104,48 @@ const Dashboardtaluka = () => {
       `}</style>
 
       <div className="bg-white rounded-lg shadow-lg p-1">
-        {/* Header */}
-        <div className="text-center mb-4">
+        {/* Order Number Filter */}
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-4">
+            <label htmlFor="orderNoFilter" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+              Filter by Order Number:
+            </label>
+            <select
+              id="orderNoFilter"
+              value={selectedOrderNo}
+              onChange={(e) => handleOrderNoChange(e.target.value)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              disabled={!orderNumbersLoading && availableOrderNumbers.length === 0}
+            >
+              {orderNumbersLoading ? (
+                <option value="0">Loading order numbers...</option>
+              ) : availableOrderNumbers.length === 0 ? (
+                <option value="0">No Data Available</option>
+              ) : (
+                availableOrderNumbers.map((order) => (
+                  <option key={order.order_no} value={order.order_no}>
+                    {order.order_no} {order.period ? `- ${order.period}` : ''} {order.financial_year ? `(${order.financial_year})` : ''}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* Show message when no order numbers are available */}
+        {!orderNumbersLoading && availableOrderNumbers.length === 0 ? (
+          <div className="mb-4 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-yellow-800 mb-2">No Data Available</div>
+                <div className="text-sm text-yellow-700">No order numbers are available for this company.</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="text-center mb-4">
           {/* Reorganized layout with justify-between */}
           <div className=" flex justify-between items-center text-sm  p-4 rounded-lg animate-zoom-in">
             {/* Left side - Date with days */}
@@ -1218,6 +1321,8 @@ const Dashboardtaluka = () => {
             </table>
           )}
         </div>
+          </>
+        )}
       </div>
     </>
   );

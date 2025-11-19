@@ -136,6 +136,9 @@ const AddSchoolswiseorder = () => {
   // Store uniq_id for current Excel import batch
   const [currentBatchUniqId, setCurrentBatchUniqId] = useState<string | null>(null);
 
+  // Filter states
+  const [filterOrderNo, setFilterOrderNo] = useState<string>('');
+
   const openGroup = (row: (SchoolWiseOrder & { _groupKey?: string; _groupCount?: number })) => {
     const key = row._groupKey;
 
@@ -253,6 +256,32 @@ const AddSchoolswiseorder = () => {
       return { ...r, taluka: s?.talukaname || '-' };
     });
   }, [schoolWiseOrders, schools]);
+
+  // Filter data based on order number - only show active records
+  const filteredDataWithTaluka: SWOWithTaluka[] = useMemo(() => {
+    let filtered = [...dataWithTaluka];
+
+    // Always show only active records (exclude inactive)
+    filtered = filtered.filter(item => item.status === 'Active');
+
+    // Filter by order number
+    if (filterOrderNo) {
+      filtered = filtered.filter(item => item.order_no === filterOrderNo);
+    }
+
+    return filtered;
+  }, [dataWithTaluka, filterOrderNo]);
+
+  // Get unique order numbers for filter dropdown
+  const uniqueOrderNumbers = useMemo(() => {
+    const orderNos = new Set<string>();
+    dataWithTaluka.forEach(item => {
+      if (item.order_no) {
+        orderNos.add(item.order_no);
+      }
+    });
+    return Array.from(orderNos).sort();
+  }, [dataWithTaluka]);
 
   // Fetch Schools - filtered by company_id only
   const fetchSchools = async () => {
@@ -859,19 +888,23 @@ const AddSchoolswiseorder = () => {
       render: (row) => {
         const r = row as ExtendedSWO;
         if (!r._isFirstInGroup) return null;
-        const gkey = r._groupKey || (row).uniq_id || '';
-        const first = dataWithTaluka.find(d => ((d._groupKey || d.uniq_id || '') === gkey)) as SchoolWiseOrder | undefined;
-        const uid = (first && (first).uniq_id) || (row).uniq_id || null;
+        const uid = (row).uniq_id || null;
+        
+        // Check order status from ZP order details
+        const orderDetail = zpOrders.find(order => order.order_no === row.order_no);
+        const isOrderActive = orderDetail?.status === 'Active';
+        
         return (
           <button
             type="button"
-            className="text-red-600 hover:text-red-800 underline"
+            className={`${isOrderActive ? 'text-red-600 hover:text-red-800' : 'text-gray-400 cursor-not-allowed'} underline`}
             onClick={() => {
-              if (uid) {
+              if (uid && isOrderActive) {
                 setPendingGroupId(uid as string);
                 setConfirmGroupOpen(true);
               }
             }}
+            disabled={!isOrderActive}
           >
             <FaTrash />
           </button>
@@ -879,12 +912,39 @@ const AddSchoolswiseorder = () => {
       }
     },
 
-    { key: 'order_no', label: 'Order No', accessor: 'order_no', render: (row) => <span>{row.order_no}</span> },
+    { 
+      key: 'order_no', 
+      label: 'Order No', 
+      accessor: 'order_no', 
+      render: (row) => {
+        // Check order status from ZP order details
+        const orderDetail = zpOrders.find(order => order.order_no === row.order_no);
+        const isOrderActive = orderDetail?.status === 'Active';
+        return (
+          <span className={isOrderActive ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
+            {row.order_no}
+          </span>
+        );
+      }
+    },
     { key: 'no_of_days', label: 'No of Days', accessor: 'no_of_days', render: (row) => <span>{row.no_of_days}</span> },
     { key: 'period', label: 'Period', accessor: 'period', render: (row) => <span>{row.period}</span> },
     { key: 'financial_year', label: 'Year', accessor: 'financial_year', render: (row) => <span>{row.financial_year}</span> },
     { key: 'taluka', label: 'Taluka', accessor: 'taluka', render: (row) => <span>{(row as SWOWithTaluka).taluka}</span> },
     { key: 'class_range', label: 'Class', accessor: 'class_range', render: (row) => <span>{row.class_range}</span> },
+    { 
+      key: 'status', 
+      label: 'Status', 
+      accessor: 'status', 
+      render: (row) => {
+        const isActive = row.status === 'Active';
+        return (
+          <span className={isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+            {row.status || 'N/A'}
+          </span>
+        );
+      }
+    },
     {
       key: 'total_schools',
       label: 'Total Number of Schools',
@@ -901,8 +961,29 @@ const AddSchoolswiseorder = () => {
     <div className="">
       {uiBusy && <Loader />}
 
+      {/* Filter Section */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <Label>Filter by Order Number</Label>
+            <select
+              className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+              value={filterOrderNo}
+              onChange={(e) => setFilterOrderNo(e.target.value)}
+            >
+              <option value="">All Order Numbers</option>
+              {uniqueOrderNumbers.map(orderNo => (
+                <option key={orderNo} value={orderNo}>
+                  {orderNo}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <Schoolwisetable
-        data={dataWithTaluka}
+        data={filteredDataWithTaluka}
         classname={"h-auto overflow-y-auto scrollbar-hide"}
         inputfiled={
           <div className="space-y-6">
@@ -1017,7 +1098,7 @@ const AddSchoolswiseorder = () => {
         }
         searchKey="schoolname"
         groupByKeys={['uniq_id']}
-        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'total_schools']}
+        colspanKeys={['delete', 'uniq_id', 'order_no', 'no_of_days', 'period', 'financial_year', 'taluka', 'class_range', 'status', 'total_schools']}
       />
 
       {/* Group Details Modal with All Grain Items */}

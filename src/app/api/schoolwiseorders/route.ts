@@ -48,9 +48,9 @@ export async function GET(req: Request) {
                 sd.schoolname,
                 sd.udaisno
             FROM school_wise_order_details swo
-            LEFT JOIN zp_order_details zod ON swo.order_id = zod.id AND zod.status = 'Active'
-            LEFT JOIN schooldata sd ON swo.school_id = sd.schoolid AND sd.status = 'Active'
-            WHERE swo.status = 'Active'
+            LEFT JOIN zp_order_details zod ON swo.order_id = zod.id
+            LEFT JOIN schooldata sd ON swo.school_id = sd.schoolid
+            WHERE 1=1
                 ${userFilter}
                 ${companyFilter}
             ORDER BY swo.created_at DESC
