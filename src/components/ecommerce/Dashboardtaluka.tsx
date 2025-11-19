@@ -72,13 +72,20 @@ interface CenterData {
   date: string;
 }
 
+interface ZpOrderDetail {
+  order_no: string | number;
+  period?: string;
+  financial_year?: string;
+  company_id?: string | number | null;
+}
+
 const Dashboardtaluka = () => {
   const [talukaData, setTalukaData] = useState<TalukaData[]>([]);
   const [centerData, setCenterData] = useState<CenterData[]>([]);
   const [orderCounts, setOrderCounts] = useState<OrderCount[]>([]);
   const [selectedOrderNo, setSelectedOrderNo] = useState<string>('0');
   const [availableOrderNumbers, setAvailableOrderNumbers] = useState<Array<{order_no: string, period: string, financial_year: string}>>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [orderNumbersLoading, setOrderNumbersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'taluka' | 'center'>('taluka');
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB'));
@@ -91,6 +98,9 @@ const Dashboardtaluka = () => {
       
       if (!storedCompanyId) {
         console.error('Company ID not found in sessionStorage');
+        setAvailableOrderNumbers([]);
+        setSelectedOrderNo('0');
+        setLoading(false);
         setOrderNumbersLoading(false);
         return;
       }
@@ -108,21 +118,35 @@ const Dashboardtaluka = () => {
         throw new Error('Failed to fetch order details');
       }
 
-      const zpOrderData = await zpOrderResponse.json();
+      const zpOrderData: ZpOrderDetail[] = await zpOrderResponse.json();
+      const trimmedCompanyId = storedCompanyId.trim();
       
       // Extract unique order numbers with their details
       const uniqueOrders = new Map<string, {order_no: string, period: string, financial_year: string}>();
       if (Array.isArray(zpOrderData)) {
-        zpOrderData.forEach((order: {order_no: string | number, period?: string, financial_year?: string}) => {
-          if (order.order_no) {
-            const orderNo = String(order.order_no);
-            if (!uniqueOrders.has(orderNo)) {
-              uniqueOrders.set(orderNo, {
-                order_no: orderNo,
-                period: order.period || '',
-                financial_year: order.financial_year || ''
-              });
+        zpOrderData.forEach((order) => {
+          if (!order.order_no) {
+            return;
+          }
+
+          if (trimmedCompanyId) {
+            const orderCompanyId =
+              order.company_id !== undefined && order.company_id !== null
+                ? String(order.company_id).trim()
+                : '';
+
+            if (orderCompanyId !== trimmedCompanyId) {
+              return;
             }
+          }
+
+          const orderNo = String(order.order_no);
+          if (!uniqueOrders.has(orderNo)) {
+            uniqueOrders.set(orderNo, {
+              order_no: orderNo,
+              period: order.period || '',
+              financial_year: order.financial_year || ''
+            });
           }
         });
       }
@@ -138,19 +162,26 @@ const Dashboardtaluka = () => {
       });
 
       setAvailableOrderNumbers(ordersArray);
+      if (ordersArray.length === 0) {
+        setLoading(false);
+      }
 
       // Set the first order as default if no order is selected
-      if (ordersArray.length > 0) {
-        setSelectedOrderNo((prevOrderNo) => {
-          if (prevOrderNo === '0') {
-            return ordersArray[0].order_no;
-          }
-          return prevOrderNo;
-        });
-      }
+      setSelectedOrderNo((prevOrderNo) => {
+        if (ordersArray.length === 0) {
+          return '0';
+        }
+
+        if (prevOrderNo === '0' || !ordersArray.some(order => order.order_no === prevOrderNo)) {
+          return ordersArray[0].order_no;
+        }
+
+        return prevOrderNo;
+      });
     } catch (error) {
       console.error('Error fetching order numbers:', error);
     } finally {
+      setLoading(false);
       setOrderNumbersLoading(false);
     }
   }, []); // Empty dependency array - only fetch once on mount
@@ -1137,7 +1168,7 @@ const Dashboardtaluka = () => {
           <div className="mb-4 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center justify-center">
               <div className="text-center">
-                <div className="text-lg font-semibold text-yellow-800 mb-2">No Data Available</div>
+                <div className="text-lg font-semibold text-yellow-800 mb-2">Not Available Data</div>
                 <div className="text-sm text-yellow-700">No order numbers are available for this company.</div>
               </div>
             </div>
