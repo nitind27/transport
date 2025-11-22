@@ -7,41 +7,33 @@ export async function GET(req: Request) {
     let connection;
     try {
         const url = new URL(req.url);
-        const userId = url.searchParams.get('user_id');
         const companyId = url.searchParams.get('company_id');
 
-        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
-        let userFilter = '';
-        const userParams: string[] = [];
-        if (userId && userId.trim() !== '' && userId !== '1') {
-            // Note: stockinventory table may not have user_id column directly
-            // If it doesn't exist, this filter will be ignored
-            userFilter = 'AND user_id = ?';
-            userParams.push(userId.trim());
-        }
-
-        // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+        // Build WHERE clause for company_id filtering
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
-            // Note: stockinventory table may not have company_id column directly
-            // If it doesn't exist, this filter will be ignored
             companyFilter = 'AND company_id = ?';
             companyParams.push(companyId.trim());
         }
 
         connection = await pool.getConnection();
         
-        // Check if columns exist before applying filters
-        // For now, we'll apply filters only if columns exist
-        // If columns don't exist in table, the query will fail, so we need to handle it gracefully
+        // Check if company_id column exists in the table
+        const [columns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stockinventory LIKE 'company_id'`
+        );
+        
+        const hasCompanyId = Array.isArray(columns) && columns.length > 0;
+        
+        // Build query with proper filtering based on column existence
         let query = `SELECT * FROM stockinventory WHERE status = "Active"`;
         const params: string[] = [];
         
-        // Only add filters if we have parameters (assumes columns exist)
-        if (userParams.length > 0 || companyParams.length > 0) {
-            query += ` ${userFilter} ${companyFilter}`;
-            params.push(...userParams, ...companyParams);
+        // Only add filter if column exists and we have parameter
+        if (hasCompanyId && companyParams.length > 0) {
+            query += ` ${companyFilter}`;
+            params.push(...companyParams);
         }
         
         query += ` ORDER BY created_at DESC`;
@@ -86,7 +78,8 @@ export async function POST(req: Request) {
             weight, 
             rate, 
             totalAmount, 
-            remarks 
+            remarks,
+            company_id
         } = body;
 
         // Basic Validation
@@ -98,24 +91,43 @@ export async function POST(req: Request) {
         }
 
         connection = await pool.getConnection();
+        
+        // Check if company_id column exists in the table
+        const [columns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stockinventory LIKE 'company_id'`
+        );
+        
+        const hasCompanyId = Array.isArray(columns) && columns.length > 0;
+        
+        // Build INSERT query dynamically based on column existence
+        let insertFields = 'dealer, ewayBillNo, billNo, invoiceDate, truckNo, grain, units, weight, rate, totalAmount, remarks, status, created_at';
+        let insertValues = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()';
+        const insertParams: (string | number | null)[] = [
+            dealer, 
+            ewayBillNo || null, 
+            billNo || null, 
+            invoiceDate || null, 
+            truckNo || null, 
+            grain, 
+            units, 
+            weight, 
+            rate || null, 
+            totalAmount || null, 
+            remarks || null, 
+            'Active'
+        ];
+        
+        if (hasCompanyId && company_id) {
+            insertFields += ', company_id';
+            insertValues += ', ?';
+            insertParams.push(company_id);
+        }
+        
         const [result] = await connection.query<ResultSetHeader>(
             `INSERT INTO stockinventory 
-            (dealer, ewayBillNo, billNo, invoiceDate, truckNo, grain, units, weight, rate, totalAmount, remarks, status, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [
-                dealer, 
-                ewayBillNo || null, 
-                billNo || null, 
-                invoiceDate || null, 
-                truckNo || null, 
-                grain, 
-                units, 
-                weight, 
-                rate || null, 
-                totalAmount || null, 
-                remarks || null, 
-                'Active'
-            ]
+            (${insertFields}) 
+            VALUES (${insertValues})`,
+            insertParams
         );
 
         return NextResponse.json({
@@ -150,12 +162,22 @@ export async function PUT(req: Request) {
             weight, 
             rate, 
             totalAmount, 
-            remarks 
+            remarks,
+            company_id
         } = body;
 
         if (!id) {
             return NextResponse.json({ message: 'ID is required' }, { status: 400 });
         }
+
+        connection = await pool.getConnection();
+        
+        // Check if company_id column exists in the table
+        const [columns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stockinventory LIKE 'company_id'`
+        );
+        
+        const hasCompanyId = Array.isArray(columns) && columns.length > 0;
 
         const fieldsToUpdate = [];
         const values = [];
@@ -171,6 +193,12 @@ export async function PUT(req: Request) {
         if (rate !== undefined) { fieldsToUpdate.push('rate = ?'); values.push(rate); }
         if (totalAmount !== undefined) { fieldsToUpdate.push('totalAmount = ?'); values.push(totalAmount); }
         if (remarks !== undefined) { fieldsToUpdate.push('remarks = ?'); values.push(remarks); }
+        
+        // Only update company_id if column exists and value is provided
+        if (hasCompanyId && company_id !== undefined) {
+            fieldsToUpdate.push('company_id = ?');
+            values.push(company_id);
+        }
 
         if (fieldsToUpdate.length === 0) {
             return NextResponse.json({ message: 'No fields provided for update' }, { status: 400 });
@@ -179,7 +207,6 @@ export async function PUT(req: Request) {
         fieldsToUpdate.push('updated_at = NOW()');
         values.push(id);
 
-        connection = await pool.getConnection();
         const query = `UPDATE stockinventory SET ${fieldsToUpdate.join(', ')} WHERE id = ?`;
 
         await connection.query(query, values);

@@ -6,18 +6,9 @@ export async function GET(req: Request) {
     let connection;
     try {
         const url = new URL(req.url);
-        const userId = url.searchParams.get('user_id');
         const companyId = url.searchParams.get('company_id');
 
-        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
-        let userFilter = '';
-        const userParams: string[] = [];
-        if (userId && userId.trim() !== '' && userId !== '1') {
-            userFilter = 'AND s.user_id = ?';
-            userParams.push(userId.trim());
-        }
-
-        // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+        // Build WHERE clause for company_id filtering
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
@@ -27,43 +18,50 @@ export async function GET(req: Request) {
 
         connection = await pool.getConnection();
 
-        // Build filters for subqueries based on user_id and company_id
-        // Note: stockinventory, stocktransfer, and stockmanage tables don't have user_id/company_id columns
-        // So we only filter dispatch_details which links to schools (which have user_id/company_id)
+        // Check if company_id column exists in stockinventory table
+        const [siColumns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stockinventory LIKE 'company_id'`
+        );
+        
+        const siHasCompanyId = Array.isArray(siColumns) && siColumns.length > 0;
+
+        // Build filters for subqueries based on company_id only
         const allParams: string[] = [];
         
-        // Build dispatch_details (Dispatch) subquery with user/company filtering through schools
+        // Build stockinventory (Inward) subquery with company filtering
+        let stockInventoryWhere = 'WHERE status = \'Active\'';
+        const stockInventoryParams: string[] = [];
+        if (siHasCompanyId && companyParams.length > 0) {
+            stockInventoryWhere += ` AND company_id = ?`;
+            stockInventoryParams.push(...companyParams);
+        }
+        
+        // Build dispatch_details (Dispatch) subquery with company filtering through schools
         let dispatchJoin = '';
         let dispatchWhere = 'WHERE dd.status = \'Active\'';
         const dispatchParams: string[] = [];
-        if (userParams.length > 0 || companyParams.length > 0) {
+        if (companyParams.length > 0) {
             dispatchJoin = `INNER JOIN schooldata s ON dd.school_id = s.schoolid AND s.status = 'Active'`;
-            dispatchWhere = `WHERE dd.status = 'Active' ${userFilter} ${companyFilter}`;
-            dispatchParams.push(...userParams, ...companyParams);
+            dispatchWhere = `WHERE dd.status = 'Active' ${companyFilter}`;
+            dispatchParams.push(...companyParams);
         }
         
-        // Note: stockinventory, stocktransfer, and stockmanage don't have user_id/company_id columns
-        // So we don't filter them - they will show all data
-        // If you need to filter these tables, you'll need to add user_id and company_id columns to those tables
-        
-        allParams.push(...dispatchParams);
+        allParams.push(...stockInventoryParams, ...dispatchParams);
 
-        // Build WHERE clause to filter grains - only show grains that have data for this user/company
-        // Since dispatch_details is filtered by user/company, we'll show grains that have dispatch data
-        // OR if no filters, show all grains with any data
-        // We need to wrap in a subquery to use WHERE with aliases
+        // Build WHERE clause to filter grains - only show grains that have data for this company
         let whereClause = '';
-        if (userParams.length > 0 || companyParams.length > 0) {
-            // Only show grains that have dispatch data for this user/company
-            // (dispatch is the only one properly filtered by user/company)
-            whereClause = 'WHERE dispatchQty > 0';
+        if (companyParams.length > 0) {
+            // Show grains that have any data (inward, dispatch, transfer, or damage) for this company
+            // Since we're filtering stockinventory by company_id, inwardQty will also be filtered
+            whereClause = 'WHERE (inwardQty > 0 OR dispatchQty > 0 OR transferQty > 0 OR damageQty > 0)';
         } else {
-            // If no user/company filter (admin), show all grains with any data
+            // If no company filter (admin), show all grains with any data
             whereClause = 'WHERE (inwardQty > 0 OR dispatchQty > 0 OR transferQty > 0 OR damageQty > 0)';
         }
 
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `
+        // Build the query with proper parameterization
+        // Note: We need to construct the SQL string carefully to match parameter order
+        const query = `
 SELECT * FROM (
   SELECT
     ig.id,
@@ -82,7 +80,7 @@ SELECT * FROM (
   LEFT JOIN (
     SELECT grain, SUM(weight) AS inwardQty
     FROM stockinventory
-    WHERE status = 'Active'
+    ${stockInventoryWhere}
     GROUP BY grain
   ) si ON LOWER(TRIM(si.grain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
   LEFT JOIN (
@@ -106,7 +104,10 @@ SELECT * FROM (
   ) sm ON LOWER(TRIM(sm.itemGrain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
 ) AS filtered_data
 ${whereClause};
-      `,
+        `;
+
+        const [rows] = await connection.query<RowDataPacket[]>(
+            query,
             allParams.length > 0 ? allParams : undefined
         );
 

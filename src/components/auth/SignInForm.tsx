@@ -9,9 +9,7 @@ import { useRouter } from "next/navigation";
 import { toast } from 'react-toastify';
 import { Modal } from "@/components/ui/modal";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
-
 import Spinner from "@/common/Spinner";
-
 type Company = {
   id: number;
   name: string;
@@ -20,7 +18,6 @@ type Company = {
   gstno: string;
   status: string;
 };
-
 export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +36,6 @@ export default function SignInForm() {
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [existingDeviceId, setExistingDeviceId] = useState<string | null>(null);
   const [isLoggingOutOtherDevice, setIsLoggingOutOtherDevice] = useState(false);
-
   // Fetch companies on component mount (only if not admin login)
   useEffect(() => {
     if (!isAdminLogin) {

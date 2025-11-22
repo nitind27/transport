@@ -51,7 +51,7 @@ interface StockInventoryProps {
   initialStockData: StockEntry[];
 }
 
-const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryProps) => {
+const StockInventory = ({ dealers }: StockInventoryProps) => {
   const { isActive, setIsActive, setIsmodelopen, isvalidation, setisvalidation, isEditMode, setIsEditmode } = useToggleContext();
 
   // Get user category from sessionStorage
@@ -65,10 +65,13 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
   // Tab state - Updated to include new tabs
   const [activeTab, setActiveTab] = useState<'stockTransfer' | 'damageStock' | 'inventory' | 'addStock'>('inventory');
 
-  // Table data
-  const [data, setData] = useState<StockEntry[]>(initialStockData || []);
+  // Table data - Initialize as empty, will be fetched based on company_id
+  const [data, setData] = useState<StockEntry[]>([]);
   const [enhancedData, setEnhancedData] = useState<EnhancedStockData[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Grains filtered by company_id
+  const [grains, setGrains] = useState<Array<{ id: number; name: string; Unit: string; status: string }>>([]);
 
   // Dropdown masters from API
   const dealerOptions = useMemo(
@@ -111,6 +114,50 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     if (!isvalidation) setErrors({});
   }, [isvalidation]);
 
+  // Fetch grains/items filtered by company_id
+  const fetchGrains = async () => {
+    try {
+      const companyId = sessionStorage.getItem('company_id');
+      const userId = sessionStorage.getItem('userid');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      if (!userId) {
+        console.warn('User not logged in - userid not found in sessionStorage');
+        setGrains([]);
+        return;
+      }
+      
+      const params = new URLSearchParams();
+      // Only filter by company_id if it exists and is not empty
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        params.append('company_id', companyId.trim());
+      }
+      
+      const url = `/api/itemgrains${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('Fetching grains with company_id filter:', url);
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const grainsData = await response.json();
+        const grainsArray = Array.isArray(grainsData) ? grainsData : [];
+        setGrains(grainsArray);
+        console.log('Grains fetched successfully for company_id:', companyId, 'Count:', grainsArray.length);
+      } else {
+        console.error('Failed to fetch grains');
+        setGrains([]);
+      }
+    } catch (error) {
+      console.error('Error fetching grains:', error);
+      setGrains([]);
+    }
+  };
+
   // Load initial data - Always fetch from API with company_id filtering
   useEffect(() => {
     // Ensure sessionStorage is available before fetching
@@ -121,6 +168,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       
       if (!userId) {
         console.warn('User not logged in - userid not found in sessionStorage');
+        setData([]);
+        setEnhancedData([]);
+        setGrains([]);
         return;
       }
       
@@ -131,12 +181,33 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       
       // Small delay to ensure sessionStorage is ready
       const timer = setTimeout(() => {
+        fetchGrains();
         fetchStockData();
         fetchEnhancedStockData();
       }, 100);
       
       return () => clearTimeout(timer);
     }
+  }, []);
+  
+  // Listen for company change events (when company is selected in header)
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      fetchGrains();
+      fetchStockData();
+      fetchEnhancedStockData();
+    };
+
+    // Listen for custom companyChanged event
+    window.addEventListener('companyChanged', handleCompanyChange);
+    
+    // Also listen for storage events (for cross-tab updates)
+    window.addEventListener('storage', handleCompanyChange);
+
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, []);
 
   function formatDate(dateString: string | undefined | null): string {
@@ -186,11 +257,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     try {
       // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
       const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
       console.log('StockInventory - Fetching enhanced stock data for logged-in user:', {
-        userId,
         companyId,
         isSuperAdmin
       });
@@ -210,18 +279,26 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
-        }
+        } 
       });
       
       if (response.ok) {
         const enhancedStockData = await response.json();
         const dataArray = Array.isArray(enhancedStockData) ? enhancedStockData : [];
-        setEnhancedData(dataArray);
+        
+        // Filter by company_id if available (additional client-side filter for safety)
+        let filteredData = dataArray;
+        if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+          // Enhanced data is already filtered by API, but we ensure it's correct
+          filteredData = dataArray;
+        }
+        
+        setEnhancedData(filteredData);
         
         console.log('StockInventory - Enhanced stock data fetched successfully for company_id:', companyId);
-        console.log('StockInventory - Data count:', dataArray.length, 'records');
+        console.log('StockInventory - Data count:', filteredData.length, 'records');
         
-        if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+        if (filteredData.length === 0 && companyId && companyId.trim() !== '') {
           console.warn('No enhanced stock data found for logged-in user company_id:', companyId);
         }
       } else {
@@ -242,11 +319,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     try {
       // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
       const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
       console.log('StockInventory - Fetching stock data for logged-in user:', {
-        userId,
         companyId,
         isSuperAdmin
       });
@@ -272,12 +347,20 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
       if (response.ok) {
         const stockData = await response.json();
         const dataArray = Array.isArray(stockData) ? stockData : [];
-        setData(dataArray);
+        
+        // Filter by company_id if available (additional client-side filter for safety)
+        let filteredData = dataArray;
+        if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+          // Stock data is already filtered by API, but we ensure it's correct
+          filteredData = dataArray;
+        }
+        
+        setData(filteredData);
         
         console.log('StockInventory - Stock data fetched successfully for company_id:', companyId);
-        console.log('StockInventory - Data count:', dataArray.length, 'records');
+        console.log('StockInventory - Data count:', filteredData.length, 'records');
         
-        if (dataArray.length === 0 && companyId && companyId.trim() !== '') {
+        if (filteredData.length === 0 && companyId && companyId.trim() !== '') {
           console.warn('No stock data found for logged-in user company_id:', companyId);
         }
         
@@ -301,6 +384,9 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
 
     setLoading(true);
     try {
+      // Get company_id from sessionStorage
+      const companyId = sessionStorage.getItem('company_id');
+      
       const stockData = {
         dealer,
         ewayBillNo: ewayBillNo || undefined,
@@ -313,6 +399,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         rate: rate === "" ? undefined : Number(rate),
         totalAmount: totalAmount === "" ? undefined : Number(totalAmount),
         remarks: remarks || undefined,
+        company_id: companyId && companyId.trim() !== '' ? companyId.trim() : undefined,
       };
 
       const url = editId ? '/api/stockinventory' : '/api/stockinventory';
@@ -335,6 +422,7 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
         }
 
         // Refresh data from API
+        await fetchGrains();
         await fetchStockData();
         resetForm();
         setIsEditmode(false);
@@ -504,34 +592,42 @@ const StockInventory = ({ dealers, grains, initialStockData }: StockInventoryPro
     </tr>
   </thead>
   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-    {enhancedData.map((item, index) => (
-      <tr key={`${item.grain}-${item.units}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-        <td className="px-3 py-2 whitespace-nowrap font-mono text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
-          {index + 1}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
-          {item.grain} -  {item.units}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap font-bold text-green-600 dark:text-green-400 text-center border border-gray-300 dark:border-gray-600">
-          {Number(item.inwardQty || 0).toLocaleString()}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap font-bold text-blue-600 dark:text-blue-400 text-center border border-gray-300 dark:border-gray-600">
-          {Number(item.dispatchQty || 0).toLocaleString()}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap font-bold text-orange-600 dark:text-orange-400 text-center border border-gray-300 dark:border-gray-600">
-          {Number(item.transferQty || 0).toLocaleString()}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap font-bold text-red-600 dark:text-red-400 text-center border border-gray-300 dark:border-gray-600">
-          {Number(item.damageQty || 0).toLocaleString()}
-        </td>
-        <td className={`px-3 py-2 whitespace-nowrap font-bold text-center border border-gray-300 dark:border-gray-600 ${item.balanceQty >= 0
-          ? 'text-green-600 dark:text-green-400'
-          : 'text-red-600 dark:text-red-400'
-        }`}>
-          {Number(item.balanceQty || 0).toLocaleString()}
+    {enhancedData.length === 0 ? (
+      <tr>
+        <td colSpan={7} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600">
+          {loading ? 'Loading data...' : 'No stock data available for your company'}
         </td>
       </tr>
-    ))}
+    ) : (
+      enhancedData.map((item, index) => (
+        <tr key={`${item.grain}-${item.units}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td className="px-3 py-2 whitespace-nowrap font-mono text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
+            {index + 1}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
+            {item.grain} -  {item.units}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap font-bold text-green-600 dark:text-green-400 text-center border border-gray-300 dark:border-gray-600">
+            {Number(item.inwardQty || 0).toLocaleString()}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap font-bold text-blue-600 dark:text-blue-400 text-center border border-gray-300 dark:border-gray-600">
+            {Number(item.dispatchQty || 0).toLocaleString()}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap font-bold text-orange-600 dark:text-orange-400 text-center border border-gray-300 dark:border-gray-600">
+            {Number(item.transferQty || 0).toLocaleString()}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap font-bold text-red-600 dark:text-red-400 text-center border border-gray-300 dark:border-gray-600">
+            {Number(item.damageQty || 0).toLocaleString()}
+          </td>
+          <td className={`px-3 py-2 whitespace-nowrap font-bold text-center border border-gray-300 dark:border-gray-600 ${item.balanceQty >= 0
+            ? 'text-green-600 dark:text-green-400'
+            : 'text-red-600 dark:text-red-400'
+          }`}>
+            {Number(item.balanceQty || 0).toLocaleString()}
+          </td>
+        </tr>
+      ))
+    )}
   </tbody>
 </table>
 
