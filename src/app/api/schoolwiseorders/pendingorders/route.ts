@@ -3,8 +3,22 @@ import pool from '@/lib/db';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 // GET - Fetch only pending school-wise orders (not dispatched)
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const { searchParams } = new URL(req.url);
+        const companyId = searchParams.get('company_id');
+
+        console.log('School Wise Orders Pending API - Request params:', { companyId, url: req.url });
+
+        // Build WHERE clause for company_id filtering - Always apply if provided
+        // Check both school_wise_order_details.company_id and schooldata.company_id
+        let companyFilter = '';
+        const companyParams: string[] = [];
+        if (companyId && companyId.trim() !== '') {
+            companyFilter = 'AND (swo.company_id = ? OR s.company_id = ?)';
+            companyParams.push(companyId.trim(), companyId.trim());
+        }
+
         const [rows] = await pool.query<RowDataPacket[]>(`
             SELECT 
                 swo.*,
@@ -38,8 +52,11 @@ export async function GET() {
                 AND dd.status = 'Active'
             WHERE swo.status = 'Active'
             AND (dd.school_id IS NULL OR dd.status != 'Active' OR dd.status IS NULL)
+                ${companyFilter}
             ORDER BY s.schoolname, swo.class_range, swo.created_at DESC
-        `);
+        `, companyParams.length > 0 ? companyParams : undefined);
+        
+        console.log('School Wise Orders Pending API - Query success, rows:', rows.length);
         return NextResponse.json(rows);
     } catch (error) {
         console.error('Fetch error:', error);

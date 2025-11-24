@@ -27,6 +27,8 @@ interface SchoolWiseOrder {
   center_name?: string;
   center_id?: number;
   taluka_id?: number;
+  company_id?: string | number | null;
+  school_company_id?: string | number | null;
 }
 
 interface TalukaRow {
@@ -730,14 +732,12 @@ const pendingOrdersData = useMemo(() => {
   // Fetch functions
   const fetchTalukas = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage (no user_id filtering)
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -750,14 +750,12 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchCenters = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage (no user_id filtering)
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -770,17 +768,31 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchSchoolWiseOrders = async () => {
     try {
+      // Ensure sessionStorage is available
+      if (typeof window === 'undefined') {
+        console.warn('sessionStorage not available');
+        return;
+      }
+
       console.log('Fetching school-wise orders...');
       
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage (no user_id filtering)
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      console.log('SessionStorage values:', {
+        companyId,
+        categoryId,
+        isSuperAdmin
+      });
       
       // Build query parameters - only add if exists and not empty string
       const params = new URLSearchParams();
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
-      if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+      // Only add company_id if it exists and user is not super admin
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        params.append('company_id', companyId.trim());
+      }
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
       const apiUrl = `/api/schoolwiseorders/remainingquantities${params.toString() ? '?' + params.toString() : ''}`;
@@ -793,18 +805,48 @@ const pendingOrdersData = useMemo(() => {
       }
       
       const data = await response.json();
-      console.log('Data received:', data.length, 'records');
-      console.log('User ID:', userId, 'Company ID:', companyId, 'Category ID:', categoryId);
+      console.log('Data received from API:', data.length, 'records');
+      console.log('Company ID:', companyId, 'Category ID:', categoryId);
+
+      // Enforce company_id filtering on client as safety net
+      // Only filter if company_id exists and user is not super admin
+      let filteredData = data;
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        filteredData = data.filter((row: SchoolWiseOrder) => {
+          const swoCompany = row.company_id ? String(row.company_id).trim() : '';
+          const schoolCompany = row.school_company_id ? String(row.school_company_id).trim() : '';
+          const matchCompany = companyId.trim();
+          const matches = swoCompany === matchCompany || schoolCompany === matchCompany;
+          
+          if (!matches) {
+            console.log('Filtered out row:', {
+              order_id: row.order_id,
+              school_id: row.school_id,
+              swoCompany,
+              schoolCompany,
+              matchCompany
+            });
+          }
+          
+          return matches;
+        });
+        console.log('After client-side filtering:', filteredData.length, 'records');
+      } else {
+        console.log('No company_id filter applied (Super Admin or empty company_id)');
+      }
       
       // Reset cached quantity maps so UI reflects latest server values immediately
       setOriginalQuantities(new Map());
       setRemainingQuantities(new Map());
       setEditableQuantities(new Map());
       setEditingRow(null);
-      setSchoolWiseOrders(data);
+      setSchoolWiseOrders(filteredData);
+      
+      console.log('Final data set to state:', filteredData.length, 'records');
     } catch (error) {
       console.error('Error fetching school-wise orders with remaining quantities:', error);
       toast.error('Failed to fetch school-wise orders');
+      setSchoolWiseOrders([]); // Set empty array on error
     }
   };
 
@@ -829,14 +871,12 @@ const pendingOrdersData = useMemo(() => {
 
   const fetchSchoolDataMap = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage (no user_id filtering)
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
       // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -866,13 +906,20 @@ const pendingOrdersData = useMemo(() => {
     const fetchAllData = async () => {
       setLoading(true);
       try {
-        await Promise.all([
-          fetchTalukas(),
-          fetchCenters(),
-          fetchSchoolWiseOrders(),
-          fetchTruckData(),
-          fetchSchoolDataMap()
-        ]);
+        // Ensure sessionStorage is available
+        if (typeof window !== 'undefined') {
+          const companyId = sessionStorage.getItem('company_id');
+          
+          console.log('Fetching data for company_id:', companyId);
+          
+          await Promise.all([
+            fetchTalukas(),
+            fetchCenters(),
+            fetchSchoolWiseOrders(),
+            fetchTruckData(),
+            fetchSchoolDataMap()
+          ]);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
         toast.error('Failed to load data. Please refresh the page.');
@@ -882,6 +929,42 @@ const pendingOrdersData = useMemo(() => {
     };
 
     fetchAllData();
+  }, []);
+
+  // Listen for company change events (when company is selected in header)
+  useEffect(() => {
+    const handleCompanyChange = () => {
+      console.log('Company changed, refreshing data...');
+      const fetchAllData = async () => {
+        setLoading(true);
+        try {
+          await Promise.all([
+            fetchTalukas(),
+            fetchCenters(),
+            fetchSchoolWiseOrders(),
+            fetchTruckData(),
+            fetchSchoolDataMap()
+          ]);
+        } catch (error) {
+          console.error('Error refreshing data after company change:', error);
+          toast.error('Failed to refresh data. Please refresh the page.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchAllData();
+    };
+
+    // Listen for custom companyChanged event
+    window.addEventListener('companyChanged', handleCompanyChange);
+    
+    // Also listen for storage events (for cross-tab updates)
+    window.addEventListener('storage', handleCompanyChange);
+
+    return () => {
+      window.removeEventListener('companyChanged', handleCompanyChange);
+      window.removeEventListener('storage', handleCompanyChange);
+    };
   }, []);
 
   // Cart statistics

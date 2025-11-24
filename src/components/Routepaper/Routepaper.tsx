@@ -367,7 +367,41 @@ const Routepaper = ({ onSubmitted }: { onSubmitted?: () => void }) => {
 
     const fetchSchoolWiseOrders = async () => {
         try {
-            const response = await fetch('/api/schoolwiseorders');
+            // Get company_id from sessionStorage - this is set when user logs in
+            const companyId = sessionStorage.getItem('company_id');
+            const userId = sessionStorage.getItem('userid');
+            const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+            
+            console.log('Routepaper - Fetching School Wise Orders for logged-in user:', {
+                userId,
+                companyId,
+                isSuperAdmin
+            });
+            
+            // Build query parameters - filter by company_id from logged-in user's sessionStorage
+            const params = new URLSearchParams();
+            
+            // Only filter by company_id if it exists and is not empty
+            // Super admin might have empty company_id, so we don't filter in that case
+            if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+                params.append('company_id', companyId.trim());
+            }
+            
+            const queryString = params.toString();
+            const apiUrl = `/api/schoolwiseorders${queryString ? '?' + queryString : ''}`;
+            console.log('Routepaper - Fetching School Wise Orders with URL:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
             setSchoolWiseOrders(data);
         } catch (error) {

@@ -11,11 +11,12 @@ export async function GET(request: Request) {
 
         // Remove user_id filtering - only filter by company_id
         // Build WHERE clause for company_id filtering - Always apply if provided
+        // Check both school_wise_order_details.company_id and schooldata.company_id
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
-            companyFilter = 'AND s.company_id = ?';
-            companyParams.push(companyId.trim());
+            companyFilter = 'AND (swo.company_id = ? OR s.company_id = ?)';
+            companyParams.push(companyId.trim(), companyId.trim());
         }
 
         // Build WHERE clause for category_id filtering - Filter by logged-in user's category_id
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
                 zod.financial_year,
                 s.schoolname,
                 s.udaisno,
+                s.company_id as school_company_id,
                 s.taluka_id,
                 s.center as center_id,
                 t.name as taluka_name,

@@ -544,14 +544,11 @@ const DispatchView = () => {
   // Fetchers
   const fetchCenters = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
-      // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -573,14 +570,12 @@ const DispatchView = () => {
     try {
       setLoading(true); // Start loading
       
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       // Build query parameters - only add if exists and not empty string
       const params = new URLSearchParams();
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -591,7 +586,7 @@ const DispatchView = () => {
       if (res.ok) {
         const data = await res.json();
         console.log('Dispatch data received:', data.length, 'records');
-        console.log('User ID:', userId, 'Company ID:', companyId, 'Category ID:', categoryId);
+        console.log('Company ID:', companyId, 'Category ID:', categoryId);
         setDispatchList(data);
       }
     } catch (e) {
@@ -604,14 +599,11 @@ const DispatchView = () => {
 
   const fetchTalukas = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
-      // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -624,14 +616,11 @@ const DispatchView = () => {
 
   const fetchSchoolDataMap = async () => {
     try {
-      // Get user_id, company_id, and category_id from sessionStorage
-      const userId = sessionStorage.getItem('userid');
+      // Get company_id and category_id from sessionStorage
       const companyId = sessionStorage.getItem('company_id');
       const categoryId = sessionStorage.getItem('category_id');
       
       const params = new URLSearchParams();
-      // Only add if exists and not empty string
-      if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
       if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
       if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
       
@@ -640,7 +629,6 @@ const DispatchView = () => {
       const rows: SchoolDataApiRow[] = await res.json();
       const map = new Map<number, SchoolDataRow>();
       rows.forEach(r => {
-        // API fields: schoolid, center (id), taluka_id, schoolname, udaisno
         if (r?.schoolid) {
           map.set(Number(r.schoolid), {
             schoolid: Number(r.schoolid),

@@ -21,17 +21,8 @@ interface ScoolRow {
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('user_id');
         const companyId = searchParams.get('company_id');
         const categoryId = searchParams.get('category_id');
-
-        // Build WHERE clause for user_id filtering - Skip for admin (user_id = 1)
-        let userFilter = '';
-        const userParams: string[] = [];
-        if (userId && userId.trim() !== '' && userId !== '1') {
-            userFilter = 'AND s.user_id = ?';
-            userParams.push(userId.trim());
-        }
 
         // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
         let companyFilter = '';
@@ -52,8 +43,8 @@ export async function GET(request: Request) {
             categoryParams.push(categoryId.trim());
         }
 
-        // Combine all parameters
-        const allParams = [...userParams, ...companyParams, ...categoryParams];
+        // Combine all parameters (company filter first so parameter order matches SQL)
+        const allParams = [...companyParams, ...categoryParams];
 
         const [rows] = await pool.query<RowDataPacket[] & ScoolRow[]>(`
             SELECT s.*, 
@@ -68,7 +59,6 @@ export async function GET(request: Request) {
             LEFT JOIN centerdata c ON s.center = c.center_id
             ${categoryJoin}
             WHERE s.status = "Active"
-            ${userFilter}
             ${companyFilter}
             ${categoryFilter}
         `, allParams);

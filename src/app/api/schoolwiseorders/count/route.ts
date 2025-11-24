@@ -17,11 +17,13 @@ export async function GET(request: Request) {
     }
 
     // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+    // Check both school_wise_order_details.company_id and schooldata.company_id
     const companyParams: string[] = [];
     const shouldFilterByCompany = companyId && companyId.trim() !== '';
     
     if (shouldFilterByCompany) {
-      companyParams.push(companyId.trim());
+      // Push twice for both company_id checks
+      companyParams.push(companyId.trim(), companyId.trim());
     }
 
     const [rows] = await pool.query<RowDataPacket[]>(`
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
             AND swo.order_id = zod.id
             AND s.status = 'Active'
             ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
-            ${shouldFilterByCompany ? 'AND s.company_id = ?' : ''}
+            ${shouldFilterByCompany ? 'AND (swo.company_id = ? OR s.company_id = ?)' : ''}
           THEN s.schoolid 
         END) as total_schools,
         -- Count dispatched schools with proper matching
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
             AND swo.status = 'Active'
             AND s.status = 'Active'
             ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
-            ${shouldFilterByCompany ? 'AND s.company_id = ?' : ''}
+            ${shouldFilterByCompany ? 'AND (swo.company_id = ? OR s.company_id = ?)' : ''}
           THEN s.schoolid 
         END) as dispatched_schools,
         -- Calculate remaining schools
@@ -61,7 +63,7 @@ export async function GET(request: Request) {
             AND swo.order_id = zod.id
             AND s.status = 'Active'
             ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
-            ${shouldFilterByCompany ? 'AND s.company_id = ?' : ''}
+            ${shouldFilterByCompany ? 'AND (swo.company_id = ? OR s.company_id = ?)' : ''}
           THEN s.schoolid 
         END) - COUNT(DISTINCT CASE 
           WHEN dd.status = 'Active' 
@@ -72,7 +74,7 @@ export async function GET(request: Request) {
             AND swo.status = 'Active'
             AND s.status = 'Active'
             ${shouldFilterByUser ? 'AND s.user_id = ?' : ''}
-            ${shouldFilterByCompany ? 'AND s.company_id = ?' : ''}
+            ${shouldFilterByCompany ? 'AND (swo.company_id = ? OR s.company_id = ?)' : ''}
           THEN s.schoolid 
         END)) as remaining_schools
       FROM zp_order_details zod
@@ -86,10 +88,10 @@ export async function GET(request: Request) {
       ORDER BY zod.order_no
     `, (shouldFilterByUser || shouldFilterByCompany)
       ? [
-          ...userParams, ...companyParams, // for total_schools CASE
-          ...userParams, ...companyParams, // for dispatched_schools CASE
-          ...userParams, ...companyParams, // for remaining_schools first CASE
-          ...userParams, ...companyParams  // for remaining_schools second CASE
+          ...userParams, ...companyParams, // for total_schools CASE (2 params for company_id)
+          ...userParams, ...companyParams, // for dispatched_schools CASE (2 params for company_id)
+          ...userParams, ...companyParams, // for remaining_schools first CASE (2 params for company_id)
+          ...userParams, ...companyParams  // for remaining_schools second CASE (2 params for company_id)
         ]
       : []
     );

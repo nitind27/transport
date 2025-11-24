@@ -118,22 +118,17 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
   const fetchGrains = async () => {
     try {
       const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
-      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      if (!userId) {
-        console.warn('User not logged in - userid not found in sessionStorage');
+      if (!companyId || companyId.trim() === '') {
+        console.warn('No company_id found in sessionStorage');
         setGrains([]);
         return;
       }
       
       const params = new URLSearchParams();
-      // Only filter by company_id if it exists and is not empty
-      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
-        params.append('company_id', companyId.trim());
-      }
+      params.append('company_id', companyId.trim());
       
-      const url = `/api/itemgrains${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `/api/itemgrains?${params.toString()}`;
       console.log('Fetching grains with company_id filter:', url);
       
       const response = await fetch(url, {
@@ -160,34 +155,27 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
 
   // Load initial data - Always fetch from API with company_id filtering
   useEffect(() => {
-    // Ensure sessionStorage is available before fetching
-    if (typeof window !== 'undefined') {
-      // Check if user is logged in (has company_id or is super admin)
-      const companyId = sessionStorage.getItem('company_id');
-      const userId = sessionStorage.getItem('userid');
-      
-      if (!userId) {
-        console.warn('User not logged in - userid not found in sessionStorage');
-        setData([]);
-        setEnhancedData([]);
-        setGrains([]);
-        return;
-      }
-      
-      console.log('Component mounted - fetching data for logged-in user:', {
-        userId,
-        companyId
-      });
-      
-      // Small delay to ensure sessionStorage is ready
-      const timer = setTimeout(() => {
-        fetchGrains();
-        fetchStockData();
-        fetchEnhancedStockData();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (typeof window === 'undefined') return;
+    
+    const companyId = sessionStorage.getItem('company_id');
+    
+    if (!companyId || companyId.trim() === '') {
+      console.warn('No company_id found in sessionStorage - unable to load stock inventory');
+      setData([]);
+      setEnhancedData([]);
+      setGrains([]);
+      return;
     }
+    
+    console.log('Component mounted - fetching stock inventory data for company_id:', companyId);
+    
+    const timer = setTimeout(() => {
+      fetchGrains();
+      fetchStockData();
+      fetchEnhancedStockData();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
   
   // Listen for company change events (when company is selected in header)
@@ -257,23 +245,20 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
     try {
       // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      console.log('StockInventory - Fetching enhanced stock data for logged-in user:', {
-        companyId,
-        isSuperAdmin
-      });
-      
-      const params = new URLSearchParams();
-      // Only filter by company_id if it exists and is not empty
-      // Super admin might have empty company_id, so we don't filter in that case
-      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
-        params.append('company_id', companyId.trim());
+      if (!companyId || companyId.trim() === '') {
+        console.warn('StockInventory - No company_id found in sessionStorage');
+        setEnhancedData([]);
+        return;
       }
       
-      const url = `/api/stockinventory/enhanced${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('StockInventory - Fetching enhanced stock data for logged-in user company_id:', companyId);
+      
+      const params = new URLSearchParams();
+      params.append('company_id', companyId.trim());
+      
+      const url = `/api/stockinventory/enhanced?${params.toString()}`;
       console.log('StockInventory - Fetching enhanced stock data with URL:', url);
-      console.log('StockInventory - Logged-in user company_id from sessionStorage:', companyId);
       
       const response = await fetch(url, {
         cache: 'no-store',
@@ -286,20 +271,32 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
         const enhancedStockData = await response.json();
         const dataArray = Array.isArray(enhancedStockData) ? enhancedStockData : [];
         
-        // Filter by company_id if available (additional client-side filter for safety)
-        let filteredData = dataArray;
-        if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
-          // Enhanced data is already filtered by API, but we ensure it's correct
-          filteredData = dataArray;
-        }
+        // Deduplicate by grain name and units - keep only unique combinations
+        const uniqueDataMap = new Map<string, EnhancedStockData>();
+        dataArray.forEach((item: EnhancedStockData) => {
+          const key = `${item.grain.toLowerCase().trim()}_${item.units.toLowerCase().trim()}`;
+          if (!uniqueDataMap.has(key)) {
+            uniqueDataMap.set(key, item);
+          } else {
+            // If duplicate found, merge the quantities
+            const existing = uniqueDataMap.get(key)!;
+            existing.inwardQty = (existing.inwardQty || 0) + (item.inwardQty || 0);
+            existing.dispatchQty = (existing.dispatchQty || 0) + (item.dispatchQty || 0);
+            existing.transferQty = (existing.transferQty || 0) + (item.transferQty || 0);
+            existing.damageQty = (existing.damageQty || 0) + (item.damageQty || 0);
+            existing.balanceQty = existing.inwardQty - existing.dispatchQty - existing.transferQty - existing.damageQty;
+          }
+        });
         
-        setEnhancedData(filteredData);
+        const uniqueData = Array.from(uniqueDataMap.values());
+        
+        setEnhancedData(uniqueData);
         
         console.log('StockInventory - Enhanced stock data fetched successfully for company_id:', companyId);
-        console.log('StockInventory - Data count:', filteredData.length, 'records');
+        console.log('StockInventory - Data count:', uniqueData.length, 'records (after deduplication)');
         
-        if (filteredData.length === 0 && companyId && companyId.trim() !== '') {
-          console.warn('No enhanced stock data found for logged-in user company_id:', companyId);
+        if (uniqueData.length === 0) {
+          console.warn('No enhanced stock data found for company_id:', companyId);
         }
       } else {
         const errorText = await response.text();
@@ -319,23 +316,20 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
     try {
       // Get company_id from sessionStorage - this is set when user logs in
       const companyId = sessionStorage.getItem('company_id');
-      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
       
-      console.log('StockInventory - Fetching stock data for logged-in user:', {
-        companyId,
-        isSuperAdmin
-      });
-      
-      const params = new URLSearchParams();
-      // Only filter by company_id if it exists and is not empty
-      // Super admin might have empty company_id, so we don't filter in that case
-      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
-        params.append('company_id', companyId.trim());
+      if (!companyId || companyId.trim() === '') {
+        console.warn('StockInventory - No company_id found in sessionStorage');
+        setData([]);
+        return;
       }
       
-      const url = `/api/stockinventory${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('StockInventory - Fetching stock data for logged-in user company_id:', companyId);
+      
+      const params = new URLSearchParams();
+      params.append('company_id', companyId.trim());
+      
+      const url = `/api/stockinventory?${params.toString()}`;
       console.log('StockInventory - Fetching stock data with URL:', url);
-      console.log('StockInventory - Logged-in user company_id from sessionStorage:', companyId);
       
       const response = await fetch(url, {
         cache: 'no-store',
@@ -348,20 +342,13 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
         const stockData = await response.json();
         const dataArray = Array.isArray(stockData) ? stockData : [];
         
-        // Filter by company_id if available (additional client-side filter for safety)
-        let filteredData = dataArray;
-        if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
-          // Stock data is already filtered by API, but we ensure it's correct
-          filteredData = dataArray;
-        }
-        
-        setData(filteredData);
+        setData(dataArray);
         
         console.log('StockInventory - Stock data fetched successfully for company_id:', companyId);
-        console.log('StockInventory - Data count:', filteredData.length, 'records');
+        console.log('StockInventory - Data count:', dataArray.length, 'records');
         
-        if (filteredData.length === 0 && companyId && companyId.trim() !== '') {
-          console.warn('No stock data found for logged-in user company_id:', companyId);
+        if (dataArray.length === 0) {
+          console.warn('No stock data found for company_id:', companyId);
         }
         
         // Refresh enhanced data after list load
@@ -599,7 +586,13 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
         </td>
       </tr>
     ) : (
-      enhancedData.map((item, index) => (
+      enhancedData
+        .filter(item => {
+          // Additional client-side filter: ensure grain is active
+          const grain = grains.find(g => g.name === item.grain);
+          return grain?.status === 'Active';
+        })
+        .map((item, index) => (
         <tr key={`${item.grain}-${item.units}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
           <td className="px-3 py-2 whitespace-nowrap font-mono text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
             {index + 1}

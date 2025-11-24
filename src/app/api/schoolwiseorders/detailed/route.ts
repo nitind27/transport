@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const orderNo = searchParams.get('order_no');
     const talukaId = searchParams.get('taluka_id');
+    const companyId = searchParams.get('company_id');
     
     const whereConditions = ['zod.status = "Active"', 's.status = "Active"', 'swo.status = "Active"'];
     const queryParams: string[] = [];
@@ -20,6 +21,13 @@ export async function GET(request: Request) {
       whereConditions.push('s.taluka_id = ?');
       queryParams.push(talukaId);
     }
+    
+    if (companyId && companyId.trim() !== '') {
+      whereConditions.push('(swo.company_id = ? OR s.company_id = ?)');
+      queryParams.push(companyId.trim(), companyId.trim());
+    }
+    
+    console.log('School Wise Orders Detailed API - Request params:', { orderNo, talukaId, companyId });
     
     const [rows] = await pool.query<RowDataPacket[]>(`
       SELECT 
@@ -41,7 +49,7 @@ export async function GET(request: Request) {
         dd.dispatch_code,
         dd.created_at as dispatch_date
       FROM schooldata s
-      INNER JOIN school_wise_order_details swo ON s.schoolid = swo.school_id
+      INNER JOIN school_wise_order_details swo ON s.schoolid = swo.school_id AND swo.status = 'Active'
       INNER JOIN zp_order_details zod ON swo.order_id = zod.id
       LEFT JOIN taluka t ON s.taluka_id = t.taluka_id
       LEFT JOIN dispatch_details dd ON s.schoolid = dd.school_id 
@@ -51,6 +59,7 @@ export async function GET(request: Request) {
       ORDER BY t.name, s.schoolname, zod.order_no
     `, queryParams);
     
+    console.log('School Wise Orders Detailed API - Query success, rows:', rows.length);
     return NextResponse.json(rows);
   } catch (error) {
     console.error('Database query failed:', error);

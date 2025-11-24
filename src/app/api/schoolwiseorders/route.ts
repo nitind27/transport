@@ -20,11 +20,12 @@ export async function GET(req: Request) {
         }
 
         // Build WHERE clause for company_id filtering - Always apply if provided (even for admin)
+        // Check both school_wise_order_details.company_id and schooldata.company_id
         let companyFilter = '';
         const companyParams: string[] = [];
         if (companyId && companyId.trim() !== '') {
-            companyFilter = 'AND sd.company_id = ?';
-            companyParams.push(companyId.trim());
+            companyFilter = 'AND (swo.company_id = ? OR sd.company_id = ?)';
+            companyParams.push(companyId.trim(), companyId.trim());
         }
 
         // Combine all parameters
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
             FROM school_wise_order_details swo
             LEFT JOIN zp_order_details zod ON swo.order_id = zod.id
             LEFT JOIN schooldata sd ON swo.school_id = sd.schoolid
-            WHERE 1=1
+            WHERE swo.status = 'Active'
                 ${userFilter}
                 ${companyFilter}
             ORDER BY swo.created_at DESC

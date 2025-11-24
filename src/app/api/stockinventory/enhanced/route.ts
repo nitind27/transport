@@ -46,7 +46,49 @@ export async function GET(req: Request) {
             dispatchParams.push(...companyParams);
         }
         
-        allParams.push(...stockInventoryParams, ...dispatchParams);
+        // Check if stocktransfer table has company_id column
+        const [stColumns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stocktransfer LIKE 'company_id'`
+        );
+        const stHasCompanyId = Array.isArray(stColumns) && stColumns.length > 0;
+        
+        // Build stocktransfer subquery with company filtering
+        let stockTransferWhere = 'WHERE status = \'Active\'';
+        const stockTransferParams: string[] = [];
+        if (stHasCompanyId && companyParams.length > 0) {
+            stockTransferWhere += ` AND company_id = ?`;
+            stockTransferParams.push(...companyParams);
+        }
+        
+        // Check if stockmanage table has company_id column
+        const [smColumns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM stockmanage LIKE 'company_id'`
+        );
+        const smHasCompanyId = Array.isArray(smColumns) && smColumns.length > 0;
+        
+        // Build stockmanage subquery with company filtering
+        let stockManageWhere = 'WHERE status = \'Active\'';
+        const stockManageParams: string[] = [];
+        if (smHasCompanyId && companyParams.length > 0) {
+            stockManageWhere += ` AND company_id = ?`;
+            stockManageParams.push(...companyParams);
+        }
+        
+        // Check if itemsgrains table has company_id column
+        const [igColumns] = await connection.query<RowDataPacket[]>(
+            `SHOW COLUMNS FROM itemsgrains LIKE 'company_id'`
+        );
+        const igHasCompanyId = Array.isArray(igColumns) && igColumns.length > 0;
+        
+        // Build itemsgrains filter with company filtering
+        let itemsGrainsWhere = 'WHERE ig.status = \'Active\'';
+        const itemsGrainsParams: string[] = [];
+        if (igHasCompanyId && companyParams.length > 0) {
+            itemsGrainsWhere += ` AND ig.company_id = ?`;
+            itemsGrainsParams.push(...companyParams);
+        }
+        
+        allParams.push(...itemsGrainsParams, ...stockInventoryParams, ...dispatchParams, ...stockTransferParams, ...stockManageParams);
 
         // Build WHERE clause to filter grains - only show grains that have data for this company
         let whereClause = '';
@@ -61,21 +103,22 @@ export async function GET(req: Request) {
 
         // Build the query with proper parameterization
         // Note: We need to construct the SQL string carefully to match parameter order
+        // Group by grain name and units to avoid duplicates - if same grain name exists multiple times, aggregate them
         const query = `
 SELECT * FROM (
   SELECT
-    ig.id,
+    MIN(ig.id) AS id,
     ig.name AS grain,
     ig.Unit AS units,
-    COALESCE(si.inwardQty, 0) AS inwardQty,
-    COALESCE(dd.dispatchQty, 0) AS dispatchQty,
-    COALESCE(st.transferQty, 0) AS transferQty,
-    COALESCE(sm.damageQty, 0) AS damageQty,
+    COALESCE(MAX(si.inwardQty), 0) AS inwardQty,
+    COALESCE(MAX(dd.dispatchQty), 0) AS dispatchQty,
+    COALESCE(MAX(st.transferQty), 0) AS transferQty,
+    COALESCE(MAX(sm.damageQty), 0) AS damageQty,
     -- Updated balance: inwardQty - dispatchQty - transferQty - damageQty
-    (COALESCE(si.inwardQty, 0) 
-      - COALESCE(dd.dispatchQty, 0) 
-      - COALESCE(st.transferQty, 0) 
-      - COALESCE(sm.damageQty, 0)) AS balanceQty
+    (COALESCE(MAX(si.inwardQty), 0) 
+      - COALESCE(MAX(dd.dispatchQty), 0) 
+      - COALESCE(MAX(st.transferQty), 0) 
+      - COALESCE(MAX(sm.damageQty), 0)) AS balanceQty
   FROM itemsgrains ig
   LEFT JOIN (
     SELECT grain, SUM(weight) AS inwardQty
@@ -93,15 +136,17 @@ SELECT * FROM (
   LEFT JOIN (
     SELECT itemGrain, SUM(weight) AS transferQty
     FROM stocktransfer
-    WHERE status = 'Active'
+    ${stockTransferWhere}
     GROUP BY itemGrain
   ) st ON LOWER(TRIM(st.itemGrain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
   LEFT JOIN (
     SELECT itemGrain, SUM(quantity) AS damageQty
     FROM stockmanage
-    WHERE status = 'Active'
+    ${stockManageWhere}
     GROUP BY itemGrain
   ) sm ON LOWER(TRIM(sm.itemGrain)) COLLATE utf8mb4_unicode_ci = LOWER(TRIM(ig.name)) COLLATE utf8mb4_unicode_ci
+  ${itemsGrainsWhere}
+  GROUP BY ig.name, ig.Unit
 ) AS filtered_data
 ${whereClause};
         `;

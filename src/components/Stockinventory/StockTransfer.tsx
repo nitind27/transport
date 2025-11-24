@@ -43,6 +43,19 @@ type StockInfo = {
     availableWeight: number;
     message: string;
 };
+
+// Enhanced stock data type for available stock display
+type EnhancedStockData = {
+    id: number;
+    grain: string;
+    units: string;
+    inwardQty: number;
+    dispatchQty: number;
+    transferQty: number;
+    damageQty: number;
+    balanceQty: number;
+};
+
 type StockTransferProps = {
     onDataChanged?: () => void;
 }
@@ -53,6 +66,8 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
     const [error, setErrors] = useState<FormErrors>({});
     const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
     const [checkingStock, setCheckingStock] = useState(false);
+    const [enhancedData, setEnhancedData] = useState<EnhancedStockData[]>([]);
+    // const [loadingEnhanced, setLoadingEnhanced] = useState(false);
 
     // Form state
     const [invoiceDate, setInvoiceDate] = useState("");
@@ -75,25 +90,136 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
         setInvoiceDate(formattedDate);
     }, []);
 
-    // Fetch item grains from API
+    // Fetch item grains from API - filtered by company_id
     const fetchItemGrains = async () => {
         try {
-            const response = await fetch('/api/itemgrains');
+            const companyId = sessionStorage.getItem('company_id');
+            
+            if (!companyId || companyId.trim() === '') {
+                console.warn('No company_id found in sessionStorage');
+                setItemGrains([]);
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.append('company_id', companyId.trim());
+            
+            const url = `/api/itemgrains?${params.toString()}`;
+            console.log('Fetching grains with company_id filter:', url);
+            
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             if (response.ok) {
                 const grainsData = await response.json();
-                setItemGrains(grainsData);
+                const grainsArray = Array.isArray(grainsData) ? grainsData : [];
+                setItemGrains(grainsArray);
+                console.log('Grains fetched successfully for company_id:', companyId, 'Count:', grainsArray.length);
+            } else {
+                console.error('Failed to fetch grains');
+                setItemGrains([]);
             }
         } catch (error) {
             console.error('Error fetching item grains:', error);
             toast.error('Failed to fetch item grains');
+            setItemGrains([]);
         }
+    };
+
+    // Fetch enhanced stock data from API - filtered by company_id
+    const fetchEnhancedStockData = async () => {
+        try {
+            // setLoadingEnhanced(true);
+            // Get company_id from sessionStorage
+            const companyId = sessionStorage.getItem('company_id');
+            
+            if (!companyId || companyId.trim() === '') {
+                console.warn('StockTransfer - No company_id found in sessionStorage');
+                setEnhancedData([]);
+                return;
+            }
+            
+            console.log('StockTransfer - Fetching enhanced stock data for company_id:', companyId);
+            
+            const params = new URLSearchParams();
+            params.append('company_id', companyId.trim());
+            
+            const url = `/api/stockinventory/enhanced?${params.toString()}`;
+            console.log('StockTransfer - Fetching enhanced stock data with URL:', url);
+            
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                } 
+            });
+            
+            if (response.ok) {
+                const enhancedStockData = await response.json();
+                const dataArray = Array.isArray(enhancedStockData) ? enhancedStockData : [];
+                
+                // Deduplicate by grain name and units - keep only unique combinations
+                const uniqueDataMap = new Map<string, EnhancedStockData>();
+                dataArray.forEach((item: EnhancedStockData) => {
+                    const key = `${item.grain.toLowerCase().trim()}_${item.units.toLowerCase().trim()}`;
+                    if (!uniqueDataMap.has(key)) {
+                        uniqueDataMap.set(key, item);
+                    } else {
+                        // If duplicate found, merge the quantities
+                        const existing = uniqueDataMap.get(key)!;
+                        existing.inwardQty = (existing.inwardQty || 0) + (item.inwardQty || 0);
+                        existing.dispatchQty = (existing.dispatchQty || 0) + (item.dispatchQty || 0);
+                        existing.transferQty = (existing.transferQty || 0) + (item.transferQty || 0);
+                        existing.damageQty = (existing.damageQty || 0) + (item.damageQty || 0);
+                        existing.balanceQty = existing.inwardQty - existing.dispatchQty - existing.transferQty - existing.damageQty;
+                    }
+                });
+                
+                const uniqueData = Array.from(uniqueDataMap.values());
+                
+                setEnhancedData(uniqueData);
+                
+                console.log('StockTransfer - Enhanced stock data fetched successfully for company_id:', companyId);
+                console.log('StockTransfer - Data count:', uniqueData.length, 'records (after deduplication)');
+                
+                if (uniqueData.length === 0) {
+                    console.warn('No enhanced stock data found for company_id:', companyId);
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('StockTransfer - API Error Response:', errorText);
+                toast.error('Failed to fetch enhanced stock data');
+                setEnhancedData([]);
+            }
+        } catch (error) {
+            console.error('Error fetching enhanced stock data:', error);
+            toast.error('Failed to fetch enhanced stock data');
+            setEnhancedData([]);
+        } 
     };
 
     // Fetch stock transfer data from API
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/stocktransfer');
+            const companyId = sessionStorage.getItem('company_id');
+            const params = new URLSearchParams();
+            if (companyId && companyId.trim() !== '') {
+                params.append('company_id', companyId.trim());
+            }
+            
+            const url = `/api/stocktransfer${params.toString() ? `?${params.toString()}` : ''}`;
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
             if (response.ok) {
                 const result = await response.json();
                 setData(result);
@@ -106,7 +232,7 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
         }
     };
 
-    // Check stock availability for selected item
+    // Check stock availability for selected item - using enhanced data
     const checkStockAvailability = async (selectedItemGrain: string) => {
         if (!selectedItemGrain) {
             setStockInfo(null);
@@ -115,15 +241,39 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
 
         setCheckingStock(true);
         try {
-            const response = await fetch(`/api/stocktransfer?itemGrain=${encodeURIComponent(selectedItemGrain)}`);
-            if (response.ok) {
-                const stockData = await response.json();
+            // Find the balance from enhanced data for the selected grain
+            const grainData = enhancedData.find(item => 
+                item.grain.toLowerCase().trim() === selectedItemGrain.toLowerCase().trim()
+            );
+            
+            if (grainData) {
+                const availableWeight = Math.max(0, grainData.balanceQty || 0);
                 setStockInfo({
-                    availableWeight: stockData.availableWeight,
-                    message: stockData.message
+                    availableWeight: availableWeight,
+                    message: `Available stock: ${availableWeight}`
                 });
             } else {
-                setStockInfo(null);
+                // If not found in enhanced data, try API as fallback
+                const companyId = sessionStorage.getItem('company_id');
+                const params = new URLSearchParams();
+                params.append('itemGrain', selectedItemGrain);
+                if (companyId && companyId.trim() !== '') {
+                    params.append('company_id', companyId.trim());
+                }
+                
+                const response = await fetch(`/api/stocktransfer?${params.toString()}`);
+                if (response.ok) {
+                    const stockData = await response.json();
+                    setStockInfo({
+                        availableWeight: stockData.availableWeight || 0,
+                        message: stockData.message || 'Stock information not available'
+                    });
+                } else {
+                    setStockInfo({
+                        availableWeight: 0,
+                        message: 'Stock information not available'
+                    });
+                }
             }
         } catch (error) {
             console.error('Error checking stock:', error);
@@ -134,8 +284,47 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
     };
 
     useEffect(() => {
-        fetchData();
-        fetchItemGrains();
+        if (typeof window === 'undefined') return;
+        
+        const companyId = sessionStorage.getItem('company_id');
+        
+        if (!companyId || companyId.trim() === '') {
+            console.warn('StockTransfer - No company_id found in sessionStorage');
+            setData([]);
+            setEnhancedData([]);
+            setItemGrains([]);
+            return;
+        }
+        
+        console.log('StockTransfer component mounted - fetching data for company_id:', companyId);
+        
+        const timer = setTimeout(() => {
+            fetchItemGrains();
+            fetchData();
+            fetchEnhancedStockData();
+        }, 100);
+        
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Listen for company change events (when company is selected in header)
+    useEffect(() => {
+        const handleCompanyChange = () => {
+            fetchItemGrains();
+            fetchData();
+            fetchEnhancedStockData();
+        };
+
+        // Listen for custom companyChanged event
+        window.addEventListener('companyChanged', handleCompanyChange);
+        
+        // Also listen for storage events (for cross-tab updates)
+        window.addEventListener('storage', handleCompanyChange);
+
+        return () => {
+            window.removeEventListener('companyChanged', handleCompanyChange);
+            window.removeEventListener('storage', handleCompanyChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -144,14 +333,14 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
         }
     }, [isvalidation]);
 
-    // Check stock when item grain changes
+    // Check stock when item grain changes or enhanced data updates
     useEffect(() => {
         if (itemGrain) {
             checkStockAvailability(itemGrain);
         } else {
             setStockInfo(null);
         }
-    }, [itemGrain]);
+    }, [itemGrain, enhancedData]);
 
     const reset = () => {
         // Set current date when resetting form
@@ -241,6 +430,7 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
                 reset();
                 setEditId(null);
                 fetchData();
+                fetchEnhancedStockData(); // Refresh available stock after transfer
                 setIsEditmode(false);
                 setIsmodelopen(false);
             } else {
@@ -342,6 +532,7 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
                             id={row.id}
                             fetchData={async () => {
                                 await fetchData();          // Refresh this table's data
+                                await fetchEnhancedStockData(); // Refresh available stock data
                                 if (onDataChanged) onDataChanged(); // Refresh parent summary or enhanced data
                               }}
                             endpoint={"stocktransfer"}
@@ -427,14 +618,14 @@ const StockTransfer = ({ onDataChanged }: StockTransferProps) => {
                                 </div>
                             )}
                             
-                            {/* Stock Information Display */}
+                            {/* Balance Display */}
                             {stockInfo && (
                                 <div className={`text-sm mt-1 pl-1 ${stockInfo.availableWeight > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {checkingStock ? (
-                                        <span className="text-blue-600">Checking stock...</span>
+                                        <span className="text-blue-600">Checking balance...</span>
                                     ) : (
                                         <span>
-                                            Available Stock: <strong>{stockInfo.availableWeight}</strong>
+                                            Balance: <strong>{stockInfo.availableWeight}</strong>
                                         </span>
                                     )}
                                 </div>
