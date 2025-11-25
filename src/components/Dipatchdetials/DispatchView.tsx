@@ -1142,6 +1142,11 @@ const DispatchView = () => {
     try {
       console.log('Print Rice Pavti clicked:', dispatchData);
 
+      // Ensure taluka name is properly set with fallback
+      const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
+        ? dispatchData.taluka.trim() 
+        : '';
+
       // Create print content for Rice Pavti
       const riceItems = dispatchData.items.filter((item: DispatchItem) => {
         const itemName = item.name.toLowerCase();
@@ -1504,7 +1509,7 @@ const DispatchView = () => {
           <div class="subtitle-center">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+            <span class="info-right">तालुका: <b>${talukaName}</b></span>
           </div>
           <div class="info-row">
             <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
@@ -1659,7 +1664,7 @@ const DispatchView = () => {
                 </div>
                 <div class="info-row">
                   <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-                  <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+                  <span class="info-right">तालुका: <b>${talukaName}</b></span>
                 </div>
                 <div class="info-row">
                   <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
@@ -1812,6 +1817,11 @@ const DispatchView = () => {
   const printKirana = (dispatchData: DispatchData) => {
     try {
       console.log('Print Kirana clicked:', dispatchData);
+
+      // Ensure taluka name is properly set with fallback
+      const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
+        ? dispatchData.taluka.trim() 
+        : '';
 
       // Create print content for Kirana
       const kiranaItems = dispatchData.items.filter((item: DispatchItem) => {
@@ -2143,7 +2153,7 @@ const DispatchView = () => {
           <div class="subtitle-center">शालेय पोषण आहार योजने अंतर्गत धान्यादी मालाची पोहोच पावती</div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+            <span class="info-right">तालुका: <b>${talukaName}</b></span>
           </div>
           <div class="info-row">
             <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
@@ -2289,7 +2299,7 @@ const DispatchView = () => {
                 </div>
                 <div class="info-row">
                   <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-                  <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+                  <span class="info-right">तालुका: <b>${talukaName}</b></span>
                 </div>
                 <div class="info-row">
                   <span class="info-left">पट संख्या: <b>${dispatchData.patsankhya || '0'}</b></span>
@@ -2925,7 +2935,7 @@ const DispatchView = () => {
   //           </div>
   //           <div class="info-row">
   //             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-  //             <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+  //             <span class="info-right">तालुका: <b>${talukaName}</b></span>
   //           </div>
   //         </div>
 
@@ -3049,12 +3059,21 @@ const DispatchView = () => {
           .map(d => ({ name: d.item_name, qty: d.qty_dispatch, unit: d.unit }));
 
         const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+        // Get taluka name with proper fallback logic
+        let talukaName = '';
+        if (sd && sd.taluka_id) {
+          const taluka = talukaList.find(t => t.taluka_id === sd.taluka_id);
+          talukaName = taluka?.name || '';
+        }
+        // Fallback to r.taluka_name if available
+        if (!talukaName && r.taluka_name) {
+          talukaName = r.taluka_name;
+        }
         const payload = {
           dispatch_code: r.dispatch_code,
           schoolname: r.schoolname || '',
           udaisno: sd?.udaisno || '',
-          taluka: talukaName,
+          taluka: talukaName.trim() || '',
           center_name: (centerList.find(cn => String(cn.center_id) === String(r.center_id))?.marathi_name) || r.center_name || '',
           truckNo: r.truckNo || '',
           date: formatDateToDDMMYYYY(r.created_at),

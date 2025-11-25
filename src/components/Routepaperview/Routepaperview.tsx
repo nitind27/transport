@@ -135,6 +135,15 @@ const Routepaperview = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [perPage, setPerPage] = useState<number>(50);
     const [companyName, setCompanyName] = useState<string>('Mid Day Meal Scheme'); // Default fallback
+    
+    // Truck data for driver information
+    interface TruckRow {
+        id: number;
+        truckNo: string;
+        driverName?: string;
+        driverMobile?: string;
+    }
+    const [truckList, setTruckList] = useState<TruckRow[]>([]);
 
     // Initialize Flatpickr for From Date picker
     useEffect(() => {
@@ -227,6 +236,29 @@ const Routepaperview = () => {
             if (res.ok) setTalukaList(await res.json());
         } catch {
             toast.error('Failed to load taluka');
+        }
+    };
+
+    const fetchTrucks = async () => {
+        try {
+            // Get user_id, company_id, and category_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            const categoryId = sessionStorage.getItem('category_id');
+
+            const params = new URLSearchParams();
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
+
+            const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
+            if (res.ok) {
+                const trucks = await res.json();
+                setTruckList(trucks);
+            }
+        } catch {
+            toast.error('Failed to load trucks');
         }
     };
     // Delete handler function
@@ -395,6 +427,7 @@ const Routepaperview = () => {
     // Initial data fetch on mount
     useEffect(() => {
         fetchTalukas();
+        fetchTrucks();
         // fetchCenters();
         fetchSchoolDataMap();
         fetchCompanyName();
@@ -1013,6 +1046,11 @@ const Routepaperview = () => {
         const vehicleNo = firstRouteItem?.truckNo || '';
         const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
         const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
+        
+        // Get driver information from truck data
+        const truck = firstRouteItem?.truck_id ? truckList.find(t => t.id === firstRouteItem.truck_id) : null;
+        const driverName = truck?.driverName; // Fallback to default
+        const driverMobile = truck?.driverMobile; // Fallback to default
 
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
@@ -1156,10 +1194,10 @@ const Routepaperview = () => {
                                             <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
                                         </div>
                                         <div>
-                                            Driver MOTIRAM PADAVI<br>
-                                            Mob 9022899429<br>
-                                            Vehicle No ${vehicleNo}<br>
-                                            <div class="header-center"> तळोदे जि. ${firstRouteItem?.taluka_name || ''}</div>
+                                            Driver: ${driverName}<br>
+                                            Mob: ${driverMobile}<br>
+                                            Vehicle No: ${vehicleNo}<br>
+                                            <div class="header-center"> तालुका:  ${firstRouteItem?.taluka_name || ''}</div>
                                         </div>
                                     </div>
                                     <div class="center-title">

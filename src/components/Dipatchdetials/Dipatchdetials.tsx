@@ -209,6 +209,11 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, 
       'O .C'
     ];
 
+    // Ensure taluka name is properly set with fallback
+    const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
+      ? dispatchData.taluka.trim() 
+      : 'तालुका नाही';
+
     return `
 <!DOCTYPE html>
 <html>
@@ -395,7 +400,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, 
           </div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+            <span class="info-right">तालुका: <b>${talukaName}</b></span>
           </div>
         </div>
 
@@ -484,6 +489,10 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, 
       'जिल्हा परिषद ऑफीस',
       'O .C'
     ];
+    // Ensure taluka name is properly set with fallback
+    const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
+      ? dispatchData.taluka.trim() 
+      : 'तालुका नाही';
     // Create content with 4 copies
     const fourCopiesContent = `
 <!DOCTYPE html>
@@ -672,7 +681,7 @@ const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, dispatchData, 
           </div>
           <div class="info-row">
             <span class="info-left">Udise No.- <b>${dispatchData.udaisno}</b></span>
-            <span class="info-right">तालुका: <b>${dispatchData.taluka}</b></span>
+            <span class="info-right">तालुका: <b>${talukaName}</b></span>
           </div>
         </div>
 
@@ -1509,7 +1518,16 @@ console.log('filteredDispatchList',dispatchList)
           .map(d => ({ name: d.item_name, qty: d.qty_dispatch, unit: d.unit }));
 
         const sd = r.school_id ? schoolDataById.get(Number(r.school_id)) : undefined;
-        const talukaName = sd ? (talukaList.find(t => t.taluka_id === sd.taluka_id)?.name || '') : '';
+        // Get taluka name dynamically - use r.taluka as fallback if available
+        let talukaName = '';
+        if (sd && sd.taluka_id) {
+          const taluka = talukaList.find(t => t.taluka_id === sd.taluka_id);
+          talukaName = taluka?.name || '';
+        }
+        // Fallback to r.taluka if lookup failed
+        if (!talukaName && r.taluka) {
+          talukaName = r.taluka;
+        }
         const payload = {
           dispatch_code: r.dispatch_code,
           schoolname: r.schoolname || '',
@@ -1969,12 +1987,17 @@ console.log('filteredDispatchList',dispatchList)
               const selectedCenter = centerList.find(c => String(c.center_id) === selectedCenterId);
               const selectedSchool = schoolWiseOrders.find(s => String(s.school_id) === selectedSchoolId);
               const sdSel = schoolDataById.get(Number(selectedSchoolId));
-              const talukaName = sdSel ? (talukaList.find(t => t.taluka_id === sdSel.taluka_id)?.name || '') : '';
+              // Get taluka name dynamically - ensure it's properly retrieved
+              let talukaName = '';
+              if (sdSel && sdSel.taluka_id) {
+                const taluka = talukaList.find(t => t.taluka_id === sdSel.taluka_id);
+                talukaName = taluka?.name || '';
+              }
 
               const dispatchData = {
                 dispatch_code: newCode || (latestDispatchByItem[dispatchItems[0]?.name || ''] ? 'UPDATED' : ''),
                 schoolname: selectedSchool?.schoolname || '',
-                udaisno: selectedSchool?.udaisno || '',
+                udaisno: selectedSchool?.udaisno || sdSel?.udaisno || '',
                 taluka: talukaName,
                 center_name: (selectedCenter?.marathi_name || selectedCenter?.name || ''),
                 truckNo: selectedTruck?.truckNo || '',
