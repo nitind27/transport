@@ -380,6 +380,8 @@ const DispatchView = () => {
       unit: string;
     }>;
   } | null>(null);
+  const [companyName, setCompanyName] = useState<string>('मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर');
+  const [companyAddress, setCompanyAddress] = useState<string>('ता. भोकरदन जि. जालना');
 
   // Filters
   const [orderNo] = useState('');
@@ -645,6 +647,28 @@ const DispatchView = () => {
     }
   };
 
+  const fetchCompanyDetails = async () => {
+    try {
+      const companyId = sessionStorage.getItem('company_id');
+      if (!companyId || companyId.trim() === '') return;
+
+      const res = await fetch(`/api/company?id=${companyId.trim()}`);
+      if (!res.ok) return;
+
+      const company = await res.json();
+      if (company) {
+        if (company.name && company.name.trim() !== '') {
+          setCompanyName(company.name.trim());
+        }
+        if (company.address && company.address.trim() !== '') {
+          setCompanyAddress(company.address.trim());
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch company details:', error);
+    }
+  };
+
   useEffect(() => {
     // Remove unused fetches
     // fetchZpOrders();
@@ -655,6 +679,7 @@ const DispatchView = () => {
     fetchItemMaster();
     fetchDispatchList();
     fetchSchoolDataMap();
+    fetchCompanyDetails();
   }, []);
 
   // Selected target (order + school)
@@ -1146,6 +1171,15 @@ const DispatchView = () => {
       const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
         ? dispatchData.taluka.trim() 
         : '';
+      const companyTitle = companyName && companyName.trim() !== ''
+        ? companyName.trim()
+        : 'मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर';
+      const companyAddressLine = companyAddress && companyAddress.trim() !== ''
+        ? companyAddress.trim()
+        : 'ता. भोकरदन जि. जालना';
+      const companyFullIdentity = companyAddressLine
+        ? `${companyTitle} ${companyAddressLine}`
+        : companyTitle;
 
       // Create print content for Rice Pavti
       const riceItems = dispatchData.items.filter((item: DispatchItem) => {
@@ -1496,8 +1530,8 @@ const DispatchView = () => {
             <div class="center-item">डिलीव्हरी चलन</div>
           </div>
 
-          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-          <div class="subtitle">ता. भोकरदन जि. जालना</div>
+          <div class="subtitle">${companyTitle}</div>
+          <div class="subtitle">${companyAddressLine}</div>
        
         </div>
 
@@ -1615,7 +1649,7 @@ const DispatchView = () => {
         <div class="footer">
           <div class="signature-section">
             <div class="signature-left">
-              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+              ${companyFullIdentity}
             </div>
             <div class="signature-right">
               माल ताब्यात घेणाऱ्याची सही व शिक्का
@@ -1648,8 +1682,8 @@ const DispatchView = () => {
                   <div class="center-item">डिलीव्हरी चलन</div>
                 </div>
 
-                <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-                <div class="subtitle">ता. भोकरदन जि. जालना</div>
+                <div class="subtitle">${companyTitle}</div>
+                <div class="subtitle">${companyAddressLine}</div>
              
               </div>
 
@@ -1768,9 +1802,9 @@ const DispatchView = () => {
 
               <div class="footer">
                 <div class="signature-section">
-                  <div class="signature-left">
-                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
-                  </div>
+                <div class="signature-left">
+                  ${companyFullIdentity}
+                </div>
                   <div class="signature-right">
                     माल ताब्यात घेणाऱ्याची सही व शिक्का
                   </div>
@@ -1822,6 +1856,15 @@ const DispatchView = () => {
       const talukaName = dispatchData.taluka && dispatchData.taluka.trim() !== '' 
         ? dispatchData.taluka.trim() 
         : '';
+      const companyTitle = companyName && companyName.trim() !== ''
+        ? companyName.trim()
+        : 'मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर';
+      const companyAddressLine = companyAddress && companyAddress.trim() !== ''
+        ? companyAddress.trim()
+        : 'ता. भोकरदन जि. जालना';
+      const companyFullIdentity = companyAddressLine
+        ? `${companyTitle} ${companyAddressLine}`
+        : companyTitle;
 
       // Create print content for Kirana
       const kiranaItems = dispatchData.items.filter((item: DispatchItem) => {
@@ -2140,8 +2183,8 @@ const DispatchView = () => {
            
           </div>
 
-          <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-          <div class="subtitle">ता. भोकरधन जि. जालना</div>
+          <div class="subtitle">${companyTitle}</div>
+          <div class="subtitle">${companyAddressLine}</div>
          
         </div>
 
@@ -2250,7 +2293,7 @@ const DispatchView = () => {
         <div class="footer">
           <div class="signature-section">
             <div class="signature-left">
-              मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+              ${companyFullIdentity}
             </div>
             <div class="signature-right">
               माल ताब्यात घेणाऱ्याची सही व शिक्का
@@ -2283,8 +2326,8 @@ const DispatchView = () => {
                   <div class="center-item">डिलीव्हरी चलन</div>
                 </div>
 
-                <div class="subtitle">मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर</div>
-                <div class="subtitle">ता. भोकरदन जि. जालना</div>
+                <div class="subtitle">${companyTitle}</div>
+                <div class="subtitle">${companyAddressLine}</div>
              
               </div>
 
@@ -2396,7 +2439,7 @@ const DispatchView = () => {
               <div class="footer">
                 <div class="signature-section">
                   <div class="signature-left">
-                    मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजूर ता. भोकरधन जि. जालना
+                    ${companyFullIdentity}
                   </div>
                   <div class="signature-right">
                     माल ताब्यात घेणाऱ्याची सही व शिक्का

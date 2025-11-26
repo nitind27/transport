@@ -272,18 +272,39 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
         const dataArray = Array.isArray(enhancedStockData) ? enhancedStockData : [];
         
         // Deduplicate by grain name and units - keep only unique combinations
+        // Also normalize data by trimming whitespace
         const uniqueDataMap = new Map<string, EnhancedStockData>();
         dataArray.forEach((item: EnhancedStockData) => {
-          const key = `${item.grain.toLowerCase().trim()}_${item.units.toLowerCase().trim()}`;
+          // Normalize grain and units by trimming whitespace
+          const normalizedGrain = (item.grain || '').trim();
+          const normalizedUnits = (item.units || '').trim();
+          
+          if (!normalizedGrain || !normalizedUnits) {
+            console.warn('Skipping item with missing grain or units:', item);
+            return;
+          }
+          
+          const key = `${normalizedGrain.toLowerCase()}_${normalizedUnits.toLowerCase()}`;
+          
           if (!uniqueDataMap.has(key)) {
-            uniqueDataMap.set(key, item);
+            // Create a normalized item with trimmed values
+            uniqueDataMap.set(key, {
+              ...item,
+              grain: normalizedGrain,
+              units: normalizedUnits,
+              inwardQty: Number(item.inwardQty || 0),
+              dispatchQty: Number(item.dispatchQty || 0),
+              transferQty: Number(item.transferQty || 0),
+              damageQty: Number(item.damageQty || 0),
+              balanceQty: Number(item.balanceQty || 0)
+            });
           } else {
             // If duplicate found, merge the quantities
             const existing = uniqueDataMap.get(key)!;
-            existing.inwardQty = (existing.inwardQty || 0) + (item.inwardQty || 0);
-            existing.dispatchQty = (existing.dispatchQty || 0) + (item.dispatchQty || 0);
-            existing.transferQty = (existing.transferQty || 0) + (item.transferQty || 0);
-            existing.damageQty = (existing.damageQty || 0) + (item.damageQty || 0);
+            existing.inwardQty = (existing.inwardQty || 0) + Number(item.inwardQty || 0);
+            existing.dispatchQty = (existing.dispatchQty || 0) + Number(item.dispatchQty || 0);
+            existing.transferQty = (existing.transferQty || 0) + Number(item.transferQty || 0);
+            existing.damageQty = (existing.damageQty || 0) + Number(item.damageQty || 0);
             existing.balanceQty = existing.inwardQty - existing.dispatchQty - existing.transferQty - existing.damageQty;
           }
         });
@@ -589,7 +610,11 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
       enhancedData
         .filter(item => {
           // Additional client-side filter: ensure grain is active
-          const grain = grains.find(g => g.name === item.grain);
+          // Normalize grain name for comparison (trim and case-insensitive)
+          const normalizedItemGrain = (item.grain || '').trim().toLowerCase();
+          const grain = grains.find(g => 
+            (g.name || '').trim().toLowerCase() === normalizedItemGrain
+          );
           return grain?.status === 'Active';
         })
         .map((item, index) => (
@@ -598,25 +623,25 @@ const StockInventory = ({ dealers }: StockInventoryProps) => {
             {index + 1}
           </td>
           <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white text-center border border-gray-300 dark:border-gray-600">
-            {item.grain} -  {item.units}
+            {item.grain || ''} - {item.units || ''}
           </td>
           <td className="px-3 py-2 whitespace-nowrap font-bold text-green-600 dark:text-green-400 text-center border border-gray-300 dark:border-gray-600">
-            {Number(item.inwardQty || 0).toLocaleString()}
+            {Number(item.inwardQty || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </td>
           <td className="px-3 py-2 whitespace-nowrap font-bold text-blue-600 dark:text-blue-400 text-center border border-gray-300 dark:border-gray-600">
-            {Number(item.dispatchQty || 0).toLocaleString()}
+            {Number(item.dispatchQty || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </td>
           <td className="px-3 py-2 whitespace-nowrap font-bold text-orange-600 dark:text-orange-400 text-center border border-gray-300 dark:border-gray-600">
-            {Number(item.transferQty || 0).toLocaleString()}
+            {Number(item.transferQty || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </td>
           <td className="px-3 py-2 whitespace-nowrap font-bold text-red-600 dark:text-red-400 text-center border border-gray-300 dark:border-gray-600">
-            {Number(item.damageQty || 0).toLocaleString()}
+            {Number(item.damageQty || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </td>
-          <td className={`px-3 py-2 whitespace-nowrap font-bold text-center border border-gray-300 dark:border-gray-600 ${item.balanceQty >= 0
+          <td className={`px-3 py-2 whitespace-nowrap font-bold text-center border border-gray-300 dark:border-gray-600 ${Number(item.balanceQty || 0) >= 0
             ? 'text-green-600 dark:text-green-400'
             : 'text-red-600 dark:text-red-400'
           }`}>
-            {Number(item.balanceQty || 0).toLocaleString()}
+            {Number(item.balanceQty || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </td>
         </tr>
       ))

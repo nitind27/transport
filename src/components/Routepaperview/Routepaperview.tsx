@@ -134,7 +134,9 @@ const Routepaperview = () => {
     const [totalCount, setTotalCount] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [perPage, setPerPage] = useState<number>(50);
-    const [companyName, setCompanyName] = useState<string>('Mid Day Meal Scheme'); // Default fallback
+    const [companyName, setCompanyName] = useState<string>('गौरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था'); // Default fallback
+    // const [companyAddress, setCompanyAddress] = useState<string>(''); // Company address
+    const [districtName, setDistrictName] = useState<string>('नंदुरबार'); // Default fallback
     
     // Truck data for driver information
     interface TruckRow {
@@ -413,13 +415,42 @@ const Routepaperview = () => {
                 const res = await fetch(`/api/company?id=${companyId.trim()}`);
                 if (res.ok) {
                     const company = await res.json();
-                    if (company && company.name) {
-                        setCompanyName(company.name);
+                    if (company) {
+                        if (company.name) {
+                            setCompanyName(company.name.trim());
+                        }
+                        // if (company.address) {
+                        //     setCompanyAddress(company.address.trim());
+                        // }
                     }
                 }
             }
         } catch (error) {
             console.error('Error fetching company name:', error);
+            // Keep default fallback
+        }
+    };
+
+    const fetchDistrictName = async () => {
+        try {
+            const companyId = sessionStorage.getItem('company_id');
+            if (companyId && companyId.trim() !== '') {
+                const params = new URLSearchParams();
+                params.append('company_id', companyId.trim());
+                const res = await fetch(`/api/district?${params.toString()}`);
+                if (res.ok) {
+                    const districts = await res.json();
+                    if (Array.isArray(districts) && districts.length > 0) {
+                        // Get the first district's Marathi name
+                        const district = districts[0];
+                        if (district.name) {
+                            setDistrictName(district.name.trim());
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching district name:', error);
             // Keep default fallback
         }
     };
@@ -431,6 +462,7 @@ const Routepaperview = () => {
         // fetchCenters();
         fetchSchoolDataMap();
         fetchCompanyName();
+        fetchDistrictName();
     }, []);
 
     // Remove auto-fetch on date change; fetch will be triggered explicitly on Search click
@@ -660,6 +692,14 @@ const Routepaperview = () => {
         // Calculate grand total from all items that will be displayed
         const grandTotal = rows.reduce((total, row) => total + (row.qty || 0), 0);
 
+        // Prepare company identity for display
+        // const companyTitle = companyName && companyName.trim() !== ''
+        //     ? companyName.trim()
+        //     : 'गौरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था';
+        // const companyAddressLine = companyAddress && companyAddress.trim() !== ''
+        //     ? companyAddress.trim()
+        //     : '';
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
@@ -802,11 +842,11 @@ const Routepaperview = () => {
         <body>
             <div class="header">
                 
-                <p>गौरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था</p>
-                <p>शालेय पोषण आहार योजना</p>
-                <p>शिक्षण विभाग (प्राथमिक), जिल्हा परिषद, नंदुरबार</p>
-                <div class="box-title">ड्रायव्हर समरी चार्ट / जावक</div>
                 <p>${companyName}</p>
+                <p>शालेय पोषण आहार योजना</p>
+                <p>शिक्षण विभाग (प्राथमिक), जिल्हा परिषद, ${districtName}</p>
+                <div class="box-title">ड्रायव्हर समरी चार्ट / जावक</div>
+             
             </div>
     
             <table class="meta">
@@ -1052,6 +1092,14 @@ const Routepaperview = () => {
         const driverName = truck?.driverName; // Fallback to default
         const driverMobile = truck?.driverMobile; // Fallback to default
 
+        // Prepare company identity for display
+        const companyTitle = companyName && companyName.trim() !== ''
+            ? companyName.trim()
+            : 'मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर';
+        // const companyAddressLine = companyAddress && companyAddress.trim() !== ''
+        //     ? companyAddress.trim()
+        //     : '';
+        const companyFullIdentity = companyTitle
         // Open print window with Excel-style formatting
         const printWindow = window.open('', '_blank');
         if (printWindow) {
@@ -1179,8 +1227,8 @@ const Routepaperview = () => {
                             <tr>
                                 <td style="width:44%; text-align:center;">
                                     <div class="header-org">
-                                        मोरेश्वर महिला प्राथमिक ग्राहक सहकारी संस्था म. राजुर , ता . भोकरधन, जि. जालना <br>
-                                        शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद नंदुरबार
+                                        ${companyFullIdentity} <br>
+                                        शालेय पोषण आहार योजना, शिक्षण विभाग ( प्राथमिक, जिल्हा परिषद ${districtName} )
                                     </div>
                                     <div class="dataflex">
                                         <div>
@@ -1201,7 +1249,7 @@ const Routepaperview = () => {
                                         </div>
                                     </div>
                                     <div class="center-title">
-                                        मध्यदाय भोजन योजना <br> ${companyName}
+                                        मध्यदाय भोजन योजना
                                     </div>
                                 </td>
                             </tr>
