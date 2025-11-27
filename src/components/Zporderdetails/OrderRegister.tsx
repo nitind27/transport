@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Label from "../form/Label";
 import { Column } from "../tables/tabletype";
 import { toast } from 'react-toastify';
@@ -77,6 +77,7 @@ const OrderRegisterWithColumnSearch = () => {
 
   // Form fields
   const [selectedOrderFilter, setSelectedOrderFilter] = useState('');
+  const [activeOrderNumber, setActiveOrderNumber] = useState<string>('');
 
   // Data states
   const [schools, setSchools] = useState<School[]>([]);
@@ -277,6 +278,67 @@ const OrderRegisterWithColumnSearch = () => {
     return true;
   };
 
+  // Fetch active order number based on company_id and set as default if it exists in available orders
+  const fetchActiveOrder = useCallback(async (availableOrders: string[] = [], setAsDefault: boolean = true) => {
+    try {
+      const companyId = sessionStorage.getItem('company_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      if (!companyId || companyId.trim() === '' || isSuperAdmin) {
+        console.log('OrderRegister - No company_id or super admin, skipping active order fetch');
+        setActiveOrderNumber('');
+        return;
+      }
+      
+      // Don't override if user has already selected an order (only when setting as default)
+      if (setAsDefault && selectedOrderFilter) {
+        return;
+      }
+      
+      const params = new URLSearchParams();
+      params.append('company_id', companyId.trim());
+      
+      const response = await fetch(`/api/zporderdetails?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          // Find the first active order
+          const activeOrder = data.find((order: { status?: string; order_no?: string }) => 
+            order.status === 'Active' && order.order_no
+          );
+          
+          if (activeOrder && activeOrder.order_no) {
+            const activeOrderNo = String(activeOrder.order_no);
+            // Store the active order number for display
+            setActiveOrderNumber(activeOrderNo);
+            // Only set as default if requested and the active order exists in available orders (if provided)
+            if (setAsDefault && (availableOrders.length === 0 || availableOrders.includes(activeOrderNo))) {
+              console.log('OrderRegister - Setting active order as default:', activeOrderNo);
+              setSelectedOrderFilter(activeOrderNo);
+            } else if (!setAsDefault) {
+              console.log('OrderRegister - Active order found (display only):', activeOrderNo);
+            } else {
+              console.log('OrderRegister - Active order not in available orders:', activeOrderNo);
+            }
+          } else {
+            console.log('OrderRegister - No active order found for company_id:', companyId);
+            setActiveOrderNumber('');
+          }
+        }
+      } else {
+        console.error('OrderRegister - Failed to fetch active order:', response.statusText);
+      }
+    } catch (error) {
+      console.error('OrderRegister - Error fetching active order:', error);
+    }
+  }, [selectedOrderFilter]);
+
   useEffect(() => {
     // Ensure sessionStorage is available before fetching
     if (typeof window !== 'undefined') {
@@ -345,6 +407,59 @@ const OrderRegisterWithColumnSearch = () => {
     const orders = schoolWiseOrders.map(order => order.order_no);
     return Array.from(new Set(orders)).sort();
   }, [schoolWiseOrders]);
+
+  // Fetch active order number for display (always fetch to show in dropdown)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const companyId = sessionStorage.getItem('company_id');
+      const isSuperAdmin = sessionStorage.getItem('isSuperAdmin') === 'true';
+      
+      if (companyId && companyId.trim() !== '' && !isSuperAdmin) {
+        // Fetch active order for display purposes (don't set as default here)
+        const fetchActiveForDisplay = async () => {
+          try {
+            const params = new URLSearchParams();
+            params.append('company_id', companyId.trim());
+            
+            const response = await fetch(`/api/zporderdetails?${params.toString()}`, {
+              cache: 'no-store',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data) && data.length > 0) {
+                const activeOrder = data.find((order: { status?: string; order_no?: string }) => 
+                  order.status === 'Active' && order.order_no
+                );
+                
+                if (activeOrder && activeOrder.order_no) {
+                  const activeOrderNo = String(activeOrder.order_no);
+                  setActiveOrderNumber(activeOrderNo);
+                } else {
+                  setActiveOrderNumber('');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('OrderRegister - Error fetching active order for display:', error);
+          }
+        };
+        
+        fetchActiveForDisplay();
+      }
+    }
+  }, []);
+
+  // Set active order as default when uniqueOrderNumbers are available
+  useEffect(() => {
+    // Only set if no order is currently selected and we have order numbers
+    if (!selectedOrderFilter && uniqueOrderNumbers.length > 0) {
+      fetchActiveOrder(uniqueOrderNumbers, true);
+    }
+  }, [uniqueOrderNumbers, selectedOrderFilter, fetchActiveOrder]);
 
   // Group data by uniq_id for modal display
   const groupedData = useMemo(() => {
@@ -839,27 +954,37 @@ const OrderRegisterWithColumnSearch = () => {
           title="Order Register"
           datafiled={<div className="">
             <div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Label>Order No</Label>
-                <select
-                  className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-                  value={selectedOrderFilter}
-                  onChange={(e) => setSelectedOrderFilter(e.target.value)}
-                >
-                  <option value="">All Orders</option>
-                  {uniqueOrderNumbers.map((orderNo, index) => (
-                    <option key={index} value={orderNo}>
-                      {orderNo}
-                    </option>
-                  ))}
-                </select>
-                {selectedOrderFilter && (
-                  <button
-                    onClick={clearFilter}
-                    className="h-11 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"
+                <div className="flex-1 relative">
+                  <select
+                    className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                    value={selectedOrderFilter}
+                    onChange={(e) => setSelectedOrderFilter(e.target.value)}
                   >
-                    Clear
-                  </button>
+                    <option value="">All Orders</option>
+                    {uniqueOrderNumbers.map((orderNo, index) => (
+                      <option key={index} value={orderNo}>
+                        {orderNo}{activeOrderNumber === orderNo ? ' (Active)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedOrderFilter && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 pointer-events-none">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                {selectedOrderFilter && (
+                  <>
+                 
+                    <button
+                      onClick={clearFilter}
+                      className="h-11 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"
+                    >
+                      Clear
+                    </button>
+                  </>
                 )}
               </div>
             </div>
