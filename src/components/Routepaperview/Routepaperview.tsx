@@ -1249,7 +1249,7 @@ const Routepaperview = () => {
                                         </div>
                                     </div>
                                     <div class="center-title">
-                                        मध्यदाय भोजन योजना
+                                        मध्यान्ह भोजन योजना
                                     </div>
                                 </td>
                             </tr>
