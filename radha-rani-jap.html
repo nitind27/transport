@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>राधा रानी नाम जप काउंटर | Radha Rani Jap</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&family=Cinzel+Decorative:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gold: #D4AF37;
+            --deep-maroon: #800020;
+            --soft-pink: #FFB6C1;
+            --lotus-pink: #FF69B4;
+            --cream: #FFF8DC;
+            --divine-purple: #4B0082;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Tiro Devanagari Hindi', serif;
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 25%, #4a1942 50%, #2d1b4e 75%, #1a0a2e 100%);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Background Pattern */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        /* Floating Petals */
+        .petal {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--lotus-pink), var(--soft-pink));
+            border-radius: 50% 0 50% 50%;
+            opacity: 0.6;
+            animation: floatPetal 15s infinite ease-in-out;
+            z-index: 1;
+        }
+
+        @keyframes floatPetal {
+            0%, 100% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Header Section */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 1s ease;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .om-symbol {
+            font-size: 3rem;
+            color: var(--primary-gold);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            }
+            50% {
+                transform: scale(1.1);
+                text-shadow: 0 0 40px rgba(212, 175, 55, 0.8);
+            }
+        }
+
+        .title {
+            font-size: 2.5rem;
+            color: var(--cream);
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--soft-pink);
+            font-style: italic;
+        }
+
+        /* Main Card */
+        .jap-card {
+            background: linear-gradient(145deg, rgba(75, 0, 130, 0.3), rgba(128, 0, 32, 0.3));
+            border: 2px solid var(--primary-gold);
+            border-radius: 30px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 0 60px rgba(212, 175, 55, 0.1),
+                0 0 100px rgba(255, 105, 180, 0.2);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease 0.3s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Radha Name Display */
+        .radha-name {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .radha-name h2 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, var(--primary-gold), var(--soft-pink), var(--primary-gold));
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s ease infinite;
+            text-shadow: none;
+            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* Counter Display */
+        .counter-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .counter-label {
+            color: var(--soft-pink);
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .counter-display {
+            font-size: 5rem;
+            font-family: 'Cinzel Decorative', serif;
+            color: var(--primary-gold);
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        .counter-display.bump {
+            transform: scale(1.2);
+            color: #FFD700;
+        }
+
+        /* Mala Progress */
+        .mala-section {
+            margin: 25px 0;
+        }
+
+        .mala-label {
+            display: flex;
+            justify-content: space-between;
+            color: var(--cream);
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+
+        .mala-progress {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--primary-gold);
+        }
+
+        .mala-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--lotus-pink), var(--primary-gold), var(--lotus-pink));
+            background-size: 200% 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            animation: progressShine 2s linear infinite;
+        }
+
+        @keyframes progressShine {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .mala-count {
+            text-align: center;
+            color: var(--primary-gold);
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        /* Jap Button */
+        .jap-btn {
+            display: block;
+            width: 200px;
+            height: 200px;
+            margin: 30px auto;
+            border-radius: 50%;
+            border: 4px solid var(--primary-gold);
+            background: radial-gradient(circle at 30% 30%, #FF69B4, #800020);
+            color: var(--cream);
+            font-size: 1.8rem;
+            font-family: 'Tiro Devanagari Hindi', serif;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 
+                0 10px 40px rgba(255, 105, 180, 0.4),
+                inset 0 -5px 20px rgba(0, 0, 0, 0.3),
+                inset 0 5px 20px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .jap-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(255, 255, 255, 0.1),
+                transparent
+            );
+            animation: btnShine 3s infinite;
+        }
+
+        @keyframes btnShine {
+            0% {
+                transform: translateX(-100%) rotate(45deg);
+            }
+            100% {
+                transform: translateX(100%) rotate(45deg);
+            }
+        }
+
+        .jap-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 15px 50px rgba(255, 105, 180, 0.6),
+                inset 0 -5px 20px rgba(0, 0, 0, 0.3),
+                inset 0 5px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .jap-btn:active {
+            transform: scale(0.95);
+        }
+
+        .jap-btn span {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 12px 25px;
+            border: 2px solid;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-family: 'Tiro Devanagari Hindi', serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reset-btn {
+            background: transparent;
+            border-color: var(--soft-pink);
+            color: var(--soft-pink);
+        }
+
+        .reset-btn:hover {
+            background: var(--soft-pink);
+            color: var(--deep-maroon);
+        }
+
+        .save-btn {
+            background: transparent;
+            border-color: var(--primary-gold);
+            color: var(--primary-gold);
+        }
+
+        .save-btn:hover {
+            background: var(--primary-gold);
+            color: var(--deep-maroon);
+        }
+
+        /* Stats Section */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            color: var(--primary-gold);
+            font-family: 'Cinzel Decorative', serif;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--soft-pink);
+            margin-top: 5px;
+        }
+
+        /* Celebration Animation */
+        .celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            color: var(--primary-gold);
+            text-align: center;
+            z-index: 100;
+            animation: celebrate 2s ease forwards;
+            pointer-events: none;
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
+        }
+
+        @keyframes celebrate {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--soft-pink);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .devotee-name {
+            color: var(--primary-gold);
+            font-weight: bold;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            animation: rippleEffect 0.6s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes rippleEffect {
+            from {
+                transform: scale(0);
+                opacity: 1;
+            }
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .title {
+                font-size: 1.8rem;
+            }
+            
+            .jap-card {
+                padding: 25px;
+            }
+            
+            .radha-name h2 {
+                font-size: 2.5rem;
+            }
+            
+            .counter-display {
+                font-size: 3.5rem;
+            }
+            
+            .jap-btn {
+                width: 160px;
+                height: 160px;
+                font-size: 1.5rem;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sound Toggle */
+        .sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(75, 0, 130, 0.5);
+            border: 2px solid var(--primary-gold);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--primary-gold);
+            font-size: 1.5rem;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .sound-toggle:hover {
+            background: var(--primary-gold);
+            color: var(--deep-maroon);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <!-- Floating Petals -->
+    <div class="petal" style="left: 10%; animation-delay: 0s;"></div>
+    <div class="petal" style="left: 20%; animation-delay: 2s;"></div>
+    <div class="petal" style="left: 30%; animation-delay: 4s;"></div>
+    <div class="petal" style="left: 50%; animation-delay: 1s;"></div>
+    <div class="petal" style="left: 70%; animation-delay: 3s;"></div>
+    <div class="petal" style="left: 85%; animation-delay: 5s;"></div>
+    <div class="petal" style="left: 95%; animation-delay: 2.5s;"></div>
+
+    <!-- Sound Toggle -->
+    <button class="sound-toggle" id="soundToggle" title="ध्वनि चालू/बंद">
+        🔔
+    </button>
+
+    <div class="container">
+        <header class="header">
+            <div class="om-symbol">ॐ</div>
+            <h1 class="title">राधा रानी नाम जप</h1>
+            <p class="subtitle">॥ राधे राधे ॥</p>
+        </header>
+
+        <div class="jap-card">
+            <div class="radha-name">
+                <h2>॥ राधे राधे ॥</h2>
+            </div>
+
+            <div class="counter-section">
+                <p class="counter-label">आज का जप</p>
+                <div class="counter-display" id="counter">0</div>
+            </div>
+
+            <div class="mala-section">
+                <div class="mala-label">
+                    <span>माला प्रगति</span>
+                    <span id="malaBeads">0/108</span>
+                </div>
+                <div class="mala-progress">
+                    <div class="mala-fill" id="malaFill" style="width: 0%"></div>
+                </div>
+                <p class="mala-count">पूर्ण माला: <span id="malaCount">0</span></p>
+            </div>
+
+            <button class="jap-btn" id="japBtn">
+                <span>🙏<br>राधे राधे<br>जप करें</span>
+            </button>
+
+            <div class="controls">
+                <button class="control-btn reset-btn" id="resetBtn">
+                    🔄 रीसेट
+                </button>
+                <button class="control-btn save-btn" id="saveBtn">
+                    💾 सेव करें
+                </button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalJap">0</div>
+                    <div class="stat-label">कुल जप</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="todayMala">0</div>
+                    <div class="stat-label">आज की माला</div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>भक्त: <span class="devotee-name">यश दुबे</span></p>
+            <p>॥ जय श्री राधे ॥</p>
+        </footer>
+    </div>
+
+    <script>
+        // State
+        let count = 0;
+        let totalCount = 0;
+        let malaCount = 0;
+        let soundEnabled = true;
+
+        // DOM Elements
+        const counterDisplay = document.getElementById('counter');
+        const japBtn = document.getElementById('japBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const malaFill = document.getElementById('malaFill');
+        const malaBeads = document.getElementById('malaBeads');
+        const malaCountDisplay = document.getElementById('malaCount');
+        const totalJapDisplay = document.getElementById('totalJap');
+        const todayMalaDisplay = document.getElementById('todayMala');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // Audio Context for beep
+        let audioContext;
+
+        function initAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playBeep() {
+            if (!soundEnabled || !audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 528; // Healing frequency
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playCelebration() {
+            if (!soundEnabled || !audioContext) return;
+            
+            // Play a sequence of notes for celebration
+            const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.value = freq;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                    osc.start(audioContext.currentTime);
+                    osc.stop(audioContext.currentTime + 0.4);
+                }, i * 150);
+            });
+        }
+
+        // Load saved data
+        function loadData() {
+            const saved = localStorage.getItem('radhaJapData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                const today = new Date().toDateString();
+                
+                if (data.date === today) {
+                    count = data.count || 0;
+                    malaCount = data.malaCount || 0;
+                } else {
+                    count = 0;
+                    malaCount = 0;
+                }
+                totalCount = data.totalCount || 0;
+            }
+            updateDisplay();
+        }
+
+        // Save data
+        function saveData() {
+            const data = {
+                date: new Date().toDateString(),
+                count: count,
+                malaCount: malaCount,
+                totalCount: totalCount
+            };
+            localStorage.setItem('radhaJapData', JSON.stringify(data));
+            showNotification('डेटा सेव हो गया! 🙏');
+        }
+
+        // Update display
+        function updateDisplay() {
+            counterDisplay.textContent = count;
+            totalJapDisplay.textContent = totalCount;
+            malaCountDisplay.textContent = malaCount;
+            todayMalaDisplay.textContent = malaCount;
+            
+            const beadsInCurrentMala = count % 108;
+            malaBeads.textContent = `${beadsInCurrentMala}/108`;
+            malaFill.style.width = `${(beadsInCurrentMala / 108) * 100}%`;
+        }
+
+        // Increment counter
+        function increment() {
+            count++;
+            totalCount++;
+            
+            // Check for mala completion
+            if (count % 108 === 0 && count > 0) {
+                malaCount++;
+                showCelebration();
+                playCelebration();
+            } else {
+                playBeep();
+            }
+            
+            // Bump animation
+            counterDisplay.classList.add('bump');
+            setTimeout(() => counterDisplay.classList.remove('bump'), 200);
+            
+            updateDisplay();
+            
+            // Auto-save every 10 counts
+            if (count % 10 === 0) {
+                saveData();
+            }
+        }
+
+        // Reset counter
+        function resetCounter() {
+            if (confirm('क्या आप आज का जप रीसेट करना चाहते हैं?')) {
+                count = 0;
+                malaCount = 0;
+                updateDisplay();
+                showNotification('जप रीसेट हो गया');
+            }
+        }
+
+        // Show celebration
+        function showCelebration() {
+            const celebration = document.createElement('div');
+            celebration.className = 'celebration';
+            celebration.innerHTML = '🎉<br>एक माला पूर्ण!<br>॥ राधे राधे ॥';
+            document.body.appendChild(celebration);
+            
+            setTimeout(() => {
+                celebration.remove();
+            }, 2000);
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'celebration';
+            notification.style.fontSize = '1.5rem';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 1500);
+        }
+
+        // Create ripple effect
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const circle = document.createElement('span');
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+            
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - button.offsetLeft - radius}px`;
+            circle.style.top = `${event.clientY - button.offsetTop - radius}px`;
+            circle.className = 'ripple';
+            
+            const ripple = button.getElementsByClassName('ripple')[0];
+            if (ripple) {
+                ripple.remove();
+            }
+            
+            button.appendChild(circle);
+        }
+
+        // Toggle sound
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔔' : '🔕';
+        }
+
+        // Event Listeners
+        japBtn.addEventListener('click', (e) => {
+            if (!audioContext) initAudio();
+            createRipple(e);
+            increment();
+        });
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                if (!audioContext) initAudio();
+                increment();
+            }
+        });
+
+        resetBtn.addEventListener('click', resetCounter);
+        saveBtn.addEventListener('click', saveData);
+        soundToggle.addEventListener('click', toggleSound);
+
+        // Initialize
+        loadData();
+
+        // Auto-save on page unload
+        window.addEventListener('beforeunload', saveData);
+    </script>
+</body>
+</html>
+

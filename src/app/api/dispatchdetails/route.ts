@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from '@/lib/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '@/lib/db';
-import { generateDispatchCode } from '@/lib/dispatchCodeGenerator';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -105,8 +103,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const code = await generateDispatchCode();
     await conn.beginTransaction();
+
+    // Generate dispatch_code inside transaction with locking to prevent race conditions
+    const [dispatchMaxRows] = await conn.query<RowDataPacket[]>(
+      'SELECT MAX(CAST(dispatch_code AS UNSIGNED)) as maxCode FROM dispatch_details FOR UPDATE'
+    );
+    const code = String(((dispatchMaxRows && dispatchMaxRows[0]?.maxCode) ? Number(dispatchMaxRows[0].maxCode) : 0) + 1);
+    
+    console.log('Generated dispatch_code:', code, 'for school_id:', school_id);
 
     const insertedDispatchIds: number[] = [];
 

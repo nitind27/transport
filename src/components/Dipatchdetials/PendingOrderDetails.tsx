@@ -608,7 +608,7 @@ const pendingOrdersData = useMemo(() => {
     toast.success('Removed from dispatch cart - Row will reappear in table');
   };
 
-  // Update the submitDispatch function to handle batch route numbering
+  // Update the submitDispatch function to handle batch submission with SAME dispatch_code and route_number
   const submitDispatch = async () => {
     if (dispatchCart.length === 0) {
       toast.error('No items in dispatch cart');
@@ -638,78 +638,47 @@ const pendingOrdersData = useMemo(() => {
     try {
       setLoading(true);
 
-      const allDispatchIds: number[] = [];
-      let routeResult: { route_number?: number; class_ranges?: string[] } | null = null;
-
       // Get user_id and company_id from sessionStorage
       const userId = sessionStorage.getItem('userid');
       const companyId = sessionStorage.getItem('company_id');
 
-      // Process each item in dispatch cart separately
-      for (const item of dispatchCart) {
-        // Convert items_data to lines format for this specific item
-        const lines = Object.entries(item.items_data).map(([grain, totalQty]) => ({
+      // Prepare ALL items for batch submission with SAME dispatch_code and route_number
+      const batchItems = dispatchCart.map(item => ({
+        order_id: item.order_id,
+        school_id: item.school_id,
+        center_id: item.center_id,
+        class_range: item.class_range,
+        lines: Object.entries(item.items_data).map(([grain, totalQty]) => ({
           grain,
           unit: 'kg',
           totalQty: Number(totalQty),
           qtyDispatch: Number(totalQty)
-        }));
+        }))
+      }));
 
-        const payload = {
-          order_id: item.order_id,
-          school_id: item.school_id,
-          center_id: item.center_id,
+      // Single API call for ALL items - same dispatch_code and route_number for all
+      const response = await fetch('/api/dispatchdetails/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           truck_id: Number(finalTruckId),
-          class_range: item.class_range,
           user_id: userId && userId.trim() !== '' ? userId.trim() : null,
           company_id: companyId && companyId.trim() !== '' ? companyId.trim() : null,
-          lines
-        };
+          items: batchItems
+        }),
+      });
 
-        const response = await fetch('/api/dispatchdetails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to submit dispatch for ${item.schoolname} - ${item.class_range}`);
-        }
-
-        const result = await response.json();
-        console.log(`Dispatch created for ${item.schoolname} - ${item.class_range}:`, result);
-        
-        // Collect all dispatch IDs for batch route paper
-        if (result.dispatch_ids && Array.isArray(result.dispatch_ids)) {
-          allDispatchIds.push(...result.dispatch_ids);
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit batch dispatch');
       }
 
-      // Now create route paper for all dispatch IDs in this batch
-      if (allDispatchIds.length > 0) {
-        const routeResponse = await fetch('/api/dispatchdetails/batchroute', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            dispatch_ids: allDispatchIds,
-            user_id: userId && userId.trim() !== '' ? userId.trim() : null,
-            company_id: companyId && companyId.trim() !== '' ? companyId.trim() : null
-          }),
-        });
+      const result = await response.json();
+      console.log('Batch dispatch created:', result);
 
-        if (!routeResponse.ok) {
-          throw new Error('Failed to create route paper');
-        }
-
-        routeResult = await routeResponse.json();
-        console.log('Route Paper created for batch:', routeResult);
-      }
-
-      toast.success(`Dispatch and Route Paper submitted successfully! Route Number: ${routeResult?.route_number || 'N/A'} - Class Ranges: ${routeResult?.class_ranges?.join(', ') || 'N/A'}`);
+      toast.success(`Dispatch submitted successfully! Dispatch Code: ${result.dispatch_code} - Route Number: ${result.route_number} - Class Ranges: ${result.class_ranges?.join(', ') || 'N/A'}`);
       setDispatchCart([]);
       setShowCartModal(false);
       setShowTruckModal(false);
@@ -723,7 +692,7 @@ const pendingOrdersData = useMemo(() => {
 
     } catch (error) {
       console.error('Error submitting dispatch:', error);
-      toast.error('Failed to submit dispatch');
+      toast.error(error instanceof Error ? error.message : 'Failed to submit dispatch');
     } finally {
       setLoading(false);
     }
