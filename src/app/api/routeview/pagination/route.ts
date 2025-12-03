@@ -84,10 +84,12 @@ export async function GET(req: Request) {
     const limit = Math.max(1, Math.min(200, Number(limitParam) || 50));
     const offset = (page - 1) * limit;
 
-    // Build a route key (group key) used in UI: prefer route_number else dispatch_code
-    const routeKeyExpr = `COALESCE(rp.route_number, d.dispatch_code)`;
+    // Build a route key (group key) used in UI: include DATE + route_number for proper date-wise grouping
+    const routeNumberExpr = `COALESCE(rp.route_number, d.dispatch_code)`;
+    // Create a combined key: DATE_ROUTENUMBER (e.g., "2025-12-03_123")
+    const routeKeyExpr = `CONCAT(DATE(d.created_at), '_', ${routeNumberExpr})`;
 
-    // Total distinct route groups in date filter
+    // Total distinct route groups in date filter (now includes date in grouping)
     const [totalRows] = await pool.query<RowDataPacket[]>(
       `SELECT COUNT(*) as total FROM (
         SELECT ${routeKeyExpr} AS route_key
@@ -103,16 +105,19 @@ export async function GET(req: Request) {
     const total = Number((totalRows)[0]?.total || 0);
     console.log('Routeview pagination API - Total routes found:', total);
 
-    // Get page route keys ordered by latest created_at
+    // Get page route keys ordered by date DESC, then route_number DESC
     const [keyRows] = await pool.query<RowDataPacket[]>(
-      `SELECT route_key FROM (
-        SELECT ${routeKeyExpr} AS route_key, MAX(d.created_at) as last_created
+      `SELECT route_key, route_date, route_num FROM (
+        SELECT ${routeKeyExpr} AS route_key, 
+               DATE(d.created_at) as route_date,
+               ${routeNumberExpr} as route_num,
+               MAX(d.created_at) as last_created
         FROM dispatch_details d
         LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
         LEFT JOIN schooldata s ON d.school_id = s.schoolid
         ${whereClause}
-        GROUP BY route_key
-        ORDER BY last_created DESC
+        GROUP BY route_key, route_date, route_num
+        ORDER BY route_date DESC, CAST(route_num AS UNSIGNED) DESC
         LIMIT ? OFFSET ?
       ) AS sub_keys`,
       [...params, ...allParams, limit, offset]
@@ -126,7 +131,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ rows: [], total, page, limit });
     }
 
-    // Fetch rows for selected route keys
+    // Fetch rows for selected route keys (now using composite DATE_ROUTE key)
     const placeholders = keys.map(() => '?').join(',');
     const [rows] = await pool.query<RowDataPacket[]>(`
 SELECT d.*,
@@ -141,8 +146,9 @@ SELECT d.*,
        c.marathi_name AS center_name,
        t.truckNo,
        MAX(sh.patsankhya) as patsankhya,
-       MIN(rp.route_number) as route_number,
-       MIN(rp.class_range) as route_class_range
+       COALESCE(rp.route_number, d.dispatch_code) as route_number,
+       MIN(rp.class_range) as route_class_range,
+       DATE(d.created_at) as route_date
 FROM dispatch_details d
 LEFT JOIN zp_order_details z ON d.order_id = z.id
 LEFT JOIN schooldata s ON d.school_id = s.schoolid
@@ -152,9 +158,9 @@ LEFT JOIN truckdata t ON d.truck_id = t.id
 LEFT JOIN school_wise_order_details sh ON d.school_id = sh.school_id
 LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
 ${whereClause}
-AND ${routeKeyExpr} IN (${placeholders})
-GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo
-ORDER BY d.created_at DESC;
+AND CONCAT(DATE(d.created_at), '_', COALESCE(rp.route_number, d.dispatch_code)) IN (${placeholders})
+GROUP BY d.id, d.dispatch_code, d.item_name, d.school_id, d.center_id, d.truck_id, d.order_id, d.unit, d.total_qty, d.qty_dispatch, d.bal_qty, d.status, d.created_at, d.updated_at, d.class_range, z.order_no, z.period, z.no_of_days, z.financial_year, s.schoolname, s.taluka_id, s.udaisno, ta.name, c.marathi_name, t.truckNo, rp.route_number
+ORDER BY DATE(d.created_at) DESC, CAST(COALESCE(rp.route_number, '0') AS UNSIGNED) DESC;
     `, [...params, ...allParams, ...keys]);
 
     console.log('Routeview pagination API - Rows fetched:', rows.length);

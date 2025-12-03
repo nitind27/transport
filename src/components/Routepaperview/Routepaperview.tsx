@@ -33,6 +33,7 @@ declare module 'flatpickr' {
 }
 // add near DispatchListRow
 type RouteGroupRow = {
+    route_key: string; // Unique key: date_routeNumber
     route_number: string;
     dispatch_code: string;
     order_no?: string;
@@ -105,6 +106,7 @@ type DispatchListRow = {
     patsankhya?: string;
     group_id?: number | null;
     route_number?: string;
+    route_date?: string; // Date portion of created_at in YYYY-MM-DD format
 };
 
 const Routepaperview = () => {
@@ -598,28 +600,70 @@ const Routepaperview = () => {
         return schoolData?.udaisno || '';
     };
 
-    // Get unique route numbers from filtered data
-    const getUniqueRouteNumbers = useMemo(() => {
-        const routeNumbers = new Set<string>();
+    // Helper function to extract date in YYYY-MM-DD format from created_at or route_date
+    const getDateKey = (createdAt: string, routeDate?: string): string => {
+        // Prefer route_date if available (already in YYYY-MM-DD format from API)
+        if (routeDate && /^\d{4}-\d{2}-\d{2}$/.test(routeDate)) {
+            return routeDate;
+        }
+        
+        if (!createdAt) return '';
+        try {
+            // Handle different date formats
+            // Format 1: Already YYYY-MM-DD (from route_date field)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(createdAt)) {
+                return createdAt;
+            }
+            
+            // Format 2: MySQL datetime format YYYY-MM-DD HH:MM:SS
+            if (/^\d{4}-\d{2}-\d{2}/.test(createdAt)) {
+                return createdAt.substring(0, 10);
+            }
+            
+            // Format 3: ISO string or other formats
+            const date = new Date(createdAt);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+        } catch {
+            return '';
+        }
+    };
+
+    // Get unique route numbers with date combinations from filtered data
+    const getUniqueRouteKeys = useMemo(() => {
+        const routeKeys = new Set<string>();
         filteredDispatchList.forEach(item => {
             if (item.route_number) {
-                routeNumbers.add(item.route_number);
+                // Use route_date if available, otherwise extract from created_at
+                const dateKey = getDateKey(item.created_at, item.route_date);
+                // Create unique key: date_routeNumber (e.g., "2025-12-03_123")
+                const uniqueKey = `${dateKey}_${item.route_number}`;
+                routeKeys.add(uniqueKey);
             }
         });
 
-        const uniqueRoutes = Array.from(routeNumbers).sort((a, b) => {
-            // Convert to number if it's a numeric string, otherwise extract number from string
-            let numA = parseInt(a, 10);
-            let numB = parseInt(b, 10);
+        const uniqueRoutes = Array.from(routeKeys).sort((a, b) => {
+            // Parse the key to get date and route number
+            const [dateA, routeA] = a.split('_');
+            const [dateB, routeB] = b.split('_');
+            
+            // First sort by date descending (newest first)
+            if (dateA !== dateB) {
+                return dateB.localeCompare(dateA);
+            }
+            
+            // Then sort by route number descending within the same date
+            let numA = parseInt(routeA, 10);
+            let numB = parseInt(routeB, 10);
 
             // If parseInt failed (NaN), try to extract numeric part
             if (isNaN(numA)) {
-                const matchA = a.match(/\d+/);
+                const matchA = routeA.match(/\d+/);
                 numA = matchA ? parseInt(matchA[0], 10) : 0;
             }
 
             if (isNaN(numB)) {
-                const matchB = b.match(/\d+/);
+                const matchB = routeB.match(/\d+/);
                 numB = matchB ? parseInt(matchB[0], 10) : 0;
             }
 
@@ -627,14 +671,23 @@ const Routepaperview = () => {
             return numB - numA;
         });
 
-        console.log('Unique route numbers found:', uniqueRoutes.length, uniqueRoutes);
+        console.log('Unique route keys (date_route) found:', uniqueRoutes.length, uniqueRoutes);
         return uniqueRoutes;
     }, [filteredDispatchList]);
 
-    // Get data for a specific route number
-    const getDataByRouteNumber = (routeNumber: string) => {
-        return filteredDispatchList.filter(item => item.route_number === routeNumber);
+    // Get data for a specific route key (date_routeNumber format)
+    const getDataByRouteKey = (routeKey: string) => {
+        const [dateKey, routeNumber] = routeKey.split('_');
+        return filteredDispatchList.filter(item => {
+            const itemDateKey = getDateKey(item.created_at, item.route_date);
+            return item.route_number === routeNumber && itemDateKey === dateKey;
+        });
     };
+    
+    // Get data for a specific route number (for backward compatibility with print functions)
+    // const getDataByRouteNumber = (routeNumber: string) => {
+    //     return filteredDispatchList.filter(item => item.route_number === routeNumber);
+    // };
 
     // function formatDateToDDMMYYYY(dateString: string | undefined | null): string {
     //     if (!dateString) return '';
@@ -646,8 +699,9 @@ const Routepaperview = () => {
     //     return `${day}-${month}-${year}`;
     //   }
 
-    const handlePrintDc = (routeNumber: string) => {
-        const routeData = getDataByRouteNumber(routeNumber);
+    const handlePrintDc = (routeKey: string) => {
+        const routeData = getDataByRouteKey(routeKey);
+        const routeNumber = routeKey.split('_')[1] || routeKey;
 
         if (routeData.length === 0) {
             toast.error('Route data not found for DC printing');
@@ -984,8 +1038,10 @@ const Routepaperview = () => {
 
 
     // Update the handlePrint function around line 644
-    const handlePrint = (routeNumber: string) => {
-        const routeData = getDataByRouteNumber(routeNumber);
+    const handlePrint = (routeKey: string) => {
+        const routeData = getDataByRouteKey(routeKey);
+        const routeNumber = routeKey.split('_')[1] || routeKey;
+        
         if (routeData.length === 0) {
             toast.error('Route data not found for printing');
             return;
@@ -1340,17 +1396,21 @@ const Routepaperview = () => {
     // <p style="margin-top: 10px;">Generated by System - जिल्हा परिषद प्राथमिक शाळा</p>
     // <p style="margin-top: 5px;">Route: ${routeNumber} | Total Items: ${allItemNames.length} | Total Weight: ${overallTotal.toFixed(2)} Kg</p>
 
-    // Update the groupedByRoute creation logic (around line 950)
+    // Update the groupedByRoute creation logic - now groups by date + route_number
     const groupedByRoute: RouteGroupRow[] = useMemo(() => {
-        console.log('Calculating groupedByRoute from', getUniqueRouteNumbers.length, 'routes');
+        console.log('Calculating groupedByRoute from', getUniqueRouteKeys.length, 'route keys');
 
-        const grouped = getUniqueRouteNumbers.map(routeNumber => {
-            // Get data for this route from filteredDispatchList
-            const routeData = filteredDispatchList.filter(item => item.route_number === routeNumber);
+        const grouped = getUniqueRouteKeys.map(routeKey => {
+            // Parse the route key (format: date_routeNumber)
+            const [dateKey, routeNumber] = routeKey.split('_');
+            
+            // Get data for this route + date combination from filteredDispatchList
+            const routeData = getDataByRouteKey(routeKey);
 
             if (routeData.length === 0) {
-                console.warn('No data found for route:', routeNumber);
+                console.warn('No data found for route key:', routeKey);
                 return {
+                    route_key: routeKey,
                     route_number: routeNumber,
                     dispatch_code: '',
                     order_no: '',
@@ -1358,7 +1418,7 @@ const Routepaperview = () => {
                     center_name: '',
                     truckNo: '',
                     class_range: '',
-                    created_at: '',
+                    created_at: dateKey,
                     school_count: 0,
                     total_items: 0,
                     total_weight: 0
@@ -1383,6 +1443,7 @@ const Routepaperview = () => {
             const classRanges = [...new Set(routeData.map(item => item.class_range || '').filter(Boolean))];
 
             return {
+                route_key: routeKey, // Store the full key for print operations
                 route_number: routeNumber,
                 dispatch_code: uniqueDispatchCodes.join(', '), // Show all dispatch codes
                 order_no: firstItem?.order_no || '',
@@ -1399,7 +1460,7 @@ const Routepaperview = () => {
 
         console.log('Grouped by route result:', grouped.length, 'groups', grouped);
         return grouped;
-    }, [getUniqueRouteNumbers, filteredDispatchList]);
+    }, [getUniqueRouteKeys, filteredDispatchList]);
 
     // Update the table columns to show grouped data properly
     const listColumns: Column<RouteGroupRow>[] = [
@@ -1409,14 +1470,14 @@ const Routepaperview = () => {
             render: (r) => (
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => handlePrint(r.route_number)}
+                        onClick={() => handlePrint(r.route_key)}
                         className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
                         title="Print Route Paper"
                     >
                         Print Route Paper
                     </button>
                     <button
-                        onClick={() => handlePrintDc(r.route_number)}
+                        onClick={() => handlePrintDc(r.route_key)}
                         className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
                         title="Print Driver Summary (DC)"
                     >
@@ -1585,10 +1646,11 @@ const Routepaperview = () => {
         console.log('filteredDispatchList count:', filteredDispatchList.length);
         console.log('fromDate:', fromDate);
         console.log('endDate:', endDate);
+        console.log('uniqueRouteKeys count:', getUniqueRouteKeys.length);
         console.log('groupedByRoute count:', groupedByRoute.length);
         console.log('groupedByRoute data:', groupedByRoute);
         console.log('===================================');
-    }, [dispatchList.length, filteredDispatchList.length, fromDate, endDate, groupedByRoute.length]);
+    }, [dispatchList.length, filteredDispatchList.length, fromDate, endDate, getUniqueRouteKeys.length, groupedByRoute.length]);
 
     return (
         <div className="">
@@ -1599,7 +1661,7 @@ const Routepaperview = () => {
                 filterOptions={[]}
                 filterKey={undefined}
                 toolbar={toolbar}
-                groupByKey="route_number"
+                groupByKey="route_key"
                 serverMode={true}
                 totalItems={totalCount}
                 initialPerPage={perPage}
@@ -1610,6 +1672,7 @@ const Routepaperview = () => {
                     fetchDispatchList({ page, limit });
                 }}
                 colspanKeys={[
+                    "route_key",
                     "route_number",
                     "dispatch_code",
                     "order_no",
