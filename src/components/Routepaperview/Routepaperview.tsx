@@ -122,6 +122,9 @@ const Routepaperview = () => {
         return today.toISOString().split('T')[0];
     });
 
+    const [selectedRouteNumber, setSelectedRouteNumber] = useState<string>('');
+    const [availableRouteNumbers, setAvailableRouteNumbers] = useState<string[]>([]);
+
     const fromDatePickerRef = useRef<HTMLInputElement>(null);
     const endDatePickerRef = useRef<HTMLInputElement>(null);
     const flatpickrFromInstanceRef = useRef<flatpickr.Instance | null>(null);
@@ -302,6 +305,47 @@ const Routepaperview = () => {
     //         toast.error('Failed to delete route');
     //     }
     // };
+    const fetchAvailableRouteNumbers = useCallback(async () => {
+        if (!fromDate || !endDate) {
+            setAvailableRouteNumbers([]);
+            return;
+        }
+
+        try {
+            // Get user_id, company_id, and category_id from sessionStorage
+            const userId = sessionStorage.getItem('userid');
+            const companyId = sessionStorage.getItem('company_id');
+            const categoryId = sessionStorage.getItem('category_id');
+
+            const params = new URLSearchParams();
+            if (fromDate && fromDate.trim() !== '') {
+                params.append('fromDate', fromDate.trim());
+            }
+            if (endDate && endDate.trim() !== '') {
+                params.append('endDate', endDate.trim());
+            }
+            // Only add if exists and not empty string
+            if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
+            if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
+            if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
+
+            const url = `/api/routeview/route-numbers?${params.toString()}`;
+            const res = await fetch(url);
+
+            if (!res.ok) {
+                console.error('Failed to fetch route numbers');
+                setAvailableRouteNumbers([]);
+                return;
+            }
+
+            const routeNumbers = await res.json();
+            setAvailableRouteNumbers(Array.isArray(routeNumbers) ? routeNumbers : []);
+        } catch (error) {
+            console.error('Error fetching route numbers:', error);
+            setAvailableRouteNumbers([]);
+        }
+    }, [fromDate, endDate]);
+
     const fetchDispatchList = useCallback(async (opts?: { page?: number; limit?: number }) => {
         try {
             setIsLoading(true);
@@ -315,13 +359,16 @@ const Routepaperview = () => {
 
             console.log('Fetching dispatch list with filters - fromDate:', fromDate, 'endDate:', endDate, 'page:', effectivePage, 'limit:', effectiveLimit, 'user_id:', userId, 'company_id:', companyId, 'category_id:', categoryId);
 
-            // Build query parameters with date filters and user/company/category filters
+            // Build query parameters with date filters, route number filter, and user/company/category filters
             const params = new URLSearchParams();
             if (fromDate && fromDate.trim() !== '') {
                 params.append('fromDate', fromDate.trim());
             }
             if (endDate && endDate.trim() !== '') {
                 params.append('endDate', endDate.trim());
+            }
+            if (selectedRouteNumber && selectedRouteNumber.trim() !== '') {
+                params.append('routeNumber', selectedRouteNumber.trim());
             }
             // Only add if exists and not empty string
             if (userId && userId.trim() !== '') params.append('user_id', userId.trim());
@@ -374,7 +421,7 @@ const Routepaperview = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [fromDate, endDate, currentPage, perPage]);
+    }, [fromDate, endDate, selectedRouteNumber, currentPage, perPage]);
 
     const fetchSchoolDataMap = async () => {
         try {
@@ -483,11 +530,16 @@ const Routepaperview = () => {
         fetchDispatchList({ page: 1, limit: perPage });
     }, [fromDate, endDate, fetchDispatchList, perPage]);
 
-    // Initial fetch for today's date range so default data shows
+    // Fetch route numbers when dates change
     useEffect(() => {
-        fetchDispatchList({ page: 1, limit: perPage });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        if (fromDate && endDate) {
+            fetchAvailableRouteNumbers();
+        } else {
+            setAvailableRouteNumbers([]);
+        }
+    }, [fromDate, endDate, fetchAvailableRouteNumbers]);
+
+    // Don't auto-fetch data on mount - wait for user to select filters and click search
 
     // Refresh when a dispatch is submitted elsewhere in the app
     useEffect(() => {
@@ -1065,7 +1117,7 @@ const Routepaperview = () => {
                     udise_number: udiseNumber,
                     patsankhya: row.patsankhya || '',
                     items: new Map(), // Use Map to prevent duplicate items
-                    receipts: new Set<string>(),
+                    receipt_id: row.id || 0, // Store only first/single receipt ID per school
                 });
             }
 
@@ -1090,9 +1142,7 @@ const Routepaperview = () => {
                 });
             }
 
-            if (row.dispatch_code) {
-                schoolData.receipts.add(String(row.dispatch_code));
-            }
+            // receipt_id is already set when creating the school entry (first record's ID)
         });
 
         // Convert Map items back to array for processing
@@ -1100,25 +1150,11 @@ const Routepaperview = () => {
             ...school,
             items: Array.from(school.items.values())
         })).sort((a, b) => {
-            // Sort by पावती क्रमांक (Receipt Number) in descending order
-            const aReceipts = Array.from(a.receipts || new Set<string>()).sort().reverse();
-            const bReceipts = Array.from(b.receipts || new Set<string>()).sort().reverse();
+            // Sort by पावती क्रमांक (Receipt ID) in ascending order
+            const aReceiptId: number = a.receipt_id || 0;
+            const bReceiptId: number = b.receipt_id || 0;
 
-            // Compare the first (highest) receipt number
-            const aFirstReceipt = aReceipts[0] || '';
-            const bFirstReceipt = bReceipts[0] || '';
-
-            // Extract numeric part for proper sorting
-            const getReceiptNumber = (receipt: string) => {
-                if (!receipt || typeof receipt !== 'string') return 0;
-                const match = receipt.match(/(\d+)/);
-                return match ? parseInt(match[1], 10) : 0;
-            };
-
-            const aNum = getReceiptNumber(String(aFirstReceipt));
-            const bNum = getReceiptNumber(String(bFirstReceipt));
-
-            return bNum - aNum; // Descending order (highest first)
+            return aReceiptId - bReceiptId; // Ascending order (lowest first)
         });
 
         // Calculate grand totals for all items
@@ -1333,12 +1369,13 @@ const Routepaperview = () => {
                                 ${schools.map((school, index) => {
                 const grainSums = sumGrainsForGroup(school.items);
                 const schoolTotal = Object.values(grainSums).reduce((sum, qty) => sum + qty, 0);
-                const receipts = school.receipts ? Array.from(school.receipts).join(', ') : '-';
+                // Display single पावती क्रमांक per school (based on school_id)
+                const receiptNumber = school.receipt_id ? String(school.receipt_id) : '-';
                 return `
                                         <tr>
                                             <td class="center-align">${index + 1}</td>
                                    
-                                            <td class="left-align">${receipts}</td>
+                                            <td class="left-align">${receiptNumber}</td>
                                             <td class="left-align">${school.center_name}</td>
                                             <td class="center-align">${school.udise_number || '-'}</td>
                                             <td class="left-align">${school.schoolname}</td>
@@ -1624,6 +1661,23 @@ const Routepaperview = () => {
                     </div>
                 </div>
 
+                <div className="flex flex-col">
+                    <span className="text-xs text-gray-600 mb-1 text-left">Route Number</span>
+                    <select
+                        value={selectedRouteNumber}
+                        onChange={(e) => setSelectedRouteNumber(e.target.value)}
+                        className="h-10 rounded-md border px-3 text-sm w-48"
+                        disabled={availableRouteNumbers.length === 0}
+                    >
+                        <option value="">All Routes</option>
+                        {availableRouteNumbers.map((route) => (
+                            <option key={route} value={route}>
+                                {route}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className="flex items-end h-10">
                     <button
                         type="button"
@@ -1646,6 +1700,8 @@ const Routepaperview = () => {
         console.log('filteredDispatchList count:', filteredDispatchList.length);
         console.log('fromDate:', fromDate);
         console.log('endDate:', endDate);
+        console.log('selectedRouteNumber:', selectedRouteNumber);
+        console.log('availableRouteNumbers:', availableRouteNumbers);
         console.log('uniqueRouteKeys count:', getUniqueRouteKeys.length);
         console.log('groupedByRoute count:', groupedByRoute.length);
         console.log('groupedByRoute data:', groupedByRoute);
