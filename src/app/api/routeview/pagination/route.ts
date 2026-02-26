@@ -5,134 +5,114 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 export async function GET(req: Request) {
   try {
-    // Get query parameters from URL
     const url = new URL(req.url);
+
     const fromDate = url.searchParams.get('fromDate');
     const endDate = url.searchParams.get('endDate');
     const routeNumber = url.searchParams.get('routeNumber');
     const pageParam = url.searchParams.get('page');
     const limitParam = url.searchParams.get('limit');
-    const userId = url.searchParams.get('user_id');
     const companyId = url.searchParams.get('company_id');
-    const categoryId = url.searchParams.get('category_id');
 
-    console.log('Routeview pagination API - Filters:', { fromDate, endDate, routeNumber, userId, companyId, categoryId });
-
-    // Validate YYYY-MM-DD format
-    const isValidDate = (d?: string | null) => !!(d && /^\d{4}-\d{2}-\d{2}$/.test(d));
+    const isValidDate = (d?: string | null) =>
+      !!(d && /^\d{4}-\d{2}-\d{2}$/.test(d));
 
     let startDate = isValidDate(fromDate) ? fromDate! : undefined;
     let endDateFilter = isValidDate(endDate) ? endDate! : undefined;
 
-    // Require date filters to prevent querying all records (performance safeguard)
     if (!startDate && !endDateFilter) {
-      return NextResponse.json({
-        message: 'Date filters (fromDate and/or endDate) are required for performance reasons'
-      }, { status: 400 });
+      return NextResponse.json(
+        { message: 'Date filters are required' },
+        { status: 400 }
+      );
     }
 
-    // If both present but reversed, swap
     if (startDate && endDateFilter && startDate > endDateFilter) {
       const tmp = startDate;
       startDate = endDateFilter;
       endDateFilter = tmp;
     }
 
-    // If only one bound is provided, treat it as a single-day filter
     if (startDate && !endDateFilter) endDateFilter = startDate;
     if (!startDate && endDateFilter) startDate = endDateFilter;
 
-    // Pagination: default 50 per page
     const page = Math.max(1, Number(pageParam) || 1);
     const limit = Math.max(1, Math.min(200, Number(limitParam) || 50));
     const offset = (page - 1) * limit;
 
-    // ========== PHASE 1: Get dispatch IDs efficiently ==========
-    // Simple query with minimal joins to get dispatch IDs
-    let baseWhereClause = `WHERE d.status = 'Active' AND d.created_at >= ? AND d.created_at < DATE_ADD(?, INTERVAL 1 DAY)`;
-    const baseParams: (string | number)[] = [`${startDate} 00:00:00`, `${endDateFilter} 00:00:00`];
+    // ----------------------------
+    // BASE WHERE
+    // ----------------------------
+    let where = `
+      WHERE d.status = 'Active'
+      AND d.created_at >= ?
+      AND d.created_at < DATE_ADD(?, INTERVAL 1 DAY)
+    `;
 
-    // Add company filter using d.company_id directly (faster than COALESCE)
-    if (companyId && companyId.trim() !== '') {
-      baseWhereClause += ` AND (d.company_id = ? OR d.company_id IS NULL)`;
-      baseParams.push(companyId.trim());
+    const params: (string | number)[] = [
+      `${startDate} 00:00:00`,
+      `${endDateFilter} 00:00:00`,
+    ];
+
+    if (companyId?.trim()) {
+      where += ` AND d.company_id = ?`;
+      params.push(companyId.trim());
     }
 
-    // Add route number filter
-    if (routeNumber && routeNumber.trim() !== '') {
-      baseWhereClause += ` AND (rp.route_number = ? OR (rp.route_number IS NULL AND d.dispatch_code = ?))`;
-      baseParams.push(routeNumber.trim(), routeNumber.trim());
+    if (routeNumber?.trim()) {
+      where += ` AND COALESCE(rp.route_number, d.dispatch_code) = ?`;
+      params.push(routeNumber.trim());
     }
 
-    console.log('Phase 1 - Getting dispatch IDs with params:', baseParams);
+    // ----------------------------
+    // PHASE 1 → GET ROUTES
+    // ----------------------------
 
-    // Get total count first (fast query)
-    const [totalRows] = await pool.query<RowDataPacket[]>(
-      `SELECT COUNT(DISTINCT CONCAT(DATE(d.created_at), '_', COALESCE(rp.route_number, d.dispatch_code))) as total
-       FROM dispatch_details d
-       LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
-       ${baseWhereClause}`,
-      baseParams
+    const [routeRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT DISTINCT
+        DATE(d.created_at) as route_date,
+        COALESCE(rp.route_number, d.dispatch_code) as route_number
+      FROM dispatch_details d
+      LEFT JOIN (
+          SELECT dispatch_code, MAX(route_number) as route_number
+          FROM route_paper
+          GROUP BY dispatch_code
+      ) rp ON rp.dispatch_code = d.dispatch_code
+      ${where}
+      ORDER BY route_date DESC, route_number DESC
+      `,
+      params
     );
 
-    const total = Number(totalRows[0]?.total || 0);
-    console.log('Phase 1 - Total routes found:', total);
+    const totalRoutes = routeRows.length;
 
-    // Get dispatch IDs for this page (fast query - only getting IDs)
-    const [dispatchIdRows] = await pool.query<RowDataPacket[]>(
-      `SELECT d.id, d.dispatch_code, DATE(d.created_at) as route_date, 
-              COALESCE(rp.route_number, d.dispatch_code) as route_number
-       FROM dispatch_details d
-       LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
-       ${baseWhereClause}
-       ORDER BY d.created_at DESC, d.id DESC`,
-      baseParams
-    );
+    const paginatedRoutes = routeRows.slice(offset, offset + limit);
 
-    console.log('Phase 1 - Total dispatch records:', dispatchIdRows.length);
-
-    if (dispatchIdRows.length === 0) {
-      console.log('Phase 1 - No dispatches found, returning empty result');
-      return NextResponse.json({ rows: [], total: 0, page, limit });
+    if (paginatedRoutes.length === 0) {
+      return NextResponse.json({
+        rows: [],
+        total: totalRoutes,
+        page,
+        limit,
+      });
     }
 
-    // Group by route_key and paginate
-    const routeGroups = new Map<string, number[]>();
-    for (const row of dispatchIdRows) {
-      const routeKey = `${row.route_date}_${row.route_number}`;
-      if (!routeGroups.has(routeKey)) {
-        routeGroups.set(routeKey, []);
-      }
-      routeGroups.get(routeKey)!.push(row.id);
+    // ----------------------------
+    // PHASE 2 → FETCH DETAILS
+    // ----------------------------
+
+    const routeConditions: string[] = [];
+    const routeParams: (string | number)[] = [];
+
+    for (const r of paginatedRoutes) {
+      routeConditions.push(
+        `(DATE(d.created_at)=? AND COALESCE(rp.route_number, d.dispatch_code)=?)`
+      );
+      routeParams.push(r.route_date, r.route_number);
     }
 
-    // Get paginated route keys
-    const allRouteKeys = Array.from(routeGroups.keys());
-    const paginatedRouteKeys = allRouteKeys.slice(offset, offset + limit);
-    
-    console.log('Phase 1 - Route groups:', allRouteKeys.length, 'Paginated:', paginatedRouteKeys.length);
-
-    if (paginatedRouteKeys.length === 0) {
-      return NextResponse.json({ rows: [], total: allRouteKeys.length, page, limit });
-    }
-
-    // Get dispatch IDs for paginated route keys only
-    const dispatchIds: number[] = [];
-    for (const routeKey of paginatedRouteKeys) {
-      dispatchIds.push(...(routeGroups.get(routeKey) || []));
-    }
-
-    console.log('Phase 2 - Fetching details for', dispatchIds.length, 'dispatch IDs');
-
-    // ========== PHASE 2: Fetch full details by dispatch IDs ==========
-    if (dispatchIds.length === 0) {
-      return NextResponse.json({ rows: [], total: allRouteKeys.length, page, limit });
-    }
-
-    const idPlaceholders = dispatchIds.map(() => '?').join(',');
-
-    // Simple query - fetch by primary key IDs (very fast)
-    const detailsQuery = `
+    const detailQuery = `
       SELECT 
         d.*,
         z.order_no,
@@ -146,7 +126,6 @@ export async function GET(req: Request) {
         c.marathi_name AS center_name,
         t.truckNo,
         COALESCE(rp.route_number, d.dispatch_code) as route_number,
-        rp.class_range as route_class_range,
         DATE(d.created_at) as route_date
       FROM dispatch_details d
       LEFT JOIN zp_order_details z ON d.order_id = z.id
@@ -154,46 +133,70 @@ export async function GET(req: Request) {
       LEFT JOIN taluka ta ON s.taluka_id = ta.taluka_id
       LEFT JOIN centerdata c ON d.center_id = c.center_id
       LEFT JOIN truckdata t ON d.truck_id = t.id
-      LEFT JOIN route_paper rp ON rp.dispatch_code = d.dispatch_code
-      WHERE d.id IN (${idPlaceholders})
-      ORDER BY d.created_at DESC, CAST(COALESCE(rp.route_number, '0') AS UNSIGNED) DESC
+      LEFT JOIN (
+          SELECT dispatch_code, MAX(route_number) as route_number
+          FROM route_paper
+          GROUP BY dispatch_code
+      ) rp ON rp.dispatch_code = d.dispatch_code
+      WHERE ${routeConditions.join(' OR ')}
+      ORDER BY d.created_at DESC
     `;
 
-    const [rows] = await pool.query<RowDataPacket[]>(detailsQuery, dispatchIds);
+    const [rows] = await pool.query<RowDataPacket[]>(
+      detailQuery,
+      routeParams
+    );
 
-    // Fetch patsankhya separately to avoid slow join
+    // ----------------------------
+    // FETCH PATSANKHYA
+    // ----------------------------
+
     const schoolIds = [...new Set(rows.map(r => r.school_id).filter(Boolean))];
     const orderIds = [...new Set(rows.map(r => r.order_id).filter(Boolean))];
-    
+
     const patsankhyaMap = new Map<string, number>();
+
     if (schoolIds.length > 0 && orderIds.length > 0) {
-      const schoolPlaceholders = schoolIds.map(() => '?').join(',');
-      const orderPlaceholders = orderIds.map(() => '?').join(',');
-      
-      const [patsankhyaRows] = await pool.query<RowDataPacket[]>(
-        `SELECT school_id, order_id, patsankhya 
-         FROM school_wise_order_details 
-         WHERE school_id IN (${schoolPlaceholders}) AND order_id IN (${orderPlaceholders})`,
+      const schoolPlace = schoolIds.map(() => '?').join(',');
+      const orderPlace = orderIds.map(() => '?').join(',');
+
+      const [pRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT school_id, order_id, patsankhya
+        FROM school_wise_order_details
+        WHERE school_id IN (${schoolPlace})
+        AND order_id IN (${orderPlace})
+        `,
         [...schoolIds, ...orderIds]
       );
-      
-      for (const row of patsankhyaRows) {
-        patsankhyaMap.set(`${row.school_id}_${row.order_id}`, row.patsankhya);
+
+      for (const r of pRows) {
+        patsankhyaMap.set(
+          `${r.school_id}_${r.order_id}`,
+          r.patsankhya
+        );
       }
     }
 
-    // Add patsankhya to rows
     const finalRows = rows.map(row => ({
       ...row,
-      patsankhya: patsankhyaMap.get(`${row.school_id}_${row.order_id}`) || null
+      patsankhya:
+        patsankhyaMap.get(`${row.school_id}_${row.order_id}`) || null,
     }));
 
-    console.log('Phase 2 - Rows fetched:', finalRows.length);
+    return NextResponse.json({
+      rows: finalRows,
+      total: totalRoutes,
+      page,
+      limit,
+    });
 
-    return NextResponse.json({ rows: finalRows, total: allRouteKeys.length, page, limit });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ message: 'Failed to fetch dispatch' }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { message: 'Failed to fetch dispatch' },
+      { status: 500 }
+    );
   }
 }
 
