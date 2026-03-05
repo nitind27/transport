@@ -34,10 +34,10 @@
     "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",
     "formidable": "^3.5.3",
-    "fs": "^0.0.1-security",
+
     "google-translate-api": "^2.3.0",
     "html2canvas": "^1.4.1",
-    "i": "^0.3.7",
+    
     "i18next": "^25.2.1",
     "jquery": "^3.7.1",
     "js-cookie": "^3.0.5",
@@ -53,7 +53,7 @@
     "nodemailer": "^7.0.10",
     "npm": "^11.3.0",
     "parsleyjs": "^2.9.2",
-    "path": "^0.12.7",
+    
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
     "react-bootstrap": "^2.10.9",
