@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💖 Prachi - Meri Jaan 💖</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0010;
+    font-family: 'Poppins', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    width: 20px; height: 20px;
+    background: radial-gradient(circle, #ff69b4, #ff1493);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s;
+    box-shadow: 0 0 20px #ff69b4, 0 0 40px #ff1493;
+  }
+
+  /* Animated background */
+  .bg-gradient {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #0a0010 0%, #1a0030 25%, #0d001a 50%, #200040 75%, #0a0010 100%);
+    background-size: 400% 400%;
+    animation: bgShift 8s ease infinite;
+    z-index: 0;
+  }
+  @keyframes bgShift {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Floating particles */
+  .particles { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+    opacity: 0;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) scale(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.8; }
+    100% { transform: translateY(-100px) scale(1.5) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+<div class="bg-gradient"></div>
+<div class="particles" id="particles"></div>
+
+<!-- Stars -->
+<canvas id="starCanvas" style="position:fixed;inset:0;z-index:1;pointer-events:none;"></canvas>
+
+<!-- Hero Section -->
+<div style="position:relative;z-index:10;text-align:center;padding:60px 20px 20px;">
+  <div class="heart-3d" id="mainHeart">💖</div>
+  <h1 class="main-title">Prachi</h1>
+  <p class="subtitle">Meri Jaan • Meri Duniya • Mera Sab Kuch</p>
+  <div class="love-badge">∞ Unconditional Love ∞</div>
+</div>
+
+<!-- Names Grid -->
+<div style="position:relative;z-index:10;padding:20px 40px 60px;">
+  <h2 class="section-title">💝 100 Pyaar Bhare Naam 💝</h2>
+  <div class="names-grid" id="namesGrid"></div>
+</div>
+
+<!-- Floating hearts -->
+<div id="floatingHearts" style="position:fixed;inset:0;z-index:2;pointer-events:none;"></div>
+
+<style>
+  /* 3D Heart */
+  .heart-3d {
+    font-size: 120px;
+    display: inline-block;
+    animation: heartBeat3D 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px #ff1493) drop-shadow(0 0 60px #ff69b4);
+    transform-style: preserve-3d;
+  }
+  @keyframes heartBeat3D {
+    0%,100% { transform: scale(1) rotateY(0deg) rotateX(0deg); }
+    25% { transform: scale(1.3) rotateY(15deg) rotateX(10deg); }
+    50% { transform: scale(1.1) rotateY(-10deg) rotateX(-5deg); }
+    75% { transform: scale(1.25) rotateY(20deg) rotateX(8deg); }
+  }
+
+  /* Main Title */
+  .main-title {
+    font-family: 'Dancing Script', cursive;
+    font-size: clamp(60px, 12vw, 120px);
+    background: linear-gradient(135deg, #ff69b4, #ff1493, #ff69b4, #ffb6c1, #ff1493);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: titleGlow 3s ease infinite, titleFloat 4s ease-in-out infinite;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px rgba(255,20,147,0.8));
+    letter-spacing: 8px;
+  }
+  @keyframes titleGlow {
+    0%,100% { background-position: 0% 50%; filter: drop-shadow(0 0 20px rgba(255,20,147,0.8)); }
+    50% { background-position: 100% 50%; filter: drop-shadow(0 0 40px rgba(255,105,180,1)) drop-shadow(0 0 80px rgba(255,20,147,0.6)); }
+  }
+  @keyframes titleFloat {
+    0%,100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .subtitle {
+    font-size: clamp(14px, 3vw, 22px);
+    color: #ffb6c1;
+    letter-spacing: 4px;
+    margin: 10px 0;
+    animation: fadeInUp 1s ease 0.5s both;
+    text-shadow: 0 0 20px rgba(255,182,193,0.8);
+  }
+
+  .love-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(255,20,147,0.3), rgba(255,105,180,0.2));
+    border: 2px solid rgba(255,105,180,0.6);
+    color: #ffb6c1;
+    padding: 10px 30px;
+    border-radius: 50px;
+    font-size: 16px;
+    letter-spacing: 3px;
+    margin-top: 15px;
+    animation: badgePulse 2s ease-in-out infinite, fadeInUp 1s ease 1s both;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(255,20,147,0.4), inset 0 0 20px rgba(255,105,180,0.1);
+  }
+  @keyframes badgePulse {
+    0%,100% { box-shadow: 0 0 30px rgba(255,20,147,0.4), inset 0 0 20px rgba(255,105,180,0.1); }
+    50% { box-shadow: 0 0 60px rgba(255,20,147,0.8), inset 0 0 40px rgba(255,105,180,0.2); }
+  }
+
+  .section-title {
+    font-family: 'Dancing Script', cursive;
+    font-size: clamp(30px, 6vw, 55px);
+    text-align: center;
+    background: linear-gradient(135deg, #ff69b4, #ffb6c1, #ff1493);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 40px;
+    animation: titleFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 15px rgba(255,105,180,0.6));
+  }
+
+  /* Names Grid */
+  .names-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .name-card {
+    background: linear-gradient(135deg, rgba(255,20,147,0.15), rgba(255,105,180,0.08), rgba(128,0,128,0.15));
+    border: 1px solid rgba(255,105,180,0.3);
+    border-radius: 20px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(15px);
+    position: relative;
+    overflow: hidden;
+    animation: cardEntrance 0.6s ease both;
+    transform-style: preserve-3d;
+  }
+  .name-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255,105,180,0.1), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+  .name-card:hover::before { transform: translateX(100%); }
+  .name-card:hover {
+    transform: translateY(-12px) scale(1.08) rotateX(5deg) rotateY(3deg);
+    border-color: rgba(255,20,147,0.8);
+    box-shadow: 0 20px 60px rgba(255,20,147,0.5), 0 0 30px rgba(255,105,180,0.3), inset 0 0 30px rgba(255,20,147,0.1);
+    background: linear-gradient(135deg, rgba(255,20,147,0.3), rgba(255,105,180,0.2), rgba(128,0,128,0.25));
+  }
+  @keyframes cardEntrance {
+    from { opacity: 0; transform: translateY(40px) scale(0.8) rotateX(20deg); }
+    to { opacity: 1; transform: translateY(0) scale(1) rotateX(0deg); }
+  }
+
+  .name-emoji { font-size: 28px; display: block; margin-bottom: 8px; animation: emojiSpin 4s ease-in-out infinite; }
+  @keyframes emojiSpin {
+    0%,100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.3) rotate(-10deg); }
+    75% { transform: scale(1.2) rotate(10deg); }
+  }
+  .name-number {
+    font-size: 10px;
+    color: rgba(255,105,180,0.5);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .name-text {
+    font-family: 'Dancing Script', cursive;
+    font-size: 20px;
+    color: #ffb6c1;
+    font-weight: 700;
+    text-shadow: 0 0 15px rgba(255,105,180,0.8);
+    transition: all 0.3s;
+  }
+  .name-card:hover .name-text {
+    color: #fff;
+    text-shadow: 0 0 25px rgba(255,20,147,1), 0 0 50px rgba(255,105,180,0.8);
+  }
+  .name-meaning {
+    font-size: 11px;
+    color: rgba(255,182,193,0.6);
+    margin-top: 5px;
+    letter-spacing: 1px;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0a0010; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(#ff1493, #ff69b4); border-radius: 3px; }
+</style>
+
+<script>
+// ===== CURSOR =====
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+
+// ===== STAR CANVAS =====
+const canvas = document.getElementById('starCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+const stars = Array.from({length: 200}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 2.5,
+  a: Math.random(),
+  speed: Math.random() * 0.02 + 0.005,
+  color: ['#ff69b4','#ffb6c1','#ff1493','#fff','#ffd700'][Math.floor(Math.random()*5)]
+}));
+
+function drawStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.a += s.speed;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = Math.abs(Math.sin(s.a));
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ===== PARTICLES =====
+const particlesContainer = document.getElementById('particles');
+const particleEmojis = ['💖','💕','💗','💓','💞','✨','🌸','💫','⭐','🌺','💝','🦋'];
+function createParticle() {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = Math.random() * 20 + 10;
+  p.style.cssText = `
+    left:${Math.random()*100}%;
+    width:${size}px; height:${size}px;
+    font-size:${size}px;
+    animation-duration:${Math.random()*8+6}s;
+    animation-delay:${Math.random()*5}s;
+    background:none;
+  `;
+  p.textContent = particleEmojis[Math.floor(Math.random()*particleEmojis.length)];
+  particlesContainer.appendChild(p);
+  setTimeout(() => p.remove(), 14000);
+}
+setInterval(createParticle, 400);
+
+// ===== FLOATING HEARTS =====
+const fh = document.getElementById('floatingHearts');
+function spawnHeart() {
+  const h = document.createElement('div');
+  const size = Math.random() * 30 + 15;
+  const x = Math.random() * window.innerWidth;
+  const dur = Math.random() * 4 + 3;
+  h.style.cssText = `
+    position:absolute; left:${x}px; bottom:-50px;
+    font-size:${size}px; opacity:0;
+    animation: floatHeart ${dur}s ease-out forwards;
+    pointer-events:none;
+  `;
+  h.textContent = ['💖','💕','💗','💓','💞','💝'][Math.floor(Math.random()*6)];
+  fh.appendChild(h);
+  setTimeout(() => h.remove(), dur * 1000);
+}
+setInterval(spawnHeart, 300);
+
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes floatHeart {
+    0% { transform: translateY(0) scale(0) rotate(0deg); opacity: 0; }
+    20% { opacity: 1; transform: translateY(-100px) scale(1) rotate(20deg); }
+    80% { opacity: 0.8; transform: translateY(-${window.innerHeight * 0.7}px) scale(1.2) rotate(-20deg); }
+    100% { opacity: 0; transform: translateY(-${window.innerHeight}px) scale(0.5) rotate(40deg); }
+  }
+`;
+document.head.appendChild(style);
+
+// ===== 100 NAMES =====
+const names = [
+  { emoji: '💖', name: 'Jaan', meaning: 'Meri Zindagi' },
+  { emoji: '🌸', name: 'Prachi', meaning: 'Meri Pehchaan' },
+  { emoji: '💕', name: 'Chamain', meaning: 'Meri Khushboo' },
+  { emoji: '👑', name: 'Laado', meaning: 'Meri Rani' },
+  { emoji: '❤️', name: 'Kareja', meaning: 'Dil Ka Tukda' },
+  { emoji: '🍯', name: 'Sweetheart', meaning: 'Meethi Si Jaan' },
+  { emoji: '🦋', name: 'Bettu', meaning: 'Meri Titli' },
+  { emoji: '🌍', name: 'Duniya', meaning: 'Meri Poori Duniya' },
+  { emoji: '🌹', name: 'Gulab', meaning: 'Khilta Phool' },
+  { emoji: '⭐', name: 'Sitara', meaning: 'Chamakta Tara' },
+  { emoji: '🌙', name: 'Chaand', meaning: 'Raat Ka Noor' },
+  { emoji: '☀️', name: 'Dhoop', meaning: 'Subah Ki Roshni' },
+  { emoji: '💎', name: 'Heera', meaning: 'Anmol Ratan' },
+  { emoji: '🎀', name: 'Pari', meaning: '  Meri Pari' },
+  { emoji: '🌺', name: 'Phool', meaning: 'Baag Ki Rani' },
+  { emoji: '🍬', name: 'Mithi', meaning: 'Zindagi Ki Mithas' },
+  { emoji: '🕊️', name: 'Kabutar', meaning: 'Amn Ki Nishani' },
+  { emoji: '💫', name: 'Rooh', meaning: 'Meri Aatma' },
+  { emoji: '🌊', name: 'Lahren', meaning: 'Dil Ki Gehraai' },
+  { emoji: '🎵', name: 'Sur', meaning: 'Dil Ka Sangeet' },
+  { emoji: '🌈', name: 'Dhanak', meaning: '7 Rang Meri Jaan' },
+  { emoji: '🦚', name: 'Mor', meaning: 'Sundar Pankh' },
+  { emoji: '🌟', name: 'Noor', meaning: 'Roshan Karne Wali' },
+  { emoji: '🍀', name: 'Lucky', meaning: 'Meri Kismat' },
+  { emoji: '🎭', name: 'Rani', meaning: 'Dil Ki Malika' },
+  { emoji: '🌻', name: 'Suraj Mukhi', meaning: 'Dhoop Wali' },
+  { emoji: '🦜', name: 'Tota', meaning: 'Meetha Bolne Wali' },
+  { emoji: '🍁', name: 'Patta', meaning: 'Zindagi Ka Rang' },
+  { emoji: '🎠', name: 'Gudiya', meaning: 'Pyari Puttali' },
+  { emoji: '🌷', name: 'Tulip', meaning: 'Komal Phool' },
+  { emoji: '💐', name: 'Guldasta', meaning: 'Khushiyon Ka Bouquet' },
+  { emoji: '🦩', name: 'Flamingo', meaning: 'Haseen Adaon Wali' },
+  { emoji: '🌠', name: 'Shooting Star', meaning: 'Khwaabon Ki Rani' },
+  { emoji: '🎆', name: 'Patakha', meaning: 'Dil Mein Dhamaka' },
+  { emoji: '🍓', name: 'Strawberry', meaning: 'Laal Meethi Jaan' },
+  { emoji: '🌴', name: 'Nariyal', meaning: 'Andar Se Meethi' },
+  { emoji: '🦋', name: 'Butterfly', meaning: 'Udne Wali Pari' },
+  { emoji: '🎪', name: 'Tamasha', meaning: 'Zindagi Ka Rang' },
+  { emoji: '🌮', name: 'Chatpati', meaning: 'Masaledaar Jaan' },
+  { emoji: '🎯', name: 'Nishana', meaning: 'Dil Ka Target' },
+  { emoji: '🏆', name: 'Trophy', meaning: 'Meri Jeet' },
+  { emoji: '🎸', name: 'Guitar', meaning: 'Dil Ka Raag' },
+  { emoji: '🌌', name: 'Galaxy', meaning: 'Meri Kaaynat' },
+  { emoji: '🔮', name: 'Crystal', meaning: 'Saaf Dil Wali' },
+  { emoji: '🎨', name: 'Rangeen', meaning: 'Zindagi Ka Rang' },
+  { emoji: '🌞', name: 'Sunshine', meaning: 'Meri Roshni' },
+  { emoji: '🍭', name: 'Lollipop', meaning: 'Meethi Meethi' },
+  { emoji: '🦄', name: 'Unicorn', meaning: 'Anokhi Pari' },
+  { emoji: '🌙', name: 'Moonlight', meaning: 'Raat Ki Chandni' },
+  { emoji: '💌', name: 'Love Letter', meaning: 'Dil Ki Baat' },
+  { emoji: '🎁', name: 'Tohfa', meaning: 'Khuda Ka Gift' },
+  { emoji: '🌿', name: 'Hariyali', meaning: 'Zindagi Ki Taazgi' },
+  { emoji: '🍯', name: 'Honey', meaning: 'Meethi Zindagi' },
+  { emoji: '🎶', name: 'Melody', meaning: 'Dil Ka Naghma' },
+  { emoji: '🌸', name: 'Cherry Blossom', meaning: 'Komal Phool' },
+  { emoji: '💞', name: 'Dhadkan', meaning: 'Dil Ki Awaaz' },
+  { emoji: '🌺', name: 'Hibiscus', meaning: 'Laal Phool' },
+  { emoji: '🎀', name: 'Ribbon', meaning: 'Pyar Ka Bandhan' },
+  { emoji: '🦢', name: 'Swan', meaning: 'Sundar Pankh Wali' },
+  { emoji: '🌊', name: 'Ocean', meaning: 'Gehri Mohabbat' },
+  { emoji: '⚡', name: 'Bijli', meaning: 'Dil Mein Bijli' },
+  { emoji: '🎠', name: 'Carousel', meaning: 'Khushiyon Ka Chakkar' },
+  { emoji: '🌹', name: 'Rose', meaning: 'Pyar Ka Phool' },
+  { emoji: '💋', name: 'Kiss', meaning: 'Pyar Ka Izhaar' },
+  { emoji: '🎊', name: 'Celebration', meaning: 'Khushi Ki Rani' },
+  { emoji: '🌟', name: 'Superstar', meaning: 'Meri Star' },
+  { emoji: '🍒', name: 'Cherry', meaning: 'Laal Gaal Wali' },
+  { emoji: '🦋', name: 'Titli', meaning: 'Udti Pari' },
+  { emoji: '🌙', name: 'Chand Rani', meaning: 'Raat Ki Malika' },
+  { emoji: '💝', name: 'Dil', meaning: 'Mera Dil' },
+  { emoji: '🌈', name: 'Rainbow', meaning: 'Rang Birangi Jaan' },
+  { emoji: '🎵', name: 'Sargam', meaning: 'Dil Ka Raag' },
+  { emoji: '🌻', name: 'Sunflower', meaning: 'Dhoop Wali Pari' },
+  { emoji: '🍀', name: 'Shamrock', meaning: 'Meri Luck' },
+  { emoji: '🦚', name: 'Peacock', meaning: 'Sundar Adaon Wali' },
+  { emoji: '🌠', name: 'Tara', meaning: 'Chamakta Sitara' },
+  { emoji: '🎆', name: 'Firework', meaning: 'Dil Mein Aag' },
+  { emoji: '🍓', name: 'Berry', meaning: 'Meethi Khatti Jaan' },
+  { emoji: '🌴', name: 'Palm', meaning: 'Thandi Chhaon' },
+  { emoji: '🎯', name: 'Lakshya', meaning: 'Mera Maqsad' },
+  { emoji: '🏆', name: 'Champion', meaning: 'Meri Jeet' },
+  { emoji: '🎸', name: 'Rock Star', meaning: 'Dil Ki Dhun' },
+  { emoji: '🌌', name: 'Universe', meaning: 'Meri Kaaynat' },
+  { emoji: '🔮', name: 'Magic', meaning: 'Jaadu Wali' },
+  { emoji: '🎨', name: 'Artist', meaning: 'Dil Ki Tasveer' },
+  { emoji: '🌞', name: 'Suraj', meaning: 'Meri Roshni' },
+  { emoji: '🍭', name: 'Candy', meaning: 'Meethi Jaan' },
+  { emoji: '🦄', name: 'Magical', meaning: 'Anokhi Duniya' },
+  { emoji: '💌', name: 'Khat', meaning: 'Dil Ki Baat' },
+  { emoji: '🎁', name: 'Gift', meaning: 'Anmol Tohfa' },
+  { emoji: '🌿', name: 'Nature', meaning: 'Taaza Hawa' },
+  { emoji: '🎶', name: 'Music', meaning: 'Dil Ka Sangeet' },
+  { emoji: '💞', name: 'Heartbeat', meaning: 'Dhadkan Meri' },
+  { emoji: '🦢', name: 'Hansa', meaning: 'Safed Pankh' },
+  { emoji: '⚡', name: 'Spark', meaning: 'Dil Ki Chingari' },
+  { emoji: '🌹', name: 'Gulaab', meaning: 'Laal Phool' },
+  { emoji: '💋', name: 'Pyar', meaning: 'Dil Se Dil Tak' },
+  { emoji: '🎊', name: 'Jashn', meaning: 'Khushi Ki Rani' },
+  { emoji: '🌟', name: 'Shining Star', meaning: 'Meri Roshan Jaan' },
+];
+
+const grid = document.getElementById('namesGrid');
+names.forEach((item, i) => {
+  const card = document.createElement('div');
+  card.className = 'name-card';
+  card.style.animationDelay = `${i * 0.05}s`;
+  card.innerHTML = `
+    <span class="name-emoji">${item.emoji}</span>
+    <div class="name-number">No. ${String(i+1).padStart(2,'0')}</div>
+    <div class="name-text">${item.name}</div>
+    <div class="name-meaning">${item.meaning}</div>
+  `;
+  card.addEventListener('click', () => {
+    card.style.animation = 'none';
+    card.style.transform = 'scale(1.2) rotateY(360deg)';
+    card.style.transition = 'transform 0.6s ease';
+    spawnClickHearts(card);
+    setTimeout(() => {
+      card.style.transform = '';
+      card.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    }, 700);
+  });
+  grid.appendChild(card);
+});
+
+function spawnClickHearts(el) {
+  const rect = el.getBoundingClientRect();
+  for (let i = 0; i < 8; i++) {
+    const h = document.createElement('div');
+    h.style.cssText = `
+      position:fixed; left:${rect.left + rect.width/2}px; top:${rect.top + rect.height/2}px;
+      font-size:${Math.random()*20+15}px; pointer-events:none; z-index:9999;
+      animation: clickHeart 1s ease-out forwards;
+      --dx:${(Math.random()-0.5)*200}px; --dy:${-(Math.random()*150+50)}px;
+    `;
+    h.textContent = ['💖','💕','💗','💓','💞'][Math.floor(Math.random()*5)];
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 1000);
+  }
+}
+
+const clickStyle = document.createElement('style');
+clickStyle.textContent = `
+  @keyframes clickHeart {
+    0% { transform: translate(0,0) scale(0); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.5); opacity: 0; }
+  }
+`;
+document.head.appendChild(clickStyle);
+
+// Click anywhere hearts
+document.addEventListener('click', e => {
+  for (let i = 0; i < 5; i++) {
+    const h = document.createElement('div');
+    h.style.cssText = `
+      position:fixed; left:${e.clientX}px; top:${e.clientY}px;
+      font-size:${Math.random()*15+10}px; pointer-events:none; z-index:9999;
+      animation: clickHeart 0.8s ease-out forwards;
+      --dx:${(Math.random()-0.5)*100}px; --dy:${-(Math.random()*80+30)}px;
+    `;
+    h.textContent = '💖';
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 800);
+  }
+});
+</script>
+</body>
+</html>

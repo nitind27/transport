@@ -41,16 +41,16 @@ const ZPorderdetails = ({ zpOrderDetails: _zpOrderDetails }: Props) => {
   const [period, setPeriod] = useState('');
   const [financialYear, setFinancialYear] = useState('');
 
-  // Generate financial year options (current year and next 5 years)
+  // Generate financial year options (2025-26 plus current year and next 5 years)
   const generateFinancialYears = () => {
     const currentYear = new Date().getFullYear();
-    const years = [];
+    const years = new Set<string>(['2025-26']);
     for (let i = 0; i < 6; i++) {
       const year = currentYear + i;
       const nextYear = year + 1;
-      years.push(`${year}-${nextYear.toString().slice(-2)}`);
+      years.add(`${year}-${nextYear.toString().slice(-2)}`);
     }
-    return years;
+    return Array.from(years).sort();
   };
 
   const financialYearOptions = generateFinancialYears();

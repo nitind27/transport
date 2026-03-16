@@ -125,6 +125,8 @@ export async function GET(req: Request) {
         ta.name AS taluka_name,
         c.marathi_name AS center_name,
         t.truckNo,
+        t.driverName,
+        t.driverMobile,
         COALESCE(rp.route_number, d.dispatch_code) as route_number,
         DATE(d.created_at) as route_date
       FROM dispatch_details d

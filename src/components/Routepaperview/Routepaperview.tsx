@@ -97,6 +97,8 @@ type DispatchListRow = {
     schoolname?: string;
     center_name?: string;
     truckNo?: string;
+    driverName?: string;
+    driverMobile?: string;
     class_range?: string;
     taluka?: string;
     period?: string;
@@ -144,13 +146,13 @@ const Routepaperview = () => {
     const [districtName, setDistrictName] = useState<string>('नंदुरबार'); // Default fallback
     
     // Truck data for driver information
-    interface TruckRow {
-        id: number;
-        truckNo: string;
-        driverName?: string;
-        driverMobile?: string;
-    }
-    const [truckList, setTruckList] = useState<TruckRow[]>([]);
+    // interface TruckRow {
+    //     id: number;
+    //     truckNo: string;
+    //     driverName?: string;
+    //     driverMobile?: string;
+    // }
+    // const [truckList, setTruckList] = useState<TruckRow[]>([]);
 
     // Initialize Flatpickr for From Date picker
     useEffect(() => {
@@ -259,11 +261,11 @@ const Routepaperview = () => {
             if (companyId && companyId.trim() !== '') params.append('company_id', companyId.trim());
             if (categoryId && categoryId.trim() !== '') params.append('category_id', categoryId.trim());
 
-            const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
-            if (res.ok) {
-                const trucks = await res.json();
-                setTruckList(trucks);
-            }
+            // const res = await fetch(`/api/truckdata${params.toString() ? '?' + params.toString() : ''}`);
+            // if (res.ok) {
+            //     // const trucks = await res.json();
+            //     // setTruckList(trucks);
+            // }
         } catch {
             toast.error('Failed to load trucks');
         }
@@ -1179,10 +1181,10 @@ const Routepaperview = () => {
         const periodText = firstRouteItem?.period || 'Aug-Sept-2025';
         const daysText = firstRouteItem?.no_of_days ? `${firstRouteItem.no_of_days} Days` : '42 Days';
         
-        // Get driver information from truck data
-        const truck = firstRouteItem?.truck_id ? truckList.find(t => t.id === firstRouteItem.truck_id) : null;
-        const driverName = truck?.driverName; // Fallback to default
-        const driverMobile = truck?.driverMobile; // Fallback to default
+        // Driver info from route/truck data (API returns by truck_id join – no user_id filter; print shows by route/truck)
+        const driverName = (firstRouteItem?.driverName ?? '').trim();
+        const driverMobile = (firstRouteItem?.driverMobile ?? '').trim();
+        const hasDriverInfo = driverName.length > 0;
 
         // Prepare company identity for display
         const companyTitle = companyName && companyName.trim() !== ''
@@ -1334,8 +1336,7 @@ const Routepaperview = () => {
                                             <img src="/images/login/logo.png" alt="Logo" class="header-logo" />
                                         </div>
                                         <div>
-                                            Driver: ${driverName}<br>
-                                            Mob: ${driverMobile}<br>
+                                            ${hasDriverInfo ? `Driver: ${driverName}<br>Mob: ${driverMobile || '-'}<br>` : ''}
                                             Vehicle No: ${vehicleNo}<br>
                                             <div class="header-center"> तालुका:  ${firstRouteItem?.taluka_name || ''}</div>
                                         </div>
